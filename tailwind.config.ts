@@ -63,6 +63,18 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			backgroundImage: {
+				'gradient-primary': 'var(--primary-gradient)',
+				'gradient-secondary': 'var(--secondary-gradient)',
+				'gradient-accent': 'var(--accent-gradient)',
+			},
+			boxShadow: {
+				'primary': 'var(--shadow-primary)',
+				'glass': 'var(--shadow-glass)',
+			},
+			transitionTimingFunction: {
+				'smooth': 'var(--transition-smooth)',
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
