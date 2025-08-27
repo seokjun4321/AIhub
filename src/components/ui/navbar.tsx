@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, Menu, X, Search, BookOpen, Users, Zap } from "lucide-react";
+import { Brain, Menu, X, Search, BookOpen, Users, Zap, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   const navItems = [
     { name: "AI 추천", href: "#recommend", icon: Zap },
@@ -46,12 +49,31 @@ const Navbar = () => {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="outline" size="sm">
-              로그인
-            </Button>
-            <Button size="sm" className="bg-gradient-primary hover:opacity-90">
-              시작하기
-            </Button>
+            {user ? (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  Welcome back!
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={signOut}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  로그아웃
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/auth">로그인</Link>
+                </Button>
+                <Button size="sm" className="bg-gradient-primary hover:opacity-90" asChild>
+                  <Link to="/auth">시작하기</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -86,12 +108,25 @@ const Navbar = () => {
               );
             })}
             <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
-              <Button variant="outline" className="w-full">
-                로그인
-              </Button>
-              <Button className="w-full bg-gradient-primary hover:opacity-90">
-                시작하기
-              </Button>
+              {user ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full flex items-center gap-2"
+                  onClick={signOut}
+                >
+                  <LogOut className="w-4 h-4" />
+                  로그아웃
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link to="/auth">로그인</Link>
+                  </Button>
+                  <Button className="w-full bg-gradient-primary hover:opacity-90" asChild>
+                    <Link to="/auth">시작하기</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
