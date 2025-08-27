@@ -29,14 +29,14 @@ const Navbar = () => {
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <div className="p-2 bg-gradient-primary rounded-lg shadow-primary">
               <Brain className="w-6 h-6 text-primary-foreground" />
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               AIHub
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
