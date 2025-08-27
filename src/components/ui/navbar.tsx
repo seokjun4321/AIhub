@@ -1,21 +1,29 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, Menu, X, Search, BookOpen, Users, Zap, LogOut } from "lucide-react";
+import { Brain, Menu, X, Search, BookOpen, Users, Zap, LogOut, User, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuth();
 
   const navItems = [
-    { name: "AI 추천", href: "#recommend", icon: Zap },
-    { name: "가이드북", href: "#guides", icon: BookOpen },
-    { name: "커뮤니티", href: "#community", icon: Users },
-    { name: "AI 도구", href: "#tools", icon: Search },
+    { name: "AI 추천", href: "/recommend", icon: Zap },
+    { name: "가이드북", href: "/guides", icon: BookOpen },
+    { name: "커뮤니티", href: "/community", icon: Users },
+    { name: "AI 도구", href: "/tools", icon: Search },
   ];
-
+  
   return (
     <header className="fixed top-0 w-full z-50 bg-card/90 backdrop-blur-lg border-b border-border/50">
       <nav className="container mx-auto px-6 py-4">
@@ -50,20 +58,28 @@ const Navbar = () => {
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">
-                  Welcome back!
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={signOut}
-                  className="flex items-center gap-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  로그아웃
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="rounded-full">
+                    <User className="w-4 h-4" />
+                    <span className="sr-only">Open user menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>내 계정</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link to="/profile" className="flex items-center gap-2">
+                      <UserCog className="w-4 h-4" />
+                      <span>프로필 설정</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut} className="cursor-pointer flex items-center gap-2 text-red-500 focus:text-red-500">
+                    <LogOut className="w-4 h-4" />
+                    <span>로그아웃</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <>
                 <Button variant="outline" size="sm" asChild>
@@ -109,14 +125,18 @@ const Navbar = () => {
             })}
             <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
               {user ? (
-                <Button 
-                  variant="outline" 
-                  className="w-full flex items-center gap-2"
-                  onClick={signOut}
-                >
-                  <LogOut className="w-4 h-4" />
-                  로그아웃
-                </Button>
+                <>
+                  <Link to="/profile" className="w-full" onClick={() => setIsOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <UserCog className="w-4 h-4" />
+                      프로필 설정
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" className="w-full justify-start gap-2 text-red-500 hover:text-red-500" onClick={signOut}>
+                    <LogOut className="w-4 h-4" />
+                    로그아웃
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button variant="outline" className="w-full" asChild>

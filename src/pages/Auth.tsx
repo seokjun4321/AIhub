@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,13 +19,14 @@ const Auth = () => {
   const [success, setSuccess] = useState('');
   
   const { signIn, signUp, user } = useAuth();
+  const nagivate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      window.location.href = '/';
+      nagivate('/');
     }
-  }, [user]);
+  }, [user, nagivate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,32 +67,32 @@ const Auth = () => {
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
+            홈으로 돌아가기
           </Link>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-            Welcome to AIHub
+            AIHub에 오신 것을 환영합니다
           </h1>
-          <p className="text-muted-foreground mt-2">Sign in to your account or create a new one</p>
+          <p className="text-muted-foreground mt-2">로그인을 하시거나 새로 가입을 하세요</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Authentication</CardTitle>
+            <CardTitle>AI의 혁명</CardTitle>
             <CardDescription>
-              Join the AI revolution with personalized recommendations
+              준비되셨나요?
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="signin">로그인</TabsTrigger>
+                <TabsTrigger value="signup">회원가입</TabsTrigger>
               </TabsList>
               
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
+                    <Label htmlFor="signin-email">이메일</Label>
                     <Input
                       id="signin-email"
                       type="email"
@@ -102,7 +103,7 @@ const Auth = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
+                    <Label htmlFor="signin-password">비밀번호</Label>
                     <Input
                       id="signin-password"
                       type="password"
@@ -121,7 +122,7 @@ const Auth = () => {
                   
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Sign In
+                    로그인
                   </Button>
                 </form>
               </TabsContent>
@@ -129,29 +130,29 @@ const Auth = () => {
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-fullname">Full Name</Label>
+                    <Label htmlFor="signup-fullname">성명</Label>
                     <Input
                       id="signup-fullname"
                       type="text"
-                      placeholder="John Doe"
+                      placeholder="홍길동"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-username">Username</Label>
+                    <Label htmlFor="signup-username">아이디</Label>
                     <Input
                       id="signup-username"
                       type="text"
-                      placeholder="johndoe"
+                      placeholder="hong1234"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">이메일</Label>
                     <Input
                       id="signup-email"
                       type="email"
@@ -162,7 +163,7 @@ const Auth = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="signup-password">비밀번호</Label>
                     <Input
                       id="signup-password"
                       type="password"
@@ -187,7 +188,7 @@ const Auth = () => {
                   
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Sign Up
+                    회원가입
                   </Button>
                 </form>
               </TabsContent>
