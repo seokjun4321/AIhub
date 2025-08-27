@@ -94,7 +94,7 @@ const GuideDetail = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date(guide.created_at).toLocaleDateString()}</span>
+                <span>{new Date(guide.created_at).toLocaleString()}</span>
               </div>
             </div>
           </header>

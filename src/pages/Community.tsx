@@ -69,7 +69,7 @@ const Community = () => {
                           <UserCircle className="w-4 h-4" />
                           <span>{post.profiles?.username || '익명'}</span>
                         </div>
-                        <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                        <span>{new Date(post.created_at).toLocaleString()}</span>
                       </div>
                     </CardHeader>
                   </Card>

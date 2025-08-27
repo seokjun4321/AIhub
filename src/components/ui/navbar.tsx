@@ -21,7 +21,7 @@ const Navbar = () => {
     { name: "AI 추천", href: "/recommend", icon: Zap },
     { name: "가이드북", href: "/guides", icon: BookOpen },
     { name: "커뮤니티", href: "/community", icon: Users },
-    { name: "AI 도구", href: "/tools", icon: Search },
+    { name: "AI 도구", href: "/tools", icon: Search }
   ];
   
   return (
@@ -58,7 +58,7 @@ const Navbar = () => {
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
             {user ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" className="rounded-full">
                     <User className="w-4 h-4" />

@@ -10,6 +10,7 @@ import GuideDetail from "./pages/GuideDetail";
 import Community from "./pages/Community";
 import NewPost from "./pages/NewPost";
 import PostDetail from "./pages/PostDetail";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/community" element={<Community />} />
             <Route path="/community/new" element={<NewPost />} />
             <Route path="/community/:id" element={<PostDetail />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
