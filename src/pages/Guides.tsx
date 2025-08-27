@@ -14,6 +14,7 @@ const fetchGuides = async () => {
   if (error) {
     throw new Error(error.message);
   }
+
   return data;
 };
 
