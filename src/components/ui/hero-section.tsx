@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 import { Brain, Search, BookOpen, Users, ArrowRight, Sparkles } from "lucide-react";
 
 const HeroSection = () => {
@@ -39,16 +40,20 @@ const HeroSection = () => {
           
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-            <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-primary group">
-              AI 추천받기
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <Link to="/recommend">
+              <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-primary group">
+                AI 추천받기
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
-            <Button variant="outline" size="lg" className="border-2 hover:bg-accent/10">
-              가이드북 둘러보기
-            </Button>
+            </Link>
+            <Link to="/guides">
+              <Button variant="outline" size="lg" className="border-2 hover:bg-accent/10">
+                가이드북 둘러보기 
+              </Button>
+            </Link>
           </div>
           
-          {/* Stats */}
+          {/* Stats (Currently Dummy Data) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16">
             <Card className="bg-card/80 backdrop-blur-sm border-0 shadow-glass">
               <CardContent className="p-6 text-center">
