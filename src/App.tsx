@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Recommend from "./pages/Recommend";
 import Guides from "./pages/Guides";
 import GuideDetail from "./pages/GuideDetail";
 import Community from "./pages/Community";
@@ -24,6 +25,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/recommend" element={<Recommend />} />
             <Route path="/guides" element={<Guides />} />
             <Route path="/guides/:id" element={<GuideDetail />} />
             <Route path="/community" element={<Community />} />

@@ -5,10 +5,10 @@ import { Brain, Github, Twitter, Mail, ArrowRight } from "lucide-react";
 const Footer = () => {
   const footerLinks = {
     product: [
-      { name: "AI 추천", href: "#recommend" },
-      { name: "가이드북", href: "#guides" },
-      { name: "커뮤니티", href: "#community" },
-      { name: "AI 도구", href: "#tools" },
+      { name: "AI 추천", href: "/recommend" },
+      { name: "가이드북", href: "/guides" },
+      { name: "커뮤니티", href: "/community" },
+      { name: "AI 도구", href: "/tools" },
     ],
     company: [
       { name: "소개", href: "#about" },
