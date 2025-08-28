@@ -12,12 +12,14 @@ import Community from "./pages/Community";
 import NewPost from "./pages/NewPost";
 import PostDetail from "./pages/PostDetail";
 import Profile from "./pages/Profile";
+import ScrollToTop from "@/components/ui/ScrollToTop";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <BrowserRouter>
+    <ScrollToTop />
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>

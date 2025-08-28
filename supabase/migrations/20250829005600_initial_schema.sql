@@ -16,7 +16,7 @@ CREATE TABLE public.guides (
   description TEXT,
   category TEXT,
   author TEXT,
-  imageUrl TEXT,
+  imageurl TEXT,
   content TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

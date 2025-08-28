@@ -6,6 +6,8 @@ import Footer from "@/components/ui/footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { UserCircle, Calendar } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // URL의 ID를 기반으로 Supabase에서 특정 가이드 1개를 가져오는 함수
 const fetchGuideById = async (id: string) => {
@@ -100,14 +102,14 @@ const GuideDetail = () => {
           </header>
           
           <div className="aspect-video w-full bg-muted rounded-lg mb-8 overflow-hidden">
-            <img src={guide.imageUrl || "/placeholder.svg"} alt={guide.title} className="w-full h-full object-cover" />
+            <img src={guide.imageurl || "/placeholder.svg"} alt={guide.title} className="w-full h-full object-cover" />
           </div>
           
           {/* 실제 가이드 본문 내용 */}
           <div className="prose dark:prose-invert max-w-none">
-            <p>{guide.content}</p>
-            {/* Supabase의 content 컬럼에 Markdown 형식으로 글을 작성했다면, 
-                react-markdown 같은 라이브러리를 사용해서 더 예쁘게 렌더링할 수도 있습니다. */}
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {guide.content || ""}
+            </ReactMarkdown>
           </div>
         </article>
       </main>
