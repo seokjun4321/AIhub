@@ -1,10 +1,10 @@
-🧠 AIHub: The Navigator for the AI Era
+# 🧠 AIHub: The Navigator for the AI Era
 AIHub is a practical navigation platform designed to guide users through the overwhelming landscape of AI tools. We recommend the optimal AI solutions for specific problems and provide practical, community-verified guides on how to use them effectively. Think of it as "The Netflix for AI."
 
-🎯 The Problem
+# 🎯 The Problem
 The AI market is exploding. While this rapid growth is exciting, it has created a "paradox of choice" for users. Beginners and even experts struggle to answer a fundamental question: "Which AI tool is right for my specific task, and how do I use it to get the best results?" Existing information is often fragmented, overly technical, or lacks practical, real-world application.
 
-✨ Our Solution
+# ✨ Our Solution
 AIHub aims to be the definitive guide in the age of AI. We provide a centralized platform offering three core values:
 
 Curated AI Recommendations: Get tailored suggestions for the best AI tools based on your specific needs and goals.
@@ -13,7 +13,7 @@ Practical "How-To" Guides: Access a library of step-by-step tutorials and playbo
 
 Experience-Driven Community: Engage with a community of users to share tips, ask questions, and learn from the collective experience of others.
 
-🚀 Key Features (Current MVP)
+# 🚀 Key Features (Current MVP)
 This repository contains the source code for the AIHub MVP, which includes the following implemented features:
 
 Full User Authentication: Secure user signup, login, and logout functionality powered by Supabase Auth.
@@ -36,7 +36,7 @@ Real-time Data: All posts and comments are fetched live from the Supabase databa
 
 User Association: Posts and comments are correctly linked to the user profiles who created them.
 
-🛠️ Tech Stack
+# 🛠️ Tech Stack
 AIHub is built with a modern, scalable, and efficient technology stack:
 
 Frontend: React (with Vite)
@@ -55,7 +55,7 @@ Routing: React Router DOM
 
 Notifications: Sonner
 
-🏁 Getting Started
+# 🏁 Getting Started
 Follow these instructions to get the project up and running on your local machine.
 
 1. Prerequisites
