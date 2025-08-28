@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_families: {
+        Row: {
+          created_at: string
+          id: number
+          logo_url: string | null
+          name: string
+          provider: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          logo_url?: string | null
+          name: string
+          provider?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          logo_url?: string | null
+          name?: string
+          provider?: string | null
+        }
+        Relationships: []
+      }
+      ai_models: {
+        Row: {
+          created_at: string
+          family_id: number
+          full_name: string
+          id: number
+          short_description: string | null
+          version_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          family_id: number
+          full_name: string
+          id?: number
+          short_description?: string | null
+          version_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          family_id?: number
+          full_name?: string
+          id?: number
+          short_description?: string | null
+          version_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_models_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "ai_families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           author_id: string | null
@@ -55,41 +114,51 @@ export type Database = {
       }
       guides: {
         Row: {
+          ai_model_id: number | null
           author: string | null
           category: string | null
           content: string | null
           created_at: string
           description: string | null
           id: number
-          imageUrl: string | null
+          imageurl: string | null
           title: string
         }
         Insert: {
+          ai_model_id?: number | null
           author?: string | null
           category?: string | null
           content?: string | null
           created_at?: string
           description?: string | null
           id?: number
-          imageUrl?: string | null
+          imageurl?: string | null
           title: string
         }
         Update: {
+          ai_model_id?: number | null
           author?: string | null
           category?: string | null
           content?: string | null
           created_at?: string
           description?: string | null
           id?: number
-          imageUrl?: string | null
+          imageurl?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guides_ai_model_id_fkey"
+            columns: ["ai_model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       posts: {
         Row: {
           author_id: string | null
-          author_username: string | null
           content: string | null
           created_at: string
           id: number
@@ -97,7 +166,6 @@ export type Database = {
         }
         Insert: {
           author_id?: string | null
-          author_username?: string | null
           content?: string | null
           created_at?: string
           id?: number
@@ -105,7 +173,6 @@ export type Database = {
         }
         Update: {
           author_id?: string | null
-          author_username?: string | null
           content?: string | null
           created_at?: string
           id?: number
@@ -148,6 +215,66 @@ export type Database = {
           id?: string
           updated_at?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      recommendations: {
+        Row: {
+          ai_model_id: number
+          created_at: string
+          reason: string | null
+          use_case_id: number
+        }
+        Insert: {
+          ai_model_id: number
+          created_at?: string
+          reason?: string | null
+          use_case_id: number
+        }
+        Update: {
+          ai_model_id?: number
+          created_at?: string
+          reason?: string | null
+          use_case_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_ai_model_id_fkey"
+            columns: ["ai_model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendations_use_case_id_fkey"
+            columns: ["use_case_id"]
+            isOneToOne: false
+            referencedRelation: "use_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      use_cases: {
+        Row: {
+          category: string
+          created_at: string
+          id: number
+          situation: string
+          summary: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: number
+          situation: string
+          summary?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: number
+          situation?: string
+          summary?: string | null
         }
         Relationships: []
       }
