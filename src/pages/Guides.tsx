@@ -1,32 +1,55 @@
+import { useState, useMemo } from 'react'; // useState, useMemo import
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query"; // 1. React Query를 import 합니다.
-import { supabase } from "@/integrations/supabase/client"; // 2. Supabase 클라이언트를 import 합니다.
-import { Skeleton } from "@/components/ui/skeleton"; // 로딩 중 UI를 위한 스켈레톤
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from '@/components/ui/button'; // Button import
 
-// 3. Supabase에서 데이터를 가져오는 비동기 함수를 정의합니다.
+// Supabase에서 데이터를 가져오는 비동기 함수
 const fetchGuides = async () => {
-  const { data, error } = await supabase.from('guides').select('*');
+  const { data, error } = await supabase.from('guides').select('*').order('id'); // id 순으로 정렬
   if (error) {
     throw new Error(error.message);
   }
-
   return data;
 };
 
 const Guides = () => {
-  // 4. useQuery 훅을 사용해 데이터를 가져옵니다.
   const { data: guides, isLoading, error } = useQuery({
-    queryKey: ['guides'], // 이 데이터 쿼리의 고유한 키
-    queryFn: fetchGuides, // 데이터를 가져올 때 실행할 함수
+    queryKey: ['guides'],
+    queryFn: fetchGuides,
   });
 
-  // 5. 로딩 중일 때 보여줄 UI
+  // ▼▼▼ [수정됨] 카테고리 필터링을 위한 상태 및 로직 추가 ▼▼▼
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // useMemo를 사용해 가이드 데이터가 변경될 때만 카테고리 목록을 새로 계산합니다.
+  const categories = useMemo(() => {
+    if (!guides) return [];
+    // 'category'가 null이나 undefined가 아닌 경우만 필터링합니다.
+    const allCategories = guides.map(guide => guide.category).filter(Boolean);
+    // 중복을 제거한 카테고리 목록에 'All'을 추가합니다.
+    return ['All', ...Array.from(new Set(allCategories as string[]))];
+  }, [guides]);
+
+  // 선택된 카테고리에 따라 가이드를 필터링합니다.
+  const filteredGuides = useMemo(() => {
+    if (!guides) return [];
+    if (selectedCategory === 'All') {
+      return guides;
+    }
+    return guides.filter(guide => guide.category === selectedCategory);
+  }, [guides, selectedCategory]);
+  // ▲▲▲ [수정됨] 여기까지 ▲▲▲
+
+
   if (isLoading) {
+    // 로딩 UI (기존과 동일)
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -38,8 +61,11 @@ const Guides = () => {
                 전문가들이 검증한 AI 활용법을 단계별로 배워보세요.
               </p>
             </div>
+             <div className="flex justify-center flex-wrap gap-2 mb-12">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-24" />)}
+            </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[...Array(3)].map((_, i) => (
+              {[...Array(6)].map((_, i) => (
                 <Card key={i} className="flex flex-col">
                   <CardHeader>
                     <Skeleton className="aspect-video w-full rounded-md" />
@@ -60,7 +86,6 @@ const Guides = () => {
     );
   }
 
-  // 6. 에러가 발생했을 때 보여줄 UI
   if (error) {
     return <div>에러가 발생했습니다: {error.message}</div>;
   }
@@ -76,14 +101,26 @@ const Guides = () => {
               전문가들이 검증한 AI 활용법을 단계별로 배워보세요.
             </p>
           </div>
+
+          <div className="flex justify-center flex-wrap gap-2 mb-12">
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+          
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* 7. 이제 가짜 데이터 대신, Supabase에서 가져온 'guides' 데이터를 사용합니다. */}
-            {guides?.map((guide) => (
+            {filteredGuides?.map((guide) => (
               <Link to={`/guides/${guide.id}`} key={guide.id}>
                 <Card className="group h-full flex flex-col hover:border-primary/50 hover:shadow-lg transition-all duration-300">
                   <CardHeader>
                     <div className="aspect-video w-full bg-muted rounded-md mb-4 overflow-hidden">
-                       <img src={guide.imageUrl || "/placeholder.svg"} alt={guide.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                       <img src={guide.imageurl || "/placeholder.svg"} alt={guide.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     </div>
                     <Badge variant="outline">{guide.category}</Badge>
                     <CardTitle className="mt-2 group-hover:text-primary transition-colors">{guide.title}</CardTitle>
