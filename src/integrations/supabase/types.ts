@@ -40,26 +40,32 @@ export type Database = {
       }
       ai_models: {
         Row: {
+          average_rating: number
           created_at: string
           family_id: number
           full_name: string
           id: number
+          rating_count: number
           short_description: string | null
           version_name: string | null
         }
         Insert: {
+          average_rating?: number
           created_at?: string
           family_id: number
           full_name: string
           id?: number
+          rating_count?: number
           short_description?: string | null
           version_name?: string | null
         }
         Update: {
+          average_rating?: number
           created_at?: string
           family_id?: number
           full_name?: string
           id?: number
+          rating_count?: number
           short_description?: string | null
           version_name?: string | null
         }
@@ -218,6 +224,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ratings: {
+        Row: {
+          ai_model_id: number
+          created_at: string
+          id: number
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          ai_model_id: number
+          created_at?: string
+          id?: never
+          rating: number
+          user_id: string
+        }
+        Update: {
+          ai_model_id?: number
+          created_at?: string
+          id?: never
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_ai_model_id_fkey"
+            columns: ["ai_model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recommendations: {
         Row: {
           ai_model_id: number
@@ -283,7 +328,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      rate_model: {
+        Args: { model_id: number; new_rating: number; user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
