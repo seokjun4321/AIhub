@@ -76,11 +76,14 @@ const GuideDetail = () => {
   const rateMutation = useMutation({
     mutationFn: async ({ rating }: { rating: number }) => {
       if (!user || !aiModel) throw new Error("로그인이 필요합니다.");
-      const { error } = await supabase.rpc('rate_model', {
-        model_id: aiModel.id,
-        user_id: user.id,
-        new_rating: rating
-      });
+      const { error } = await supabase.rpc(
+        'rate_model',
+        {
+          model_id: aiModel.id,
+          user_id: user.id,
+          new_rating: rating
+        }
+      );
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {

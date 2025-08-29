@@ -13,8 +13,8 @@ ALTER TABLE public.ratings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated users to manage their own ratings" 
 ON public.ratings
 FOR ALL
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+USING (auth.uid() = public.ratings.user_id) -- public.ratings 테이블의 user_id임을 명시
+WITH CHECK (auth.uid() = public.ratings.user_id); -- 여기도 동일하게 수정
 
 CREATE POLICY "Allow all users to read ratings"
 ON public.ratings
