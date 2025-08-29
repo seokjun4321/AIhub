@@ -6,7 +6,7 @@ import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserCircle, Calendar, MessageSquare, Send } from "lucide-react";
+import { UserCircle, Calendar, MessageSquare, Send, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
@@ -108,6 +108,14 @@ const PostDetail = () => {
       <Navbar />
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-6 max-w-4xl">
+          <div className="mb-6">
+            <Button asChild variant="outline">
+              <Link to="/community">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                목록으로
+              </Link>
+            </Button>
+          </div>
           {/* 게시글 본문 */}
           <article>
             <header className="mb-8">
