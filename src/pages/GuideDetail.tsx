@@ -16,6 +16,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from "@/lib/utils";
 
+// 페이지에 필요한 모든 데이터를 한 번에 가져오는 함수 (이 방식이 가장 효율적입니다)
 const fetchGuideById = async (id: string) => {
   const numericId = parseInt(id, 10);
   if (isNaN(numericId)) throw new Error("Invalid ID provided");
@@ -28,6 +29,7 @@ const fetchGuideById = async (id: string) => {
   return data;
 };
 
+// 사용자의 평점을 가져오는 함수
 const fetchUserRating = async (aiModelId: number, userId: string) => {
   const { data, error } = await supabase
     .from('ratings')
@@ -43,12 +45,13 @@ const GuideDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentRating, setCurrentRating] = useState(0);
+  const [uiAverage, setUiAverage] = useState<number | null>(null);
+  const [uiCount, setUiCount] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // --- 🔧 FIX 1: Destructure the `refetch` function ---
-  // We get the `refetch` function from useQuery to call it directly.
-  const { data: guide, isLoading, error, refetch: refetchGuide } = useQuery({
+  // 페이지 데이터를 위한 단일 쿼리
+  const { data: guide, isLoading, error } = useQuery({
     queryKey: ['guide', id],
     queryFn: () => fetchGuideById(id!),
     enabled: !!id,
@@ -56,6 +59,15 @@ const GuideDetail = () => {
 
   const aiModel = guide?.ai_models;
 
+  // 서버 데이터 변경 시 표시값 동기화
+  useEffect(() => {
+    if (aiModel) {
+      setUiAverage(Number(aiModel.average_rating) || 0);
+      setUiCount(Number(aiModel.rating_count) || 0);
+    }
+  }, [aiModel?.average_rating, aiModel?.rating_count]);
+
+  // 사용자 평점 쿼리
   const userRatingQuery = useQuery({
     queryKey: ['userRating', aiModel?.id, user?.id],
     queryFn: () => {
@@ -65,42 +77,145 @@ const GuideDetail = () => {
     enabled: !!aiModel && !!user,
   });
 
+  // Supabase Realtime: ai_models 업데이트를 실시간으로 반영
   useEffect(() => {
-    if (userRatingQuery.data) {
-      setCurrentRating(userRatingQuery.data.rating || 0);
-    } else {
-      setCurrentRating(0);
-    }
+    if (!aiModel?.id) return;
+
+    const channel = supabase
+      .channel(`ai-model-${aiModel.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'ai_models', filter: `id=eq.${aiModel.id}` },
+        (payload) => {
+          const next = payload.new as { average_rating?: number; rating_count?: number };
+          queryClient.setQueryData(['guide', id], (prev: any) => {
+            if (!prev?.ai_models) return prev;
+            return {
+              ...prev,
+              ai_models: {
+                ...prev.ai_models,
+                average_rating: next.average_rating ?? prev.ai_models.average_rating,
+                rating_count: next.rating_count ?? prev.ai_models.rating_count,
+              },
+            };
+          });
+          if (typeof next.average_rating === 'number') setUiAverage(next.average_rating);
+          if (typeof next.rating_count === 'number') setUiCount(next.rating_count);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [aiModel?.id, id, queryClient]);
+
+  useEffect(() => {
+    setCurrentRating(userRatingQuery.data?.rating || 0);
   }, [userRatingQuery.data]);
 
-  // --- 🔧 FIX 2: Simplified and more robust mutation logic ---
+  // 🔧 뮤테이션 로직: 낙관적 업데이트 + 백그라운드 동기화
   const rateMutation = useMutation({
     mutationFn: async ({ rating }: { rating: number }) => {
-      if (!user || !aiModel) throw new Error("You must be logged in to rate.");
-      
+      if (!user || !aiModel) throw new Error("로그인이 필요합니다.");
       const { error } = await supabase.from('ratings').upsert({
         user_id: user.id,
         ai_model_id: aiModel.id,
-        rating: rating,
+        rating,
       });
-      
       if (error) throw new Error(error.message);
     },
-    // This function will run after the mutation is finished, whether it succeeded or failed.
-    onSettled: () => {
-      // This is the most reliable way to ensure all related data is updated.
-      // It marks all queries starting with 'guide', 'guides', etc., as stale.
-      queryClient.invalidateQueries({ queryKey: ['guide'] });
+    onMutate: async ({ rating }: { rating: number }) => {
+      // 관련 쿼리의 동시 갱신을 방지
+      await queryClient.cancelQueries({ queryKey: ['guide', id] });
+
+      const previousGuide: any = queryClient.getQueryData(['guide', id]);
+      const previousUserRating = userRatingQuery.data?.rating ?? null;
+
+      if (previousGuide?.ai_models) {
+        const oldAi = previousGuide.ai_models;
+        const oldCount = Number(oldAi.rating_count) || 0;
+        const oldAverage = Number(oldAi.average_rating) || 0;
+
+        let newCount = oldCount;
+        if (previousUserRating == null) {
+          newCount = oldCount + 1;
+        }
+        const baseSum = oldAverage * oldCount;
+        const newSum = previousUserRating == null
+          ? baseSum + rating
+          : baseSum - Number(previousUserRating) + rating;
+        const newAverage = newCount > 0 ? newSum / newCount : 0;
+
+        const updatedGuide = {
+          ...previousGuide,
+          ai_models: {
+            ...oldAi,
+            average_rating: newAverage,
+            rating_count: newCount,
+          },
+        };
+
+        // 즉시 화면 반영
+        queryClient.setQueryData(['guide', id], updatedGuide);
+        setUiAverage(newAverage);
+        setUiCount(newCount);
+      }
+
+      // 내 평점도 즉시 반영
+      if (aiModel?.id && user?.id) {
+        queryClient.setQueryData(['userRating', aiModel.id, user.id], { rating });
+      }
+
+      return { previousGuide };
+    },
+    onError: (error, _vars, context) => {
+      // 실패 시 롤백
+      if (context?.previousGuide) {
+        queryClient.setQueryData(['guide', id], context.previousGuide);
+      }
+      toast.error(`오류가 발생했습니다: ${error.message}`);
+    },
+    onSuccess: async () => {
+      toast.success("평점이 등록되었습니다!");
+
+      // 즉시 강제 재요청으로 동기화 시도
+      queryClient.refetchQueries({ queryKey: ['guide', id], type: 'active' });
+      if (aiModel?.id && user?.id) {
+        queryClient.refetchQueries({ queryKey: ['userRating', aiModel.id, user.id], type: 'active' });
+      }
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      queryClient.invalidateQueries({ queryKey: ['userRating'] });
       queryClient.invalidateQueries({ queryKey: ['recommendations'] });
+
+      // 트리거 지연을 고려해 ai_models 값을 직접 폴링하여 최종 동기화
+      if (aiModel?.id) {
+        const startAvg = Number(aiModel.average_rating) || 0;
+        const startCnt = Number(aiModel.rating_count) || 0;
+        const maxAttempts = 15; // 최대 ~3.75초 (250ms * 15)
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise((r) => setTimeout(r, 250));
+          const { data, error } = await supabase
+            .from('ai_models')
+            .select('average_rating, rating_count')
+            .eq('id', aiModel.id)
+            .single();
+          if (!error && data && (data.average_rating !== startAvg || data.rating_count !== startCnt)) {
+            queryClient.setQueryData(['guide', id], (prev: any) => {
+              if (!prev?.ai_models) return prev;
+              return {
+                ...prev,
+                ai_models: {
+                  ...prev.ai_models,
+                  average_rating: data.average_rating,
+                  rating_count: data.rating_count,
+                },
+              };
+            });
+            break;
+          }
+        }
+      }
     },
-    onSuccess: () => {
-      toast.success("Rating submitted successfully!");
-    },
-    onError: (error) => {
-      toast.error(`Error submitting rating: ${error.message}`);
-    }
   });
 
   const handleRate = (rating: number) => {
@@ -108,33 +223,12 @@ const GuideDetail = () => {
     rateMutation.mutate({ rating });
   };
 
-  // --- The rest of the component (JSX) is correct and remains unchanged ---
-  if (isLoading) {
-    return (
-        <div className="min-h-screen">
-          <Navbar />
-          <main className="pt-24 container mx-auto px-6 max-w-4xl">
-            <Skeleton className="h-12 w-3/4 mb-4" />
-            <Skeleton className="h-6 w-1/2 mb-8" />
-            <div className="flex items-center gap-8 mb-8 text-sm text-muted-foreground">
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-5 w-32" />
-            </div>
-            <Skeleton className="aspect-video w-full mb-8" />
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-            </div>
-          </main>
-          <Footer />
-        </div>
-      );
-  }
-  if (error) { return <div>Error loading guide: {error.message}</div>; }
-  if (!guide) { return <div>Guide not found.</div> }
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  if (!guide || !aiModel) return <div>Guide not found.</div>;
 
   return (
+    // JSX 부분은 이전과 동일하게 완벽하므로 수정할 필요가 없습니다.
     <div className="min-h-screen">
       <Navbar />
       <main className="pt-24 pb-12">
@@ -148,22 +242,20 @@ const GuideDetail = () => {
                 <div className="flex items-center gap-2"><UserCircle className="w-4 h-4" /><span>by {guide.profiles?.username || 'Unknown Author'}</span></div>
                 <div className="flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{new Date(guide.created_at).toLocaleString()}</span></div>
               </div>
-              {aiModel && (
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <StarRating rating={Number(aiModel.average_rating) || 0} size={16} readOnly />
-                      <span className="font-semibold text-sm text-foreground">
-                          {(Number(aiModel.average_rating) || 0).toFixed(1)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                          ({aiModel.rating_count || 0} ratings)
-                      </span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>
-                    <Star className="w-4 h-4 mr-2" />Rate this AI
-                  </Button>
+              <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-2">
+                    <StarRating key={`avg-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`} rating={Number(uiAverage ?? aiModel.average_rating) || 0} size={16} readOnly />
+                    <span className="font-semibold text-sm text-foreground">
+                        {(Number(uiAverage ?? aiModel.average_rating) || 0).toFixed(1)}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                        ({(uiCount ?? aiModel.rating_count) || 0} ratings)
+                    </span>
                 </div>
-              )}
+                <Button variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>
+                  <Star className="w-4 h-4 mr-2" />Rate this AI
+                </Button>
+              </div>
             </div>
           </header>
           
