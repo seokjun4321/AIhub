@@ -14,92 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
-      ai_families: {
-        Row: {
-          created_at: string
-          id: number
-          logo_url: string | null
-          name: string
-          provider: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          logo_url?: string | null
-          name: string
-          provider?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          logo_url?: string | null
-          name?: string
-          provider?: string | null
-        }
-        Relationships: []
-      }
       ai_models: {
         Row: {
           average_rating: number
           created_at: string
-          family_id: number
-          full_name: string
+          description: string | null
           id: number
+          logo_url: string | null
+          name: string
+          provider: string | null
           rating_count: number
-          short_description: string | null
-          version_name: string | null
+          updated_at: string
+          version: string | null
         }
         Insert: {
           average_rating?: number
           created_at?: string
-          family_id: number
-          full_name: string
-          id?: number
+          description?: string | null
+          id?: never
+          logo_url?: string | null
+          name: string
+          provider?: string | null
           rating_count?: number
-          short_description?: string | null
-          version_name?: string | null
+          updated_at?: string
+          version?: string | null
         }
         Update: {
           average_rating?: number
           created_at?: string
-          family_id?: number
-          full_name?: string
-          id?: number
+          description?: string | null
+          id?: never
+          logo_url?: string | null
+          name?: string
+          provider?: string | null
           rating_count?: number
-          short_description?: string | null
-          version_name?: string | null
+          updated_at?: string
+          version?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "ai_models_family_id_fkey"
-            columns: ["family_id"]
-            isOneToOne: false
-            referencedRelation: "ai_families"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: never
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: never
+          name?: string
+        }
+        Relationships: []
       }
       comments: {
         Row: {
-          author_id: string | null
+          author_id: string
           content: string | null
           created_at: string
           id: number
-          post_id: number | null
+          parent_comment_id: number | null
+          post_id: number
+          updated_at: string
         }
         Insert: {
-          author_id?: string | null
+          author_id: string
           content?: string | null
           created_at?: string
-          id?: number
-          post_id?: number | null
+          id?: never
+          parent_comment_id?: number | null
+          post_id: number
+          updated_at?: string
         }
         Update: {
-          author_id?: string | null
+          author_id?: string
           content?: string | null
           created_at?: string
-          id?: number
-          post_id?: number | null
+          id?: never
+          parent_comment_id?: number | null
+          post_id?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -107,6 +108,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
             referencedColumns: ["id"]
           },
           {
@@ -120,37 +128,40 @@ export type Database = {
       }
       guides: {
         Row: {
-          ai_model_id: number | null
-          author: string | null
-          category: string | null
+          ai_model_id: number
+          author_id: string | null
+          category_id: number | null
           content: string | null
           created_at: string
           description: string | null
           id: number
-          imageurl: string | null
+          image_url: string | null
           title: string
+          updated_at: string
         }
         Insert: {
-          ai_model_id?: number | null
-          author?: string | null
-          category?: string | null
+          ai_model_id: number
+          author_id?: string | null
+          category_id?: number | null
           content?: string | null
           created_at?: string
           description?: string | null
-          id?: number
-          imageurl?: string | null
+          id?: never
+          image_url?: string | null
           title: string
+          updated_at?: string
         }
         Update: {
-          ai_model_id?: number | null
-          author?: string | null
-          category?: string | null
+          ai_model_id?: number
+          author_id?: string | null
+          category_id?: number | null
           content?: string | null
           created_at?: string
           description?: string | null
-          id?: number
-          imageurl?: string | null
+          id?: never
+          image_url?: string | null
           title?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -160,29 +171,46 @@ export type Database = {
             referencedRelation: "ai_models"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "guides_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guides_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
         ]
       }
       posts: {
         Row: {
-          author_id: string | null
+          author_id: string
           content: string | null
           created_at: string
           id: number
-          title: string | null
+          title: string
+          updated_at: string
         }
         Insert: {
-          author_id?: string | null
+          author_id: string
           content?: string | null
           created_at?: string
-          id?: number
-          title?: string | null
+          id?: never
+          title: string
+          updated_at?: string
         }
         Update: {
-          author_id?: string | null
+          author_id?: string
           content?: string | null
           created_at?: string
-          id?: number
-          title?: string | null
+          id?: never
+          title?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -197,30 +225,27 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          bio: string | null
           created_at: string
           full_name: string | null
           id: string
           updated_at: string
-          username: string | null
+          username: string
         }
         Insert: {
           avatar_url?: string | null
-          bio?: string | null
           created_at?: string
           full_name?: string | null
           id: string
           updated_at?: string
-          username?: string | null
+          username: string
         }
         Update: {
           avatar_url?: string | null
-          bio?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
           updated_at?: string
-          username?: string | null
+          username?: string
         }
         Relationships: []
       }
@@ -228,22 +253,22 @@ export type Database = {
         Row: {
           ai_model_id: number
           created_at: string
-          id: number
           rating: number
+          updated_at: string
           user_id: string
         }
         Insert: {
           ai_model_id: number
           created_at?: string
-          id?: never
           rating: number
+          updated_at?: string
           user_id: string
         }
         Update: {
           ai_model_id?: number
           created_at?: string
-          id?: never
           rating?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -268,18 +293,21 @@ export type Database = {
           ai_model_id: number
           created_at: string
           reason: string | null
+          updated_at: string
           use_case_id: number
         }
         Insert: {
           ai_model_id: number
           created_at?: string
           reason?: string | null
+          updated_at?: string
           use_case_id: number
         }
         Update: {
           ai_model_id?: number
           created_at?: string
           reason?: string | null
+          updated_at?: string
           use_case_id?: number
         }
         Relationships: [
@@ -301,37 +329,45 @@ export type Database = {
       }
       use_cases: {
         Row: {
-          category: string
+          category_id: number | null
           created_at: string
           id: number
           situation: string
           summary: string | null
+          updated_at: string
         }
         Insert: {
-          category: string
+          category_id?: number | null
           created_at?: string
-          id?: number
+          id?: never
           situation: string
           summary?: string | null
+          updated_at?: string
         }
         Update: {
-          category?: string
+          category_id?: number | null
           created_at?: string
-          id?: number
+          id?: never
           situation?: string
           summary?: string | null
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "use_cases_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      rate_model: {
-        Args: { model_id: number; new_rating: number; user_id: string }
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

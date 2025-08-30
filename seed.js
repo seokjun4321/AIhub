@@ -1,4 +1,3 @@
-// seed.js (모든 오류를 수정한 최종 완성본)
 import { createClient } from '@supabase/supabase-js';
 import 'dotenv/config';
 
@@ -14,927 +13,211 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 const seedDatabase = async () => {
-  console.log('Start seeding...');
+  try {
+    console.log('Start seeding...');
 
-  // --- 1. 사용자(Profiles) 확인 ---
-  const { data: users, error: userError } = await supabase.from('profiles').select('id, username');
-  if (userError || !users || users.length === 0) {
-    console.error('🔴 Error: No users found in "profiles" table.');
-    console.log('🔵 Please sign up at least one user in your application before seeding.');
-    return;
+    // --- 1. 사용자(Profiles) 확인 ---
+    const { data: users, error: userError } = await supabase.from('profiles').select('id');
+    if (userError || !users || users.length === 0) {
+      console.error('🔴 Error: No users found in "profiles" table.');
+      console.log('🔵 Please sign up at least one user in your application before seeding.');
+      return;
+    }
+    console.log(`✅ Found ${users.length} user(s). Seeding will proceed.`);
+    const authorId = users[0].id;
+
+    // --- 데이터 삭제 (순서 중요: 자식 -> 부모) ---
+    console.log('Deleting existing data...');
+    await supabase.from('recommendations').delete().neq('use_case_id', -1);
+    await supabase.from('ratings').delete().neq('user_id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('guides').delete().neq('id', -1);
+    await supabase.from('comments').delete().neq('id', -1);
+    await supabase.from('posts').delete().neq('id', -1);
+    await supabase.from('use_cases').delete().neq('id', -1);
+    await supabase.from('ai_models').delete().neq('id', -1);
+    await supabase.from('categories').delete().neq('id', -1);
+    console.log('Existing data deleted.');
+
+    // --- 데이터 삽입 (순서 중요: 부모 -> 자식) ---
+    console.log('Seeding new data...');
+    
+    // 1. categories (id 제거)
+    const { data: seededCategories, error: catError } = await supabase.from('categories').insert([
+      { name: '대화형 AI' }, { name: 'AI 검색' }, { name: '이미지 생성' },
+      { name: '글쓰기 / 생산성' }, { name: '코딩 / 개발' }, { name: '영상 / 오디오' },
+      { name: '자동화' }, { name: '디자인' },
+    ]).select();
+    if (catError) throw catError;
+    console.log('Seeded categories.');
+
+    // 2. ai_models (id 제거)
+    const { data: seededModels, error: modelError } = await supabase.from('ai_models').insert([
+      { name: 'ChatGPT', version: '4o', provider: 'OpenAI', description: '가장 범용적이고 강력한 대화형 AI' },
+      { name: 'Gemini', version: '1.5 Pro', provider: 'Google', description: '긴 컨텍스트 이해와 멀티모달에 강점' },
+      { name: 'Claude', version: '3 Opus', provider: 'Anthropic', description: '자연스러운 글쓰기와 분석 능력 탁월' },
+      { name: 'Perplexity', version: 'Online', provider: 'Perplexity AI', description: '출처 기반의 신뢰도 높은 AI 검색 엔진' },
+      { name: 'Midjourney', version: 'V6', provider: 'Midjourney, Inc.', description: '독보적인 예술성을 자랑하는 이미지 생성 AI' },
+      { name: 'DALL-E', version: '3', provider: 'OpenAI', description: 'ChatGPT와 연동되는 쉬운 이미지 생성 AI' },
+      { name: 'Adobe Firefly', version: 'Image 2', provider: 'Adobe', description: '상업적으로 안전한 이미지 생성 및 편집 AI' },
+      { name: 'Stable Diffusion', version: '3', provider: 'Stability AI', description: '무한한 커스터마이징이 가능한 오픈소스 이미지 AI' },
+      { name: 'Notion AI', version: 'Integrated', provider: 'Notion', description: '문서 작업의 모든 과정을 돕는 생산성 AI' },
+      { name: 'Grammarly', version: 'Go', provider: 'Grammarly, Inc.', description: '단순 교정을 넘어 글의 톤과 스타일을 제안' },
+      { name: 'Jasper', version: 'Brand Brain', provider: 'Jasper AI, Inc.', description: '브랜드 보이스에 특화된 비즈니스 콘텐츠 생성 AI' },
+      { name: 'Copy.ai', version: 'Chat', provider: 'Copy.ai', description: '수많은 템플릿으로 마케팅 카피를 빠르게 생성' },
+      { name: 'GitHub Copilot', version: 'Integrated', provider: 'GitHub / OpenAI', description: 'AI 페어 프로그래머. 개발 생산성 극대화' },
+      { name: 'Replit', version: 'Core', provider: 'Replit', description: '설치 없는 클라우드 IDE와 AI 코딩 지원' },
+      { name: 'Tabnine', version: 'Pro', provider: 'Tabnine', description: '나의 코딩 스타일을 학습하는 개인화 AI' },
+      { name: 'Synthesia', version: 'Studio', provider: 'Synthesia', description: '텍스트 입력만으로 AI 아바타 영상 제작' },
+      { name: 'ElevenLabs', version: 'V2', provider: 'ElevenLabs', description: '가장 사실적인 AI 음성 합성 및 목소리 복제' },
+      { name: 'Suno', version: 'V3', provider: 'Suno', description: '가사와 스타일 입력만으로 노래를 작곡' },
+      { name: 'Zapier', version: 'AI', provider: 'Zapier', description: '코딩 없이 여러 앱을 연결해 업무를 자동화' },
+      { name: 'Canva', version: 'Magic Studio', provider: 'Canva', description: 'AI로 누구나 쉽게 전문가 수준의 디자인' },
+    ]).select();
+    if (modelError) throw modelError;
+    console.log('Seeded ai_models.');
+
+    // --- ID 맵 생성 ---
+    const categoryMap = seededCategories.reduce((map, cat) => { map[cat.name] = cat.id; return map; }, {});
+    const modelMap = seededModels.reduce((map, model) => { map[model.name] = model.id; return map; }, {});
+    
+    // 3. guides (id 제거 및 ID 맵 사용)
+    const guidesData = [
+      {
+        ai_model_name: "ChatGPT", title: "ChatGPT 완벽 활용 가이드", description: "가입부터 프롬프트 작성, 실제 활용 사례까지 ChatGPT의 모든 것을 알려드립니다.", category_name: "대화형 AI", image_url: "/placeholder.svg",
+        content: `
+  #### **1. ChatGPT란 무엇인가요? (소개 및 핵심 특징)**
+  - **소개:** **ChatGPT**는 OpenAI가 개발한 대화형 인공지능 모델입니다. 인간과 매우 유사한 방식으로 텍스트를 이해하고 생성할 수 있어, 단순 정보 검색부터 복잡한 문서 작성, 창의적인 아이디어 구상, 코딩까지 다양한 작업을 수행할 수 있습니다.
+  - **개발사:** OpenAI
+  - **핵심 특징:**
+      - **뛰어난 언어 능력:** 문맥을 이해하고, 복잡한 질문에 논리적으로 답변하며, 다양한 스타일의 글을 생성합니다.
+      - **방대한 지식:** 인터넷의 광범위한 데이터를 학습하여 거의 모든 주제에 대해 깊이 있는 정보를 제공합니다.
+      - **다재다능함 (Versatility):** 글쓰기, 코딩, 번역, 요약, 아이디어 생성 등 활용 분야가 무궁무진합니다.
+      - **멀티모달 (GPT-4o):** 최신 버전은 텍스트뿐만 아니라 이미지, 음성까지 이해하고 상호작용할 수 있습니다.
+  - **가격 정책:**
+      - **무료 버전 (GPT-3.5, GPT-4o 일부):** 기본적인 대화와 작업 수행이 가능하지만, 사용량 제한이 있을 수 있습니다.
+      - **Plus (유료, 월 $20):** 더 뛰어난 성능의 최신 모델(GPT-4o)을 우선적으로 사용하며, 이미지 생성, 데이터 분석 등 고급 기능을 제한 없이 사용할 수 있습니다.
+  #### **2. 초보자를 위한 시작하기 (Getting Started)**
+  - **1. 회원가입:** [chat.openai.com](https://chat.openai.com) 에 접속하여 구글, 애플, 또는 이메일 계정으로 간편하게 가입합니다.
+  - **2. 화면 구성:**
+      - **채팅창 (중앙):** 이곳에 질문이나 명령(프롬프트)을 입력합니다.
+      - **채팅 목록 (왼쪽):** 이전 대화 기록이 저장되어 언제든지 다시 이어서 대화를 나눌 수 있습니다.
+  - **3. 첫 프롬프트 입력:** 채팅창에 간단한 질문을 입력하고 Enter 키를 눌러보세요. 예를 들어, "AIHub 프로젝트에 대한 블로그 글 아이디어 5개만 추천해줘" 라고 입력해보세요. ChatGPT가 즉시 답변을 생성하는 것을 확인할 수 있습니다.
+  #### **3. 프로처럼 쓰는 법 (프롬프트 엔지니어링)**
+  - **핵심 원칙:** ChatGPT의 성능은 사용자의 질문(프롬프트) 수준에 따라 크게 달라집니다. 좋은 답변을 얻기 위한 4가지 핵심 원칙(**R-C-T-F**)을 기억하세요.
+  - **1. 역할 부여 (Role):** ChatGPT에게 특정 전문가의 역할을 부여하면, 그에 맞는 전문적인 답변을 생성합니다.
+      - **Bad:** \`AIHub 마케팅 문구 써줘.\`
+      - **Good:** \`너는 20년 경력의 IT 전문 마케터야. AIHub 서비스의 핵심 가치를 담아, 잠재 고객을 사로잡을 수 있는 광고 헤드라인 3개를 작성해줘.\`
+  - **2. 맥락 제공 (Context):** 내가 처한 상황과 배경을 구체적으로 설명하면, 더 정확하고 개인화된 답변을 얻을 수 있습니다.
+      - **Bad:** \`파이썬 코드 에러 고쳐줘.\`
+      - **Good:** \`나는 지금 파이썬으로 웹 스크래핑 코드를 짜고 있어. 아래 코드에서 'requests' 라이브러리를 사용해 특정 URL의 데이터를 가져오려는데, 자꾸 403 Forbidden 에러가 발생해. 원인이 뭘까?\`
+  - **3. 명확한 작업 지시 (Task):** 무엇을 원하는지 명확하고 단계별로 지시해야 합니다.
+      - **Bad:** \`AI에 대해 설명해줘.\`
+      - **Good:** \`AI의 역사에 대해 설명해줘. 1) 1950년대 초기 개념부터, 2) 튜링 테스트, 3) 딥러닝의 발전 순서로 나누어 각각 3문장 이내로 요약해줘.\`
+  - **4. 형식 지정 (Format):** 원하는 결과물의 형식을 지정하면, 그대로 정리해서 보여줍니다.
+      - **Bad:** \`경쟁사 분석해줘.\`
+      - **Good:** \`AI 추천 서비스 시장의 경쟁사 3곳(A, B, C)을 분석해줘. 결과는 '회사명', '핵심 기능', '장점', '단점'을 컬럼으로 하는 마크다운 테이블 형식으로 정리해줘.\`
+  #### **4. 실제 활용 사례 (Use Cases)**
+  - **개발자:** 복잡한 알고리즘 구현 방법 질문, 코드 리팩토링 제안, 에러 메시지 분석 및 해결책 요청, 테스트 코드 자동 생성
+  - **마케터:** 광고 카피, SNS 콘텐츠, 블로그 포스트, 이메일 뉴스레터 초안 작성, 타겟 고객 분석
+  - **학생/연구원:** 어려운 논문 요약 및 핵심 개념 설명, 리포트 목차 구성, 발표 자료 아이디어 구상
+  - **일상:** 해외 여행 계획 세우기, 이사 체크리스트 작성, 연말정산 방법 질문, 복잡한 보험 약관 쉽게 풀어서 설명 요청
+  `
+      },
+      {
+        ai_model_name: "Gemini", title: "Google Gemini 시작하기", description: "Google 검색과 연동되는 강력한 AI, Gemini의 기초부터 고급 활용법까지 알아봅니다.", category_name: "대화형 AI", image_url: "/placeholder.svg",
+        content: `
+  #### **1. Gemini란 무엇인가요? (소개 및 핵심 특징)**
+  - **소개:** **Gemini**는 Google이 개발한 차세대 멀티모달 인공지능 모델입니다. 텍스트, 이미지, 오디오, 비디오 등 다양한 유형의 정보를 동시에 이해하고 처리할 수 있도록 설계되어, 복잡한 추론과 창의적인 작업에 강점을 보입니다.
+  - **개발사:** Google
+  - **핵심 특징:**
+      - **멀티모달 네이티브:** 처음부터 텍스트, 이미지, 코드 등 다양한 데이터를 함께 학습하여, 유형에 관계없이 정보를 통합적으로 이해하고 추론합니다.
+      - **강력한 추론 능력:** 방대한 데이터와 복잡한 코드 기반의 정보를 분석하고, 논리적인 문제 해결 능력이 뛰어납니다.
+      - **Google 생태계 연동:** Google 검색의 최신 정보에 실시간으로 접근할 수 있으며, Google Workspace(Docs, Sheets 등)와 연동하여 생산성을 극대화할 수 있습니다.
+      - **긴 컨텍스트 처리 (1.5 Pro):** 최대 100만 토큰에 달하는 방대한 양의 정보를 한 번에 처리하여, 긴 문서나 코드베이스 전체를 이해하고 요약, 분석하는 데 탁월합니다.
+  - **가격 정책:**
+      - **무료 버전 (Gemini 1.5 Pro 일부):** 강력한 성능의 모델을 무료로 체험할 수 있으며, 사용량에 일부 제한이 있습니다.
+      - **Advanced (유료, Google One AI Premium):** 가장 뛰어난 성능의 모델을 사용하며, Google Docs, Sheets 등에서 AI 기능을 확장하여 사용할 수 있습니다.
+  #### **2. 초보자를 위한 시작하기 (Getting Started)**
+  - **1. 접속:** [gemini.google.com](https://gemini.google.com) 에 접속하여 Google 계정으로 로그인합니다. 별도의 회원가입이 필요 없습니다.
+  - **2. 화면 구성:** ChatGPT와 유사한 직관적인 인터페이스를 가지고 있습니다. 중앙의 입력창에 프롬프트를 입력하고, 왼쪽에서 이전 대화 기록을 관리할 수 있습니다.
+  - **3. 파일 업로드:** Gemini의 가장 큰 장점 중 하나는 파일 업로드 기능입니다. 이미지, 오디오 파일, PDF 문서 등을 직접 업로드하고 관련 질문을 할 수 있습니다. 예를 들어, 회의록 PDF를 올리고 "이 회의의 핵심 결정사항 3가지를 요약해줘" 라고 요청해보세요.
+  #### **3. 프로처럼 쓰는 법 (Gemini 활용 팁)**
+  - **1. 최신 정보와 결합하기:** Gemini는 Google 검색과 연동되어 실시간 정보에 접근할 수 있습니다.
+      - **Good:** \`최근 발표된 애플의 실적 보고서를 요약하고, 주가에 미칠 영향에 대해 분석해줘.\`
+  - **2. 이미지와 텍스트를 함께 질문하기:** 복잡한 다이어그램이나 그래프 이미지를 업로드하고, 그 의미를 텍스트로 질문하여 분석을 요청할 수 있습니다.
+      - **Good:** \`(스마트폰 판매량 그래프 이미지를 올린 후) 이 그래프를 분석하고, A사와 B사의 시장 점유율 변화에 대한 원인을 설명해줘.\`
+  - **3. 긴 문서나 코드 요약/분석 (1.5 Pro):** 수백 페이지의 논문이나 복잡한 소스코드 전체를 업로드하고 핵심 내용을 파악하거나 개선점을 찾을 수 있습니다.
+      - **Good:** \`(100페이지 분량의 PDF 논문을 올린 후) 이 논문의 연구 방법론과 핵심 결론을 각각 5줄로 요약해줘.\`
+      - **Good:** \`(프로젝트 전체 코드를 압축해서 올린 후) 이 코드베이스에서 잠재적인 성능 병목 현상을 일으킬 수 있는 부분을 찾아주고, 개선 방안을 제안해줘.\`
+  - **4. Google Workspace 확장 프로그램 활용:** 유료 버전을 사용한다면, Gmail에서 메일 초안을 작성하거나, Google Docs에서 글의 스타일을 바꾸는 등 다양한 생산성 작업을 자동화할 수 있습니다.
+  #### **4. 실제 활용 사례 (Use Cases)**
+  - **개발자:** 전체 코드베이스를 기반으로 한 리팩토링 제안, API 문서 분석 및 사용 예제 코드 생성, 복잡한 시스템 아키텍처 설계
+  - **기획자/분석가:** 시장 조사 보고서, 사용자 피드백 등 대량의 텍스트 데이터를 분석하고 인사이트 도출, 이미지로 된 설문조사 결과 분석
+  - **콘텐츠 제작자:** 영상 스크립트를 기반으로 한 요약본 및 블로그 글 생성, 이미지 콘텐츠에 대한 설명 텍스트 자동 생성
+  - **학생:** 강의 전체 녹음 파일을 올리고 핵심 내용 요약, 복잡한 과학 다이어그램에 대한 설명 요청
+  `
+      },
+    ];
+
+    const guidesToSeed = guidesData.map(g => ({
+        ai_model_id: modelMap[g.ai_model_name],
+        title: g.title,
+        description: g.description,
+        category_id: categoryMap[g.category_name],
+        author_id: authorId,
+        image_url: g.image_url,
+        content: g.content,
+    }));
+
+    const { error: guideError } = await supabase.from('guides').insert(guidesToSeed);
+    if (guideError) throw guideError;
+    console.log('Seeded guides.');
+
+    // 4. use_cases (id 제거 및 ID 맵 사용)
+    const useCasesToSeed = [
+        { category_name: '코딩 / 개발', situation: '코딩하다 막혔을 때 🤯', summary: '복잡한 에러, 새로운 로직 구현... 전문가의 도움이 필요하다면?' },
+        { category_name: '코딩 / 개발', situation: '새 프로젝트를 시작할 때 🏗️', summary: '기술 스택 선정부터 전체 아키텍처 설계까지, 막막하다면?' },
+        { category_name: '글쓰기 / 생산성', situation: '블로그, 리포트 초안을 쓸 때 📝', summary: '글의 뼈대를 잡고, 자연스러운 문장으로 내용을 채우고 싶다면?' },
+    ].map(uc => ({
+        category_id: categoryMap[uc.category_name],
+        situation: uc.situation,
+        summary: uc.summary,
+    }));
+    const { data: seededUseCases, error: useCaseError } = await supabase.from('use_cases').insert(useCasesToSeed).select();
+    if (useCaseError) throw useCaseError;
+    console.log('Seeded use_cases.');
+    
+    // --- Use Case ID 맵 생성 ---
+    const useCaseMap = seededUseCases.reduce((map, uc) => { map[uc.situation] = uc.id; return map; }, {});
+
+    // 5. recommendations (ID 맵 사용)
+    const recommendationsToSeed = [
+        { use_case_situation: '코딩하다 막혔을 때 🤯', ai_model_name: 'GitHub Copilot', reason: 'IDE와 통합되어 코드의 맥락을 이해하고 즉시 해결책을 제안합니다.' },
+        { use_case_situation: '새 프로젝트를 시작할 때 🏗️', ai_model_name: 'Claude', reason: '방대한 문서를 한 번에 이해하고, 체계적인 구조를 제안하는 데 탁월!' },
+        { use_case_situation: '블로그, 리포트 초안을 쓸 때 📝', ai_model_name: 'Notion AI', reason: '창의적이고 완성도 높은 긴 글 생성에 강점을 보입니다!' },
+    ].map(r => ({
+        use_case_id: useCaseMap[r.use_case_situation],
+        ai_model_id: modelMap[r.ai_model_name],
+        reason: r.reason
+    }));
+    const { error: recError } = await supabase.from('recommendations').insert(recommendationsToSeed);
+    if (recError) throw recError;
+    console.log('Seeded recommendations.');
+    
+    // 6. posts (id 제거)
+    const postsToSeed = [
+      { title: 'AI 추천해주는 사이트 어디가 좋나요?', content: '참고할 만한 다른 좋은 사이트가 있을까요?', author_id: authorId },
+      { title: 'Vite + React에서 Supabase 연동 질문', content: 'RLS를 켜니 데이터가 안 불러와집니다.', author_id: authorId },
+    ];
+    const { error: postError } = await supabase.from('posts').insert(postsToSeed);
+    if (postError) throw postError;
+    console.log('Seeded posts.');
+    
+    console.log('✅ Seeding finished successfully!');
+
+  } catch (error) {
+    console.error('🔴 An error occurred during seeding:', error);
   }
-  console.log(`✅ Found ${users.length} user(s). Seeding will proceed.`);
-  const authorId = users[0].id;
-
-  // --- 데이터 삭제 (순서 중요: 자식 -> 부모) ---
-  console.log('Deleting existing data...');
-  await supabase.from('recommendations').delete().neq('use_case_id', 0);
-  await supabase.from('guides').delete().neq('id', 0);
-  await supabase.from('posts').delete().neq('id', 0);
-  await supabase.from('comments').delete().neq('id', 0);
-  await supabase.from('ai_models').delete().neq('id', 0);
-  await supabase.from('ai_families').delete().neq('id', 0);
-  await supabase.from('use_cases').delete().neq('id', 0);
-  console.log('Existing data deleted.');
-
-  // --- 데이터 삽입 (순서 중요: 부모 -> 자식) ---
-  console.log('Seeding new data...');
-  
-  // 1. ai_families
-  await supabase.from('ai_families').upsert([
-    { id: 1, name: 'ChatGPT', provider: 'OpenAI' },
-    { id: 2, name: 'Gemini', provider: 'Google' },
-    { id: 3, name: 'Claude', provider: 'Anthropic' },
-    { id: 4, name: 'Perplexity AI', provider: 'Perplexity' },
-    { id: 5, name: 'Midjourney', provider: 'Midjourney, Inc.' },
-    { id: 6, name: 'DALL-E', provider: 'OpenAI' },
-    { id: 7, name: 'Adobe Firefly', provider: 'Adobe' },
-    { id: 8, name: 'Stable Diffusion', provider: 'Stability AI' },
-    { id: 9, name: 'Notion AI', provider: 'Notion' },
-    { id: 10, name: 'Grammarly', provider: 'Grammarly, Inc.' },
-    { id: 11, name: 'Jasper', provider: 'Jasper AI, Inc.'},
-    { id: 12, name: 'Copy.ai', provider: 'Copy.ai'},
-    { id: 13, name: 'GitHub Copilot', provider: 'GitHub / OpenAI'},
-    { id: 14, name: 'Replit', provider: 'Replit'},
-    { id: 15, name: 'Tabnine', provider: 'Tabnine'},
-    { id: 16, name: 'Synthesia', provider: 'Synthesia'},
-    { id: 17, name: 'ElevenLabs', provider: 'ElevenLabs'},
-    { id: 18, name: 'Suno', provider: 'Suno'},
-    { id: 19, name: 'Zapier', provider: 'Zapier'},
-    { id: 20, name: 'Canva', provider: 'Canva'},
-  ]);
-  console.log('Seeded ai_families.');
-
-  // 2. ai_models
-  await supabase.from('ai_models').upsert([
-    { id: 101, family_id: 1, version_name: '4o', full_name: 'ChatGPT 4o' },
-    { id: 201, family_id: 2, version_name: '1.5 Pro', full_name: 'Gemini 1.5 Pro' },
-    { id: 202, family_id: 2, version_name: 'Advanced', full_name: 'Gemini Advanced' },
-    { id: 301, family_id: 3, version_name: '3 Opus', full_name: 'Claude 3 Opus' },
-    { id: 401, family_id: 4, version_name: 'Online', full_name: 'Perplexity AI' },
-    { id: 501, family_id: 5, version_name: 'V6', full_name: 'Midjourney V6' },
-    { id: 601, family_id: 6, version_name: '3', full_name: 'DALL-E 3' },
-    { id: 701, family_id: 7, version_name: 'Image 2', full_name: 'Adobe Firefly Image 2' },
-    { id: 801, family_id: 8, version_name: '3', full_name: 'Stable Diffusion 3' },
-    { id: 901, family_id: 9, version_name: 'Integrated', full_name: 'Notion AI' },
-    { id: 1001, family_id: 10, version_name: 'Go', full_name: 'GrammarlyGo' },
-    { id: 1101, family_id: 11, version_name: 'Brand Brain', full_name: 'Jasper'},
-    { id: 1201, family_id: 12, version_name: 'Chat', full_name: 'Copy.ai Chat'},
-    { id: 1301, family_id: 13, version_name: 'Integrated', full_name: 'GitHub Copilot'},
-    { id: 1401, family_id: 14, version_name: 'Core', full_name: 'Replit AI'},
-    { id: 1501, family_id: 15, version_name: 'Pro', full_name: 'Tabnine'},
-    { id: 1601, family_id: 16, version_name: 'Studio', full_name: 'Synthesia'},
-    { id: 1701, family_id: 17, version_name: 'V2', full_name: 'ElevenLabs'},
-    { id: 1801, family_id: 18, version_name: 'V3', full_name: 'Suno'},
-    { id: 1901, family_id: 19, version_name: 'AI', full_name: 'Zapier AI'},
-    { id: 2001, family_id: 20, version_name: 'Magic Studio', full_name: 'Canva Magic Studio'},
-  ]);
-  console.log('Seeded ai_models.');
-  
-  // 3. guides
-  const guidesToSeed = [
-    {
-      id: 1, ai_model_id: 101, title: "ChatGPT 완벽 활용 가이드", description: "가입부터 프롬프트 작성, 실제 활용 사례까지 ChatGPT의 모든 것을 알려드립니다.", category: "대화형 AI", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. ChatGPT란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **ChatGPT**는 OpenAI가 개발한 대화형 인공지능 모델입니다. 인간과 매우 유사한 방식으로 텍스트를 이해하고 생성할 수 있어, 단순 정보 검색부터 복잡한 문서 작성, 창의적인 아이디어 구상, 코딩까지 다양한 작업을 수행할 수 있습니다.
-- **개발사:** OpenAI
-- **핵심 특징:**
-    - **뛰어난 언어 능력:** 문맥을 이해하고, 복잡한 질문에 논리적으로 답변하며, 다양한 스타일의 글을 생성합니다.
-    - **방대한 지식:** 인터넷의 광범위한 데이터를 학습하여 거의 모든 주제에 대해 깊이 있는 정보를 제공합니다.
-    - **다재다능함 (Versatility):** 글쓰기, 코딩, 번역, 요약, 아이디어 생성 등 활용 분야가 무궁무진합니다.
-    - **멀티모달 (GPT-4o):** 최신 버전은 텍스트뿐만 아니라 이미지, 음성까지 이해하고 상호작용할 수 있습니다.
-- **가격 정책:**
-    - **무료 버전 (GPT-3.5, GPT-4o 일부):** 기본적인 대화와 작업 수행이 가능하지만, 사용량 제한이 있을 수 있습니다.
-    - **Plus (유료, 월 $20):** 더 뛰어난 성능의 최신 모델(GPT-4o)을 우선적으로 사용하며, 이미지 생성, 데이터 분석 등 고급 기능을 제한 없이 사용할 수 있습니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 회원가입:** [chat.openai.com](https://chat.openai.com) 에 접속하여 구글, 애플, 또는 이메일 계정으로 간편하게 가입합니다.
-- **2. 화면 구성:**
-    - **채팅창 (중앙):** 이곳에 질문이나 명령(프롬프트)을 입력합니다.
-    - **채팅 목록 (왼쪽):** 이전 대화 기록이 저장되어 언제든지 다시 이어서 대화를 나눌 수 있습니다.
-- **3. 첫 프롬프트 입력:** 채팅창에 간단한 질문을 입력하고 Enter 키를 눌러보세요. 예를 들어, "AIHub 프로젝트에 대한 블로그 글 아이디어 5개만 추천해줘" 라고 입력해보세요. ChatGPT가 즉시 답변을 생성하는 것을 확인할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (프롬프트 엔지니어링)**
-- **핵심 원칙:** ChatGPT의 성능은 사용자의 질문(프롬프트) 수준에 따라 크게 달라집니다. 좋은 답변을 얻기 위한 4가지 핵심 원칙(**R-C-T-F**)을 기억하세요.
-- **1. 역할 부여 (Role):** ChatGPT에게 특정 전문가의 역할을 부여하면, 그에 맞는 전문적인 답변을 생성합니다.
-    - **Bad:** \`AIHub 마케팅 문구 써줘.\`
-    - **Good:** \`너는 20년 경력의 IT 전문 마케터야. AIHub 서비스의 핵심 가치를 담아, 잠재 고객을 사로잡을 수 있는 광고 헤드라인 3개를 작성해줘.\`
-- **2. 맥락 제공 (Context):** 내가 처한 상황과 배경을 구체적으로 설명하면, 더 정확하고 개인화된 답변을 얻을 수 있습니다.
-    - **Bad:** \`파이썬 코드 에러 고쳐줘.\`
-    - **Good:** \`나는 지금 파이썬으로 웹 스크래핑 코드를 짜고 있어. 아래 코드에서 'requests' 라이브러리를 사용해 특정 URL의 데이터를 가져오려는데, 자꾸 403 Forbidden 에러가 발생해. 원인이 뭘까?\`
-- **3. 명확한 작업 지시 (Task):** 무엇을 원하는지 명확하고 단계별로 지시해야 합니다.
-    - **Bad:** \`AI에 대해 설명해줘.\`
-    - **Good:** \`AI의 역사에 대해 설명해줘. 1) 1950년대 초기 개념부터, 2) 튜링 테스트, 3) 딥러닝의 발전 순서로 나누어 각각 3문장 이내로 요약해줘.\`
-- **4. 형식 지정 (Format):** 원하는 결과물의 형식을 지정하면, 그대로 정리해서 보여줍니다.
-    - **Bad:** \`경쟁사 분석해줘.\`
-    - **Good:** \`AI 추천 서비스 시장의 경쟁사 3곳(A, B, C)을 분석해줘. 결과는 '회사명', '핵심 기능', '장점', '단점'을 컬럼으로 하는 마크다운 테이블 형식으로 정리해줘.\`
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **개발자:** 복잡한 알고리즘 구현 방법 질문, 코드 리팩토링 제안, 에러 메시지 분석 및 해결책 요청, 테스트 코드 자동 생성
-- **마케터:** 광고 카피, SNS 콘텐츠, 블로그 포스트, 이메일 뉴스레터 초안 작성, 타겟 고객 분석
-- **학생/연구원:** 어려운 논문 요약 및 핵심 개념 설명, 리포트 목차 구성, 발표 자료 아이디어 구상
-- **일상:** 해외 여행 계획 세우기, 이사 체크리스트 작성, 연말정산 방법 질문, 복잡한 보험 약관 쉽게 풀어서 설명 요청
-`
-    },
-    {
-      id: 2, ai_model_id: 201, title: "Google Gemini 시작하기", description: "Google 검색과 연동되는 강력한 AI, Gemini의 기초부터 고급 활용법까지 알아봅니다.", category: "대화형 AI", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. Gemini란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Gemini**는 Google이 개발한 차세대 멀티모달 인공지능 모델입니다. 텍스트, 이미지, 오디오, 비디오 등 다양한 유형의 정보를 동시에 이해하고 처리할 수 있도록 설계되어, 복잡한 추론과 창의적인 작업에 강점을 보입니다.
-- **개발사:** Google
-- **핵심 특징:**
-    - **멀티모달 네이티브:** 처음부터 텍스트, 이미지, 코드 등 다양한 데이터를 함께 학습하여, 유형에 관계없이 정보를 통합적으로 이해하고 추론합니다.
-    - **강력한 추론 능력:** 방대한 데이터와 복잡한 코드 기반의 정보를 분석하고, 논리적인 문제 해결 능력이 뛰어납니다.
-    - **Google 생태계 연동:** Google 검색의 최신 정보에 실시간으로 접근할 수 있으며, Google Workspace(Docs, Sheets 등)와 연동하여 생산성을 극대화할 수 있습니다.
-    - **긴 컨텍스트 처리 (1.5 Pro):** 최대 100만 토큰에 달하는 방대한 양의 정보를 한 번에 처리하여, 긴 문서나 코드베이스 전체를 이해하고 요약, 분석하는 데 탁월합니다.
-- **가격 정책:**
-    - **무료 버전 (Gemini 1.5 Pro 일부):** 강력한 성능의 모델을 무료로 체험할 수 있으며, 사용량에 일부 제한이 있습니다.
-    - **Advanced (유료, Google One AI Premium):** 가장 뛰어난 성능의 모델을 사용하며, Google Docs, Sheets 등에서 AI 기능을 확장하여 사용할 수 있습니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 접속:** [gemini.google.com](https://gemini.google.com) 에 접속하여 Google 계정으로 로그인합니다. 별도의 회원가입이 필요 없습니다.
-- **2. 화면 구성:** ChatGPT와 유사한 직관적인 인터페이스를 가지고 있습니다. 중앙의 입력창에 프롬프트를 입력하고, 왼쪽에서 이전 대화 기록을 관리할 수 있습니다.
-- **3. 파일 업로드:** Gemini의 가장 큰 장점 중 하나는 파일 업로드 기능입니다. 이미지, 오디오 파일, PDF 문서 등을 직접 업로드하고 관련 질문을 할 수 있습니다. 예를 들어, 회의록 PDF를 올리고 "이 회의의 핵심 결정사항 3가지를 요약해줘" 라고 요청해보세요.
-
-#### **3. 프로처럼 쓰는 법 (Gemini 활용 팁)**
-- **1. 최신 정보와 결합하기:** Gemini는 Google 검색과 연동되어 실시간 정보에 접근할 수 있습니다.
-    - **Good:** \`최근 발표된 애플의 실적 보고서를 요약하고, 주가에 미칠 영향에 대해 분석해줘.\`
-- **2. 이미지와 텍스트를 함께 질문하기:** 복잡한 다이어그램이나 그래프 이미지를 업로드하고, 그 의미를 텍스트로 질문하여 분석을 요청할 수 있습니다.
-    - **Good:** \`(스마트폰 판매량 그래프 이미지를 올린 후) 이 그래프를 분석하고, A사와 B사의 시장 점유율 변화에 대한 원인을 설명해줘.\`
-- **3. 긴 문서나 코드 요약/분석 (1.5 Pro):** 수백 페이지의 논문이나 복잡한 소스코드 전체를 업로드하고 핵심 내용을 파악하거나 개선점을 찾을 수 있습니다.
-    - **Good:** \`(100페이지 분량의 PDF 논문을 올린 후) 이 논문의 연구 방법론과 핵심 결론을 각각 5줄로 요약해줘.\`
-    - **Good:** \`(프로젝트 전체 코드를 압축해서 올린 후) 이 코드베이스에서 잠재적인 성능 병목 현상을 일으킬 수 있는 부분을 찾아주고, 개선 방안을 제안해줘.\`
-- **4. Google Workspace 확장 프로그램 활용:** 유료 버전을 사용한다면, Gmail에서 메일 초안을 작성하거나, Google Docs에서 글의 스타일을 바꾸는 등 다양한 생산성 작업을 자동화할 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **개발자:** 전체 코드베이스를 기반으로 한 리팩토링 제안, API 문서 분석 및 사용 예제 코드 생성, 복잡한 시스템 아키텍처 설계
-- **기획자/분석가:** 시장 조사 보고서, 사용자 피드백 등 대량의 텍스트 데이터를 분석하고 인사이트 도출, 이미지로 된 설문조사 결과 분석
-- **콘텐츠 제작자:** 영상 스크립트를 기반으로 한 요약본 및 블로그 글 생성, 이미지 콘텐츠에 대한 설명 텍스트 자동 생성
-- **학생:** 강의 전체 녹음 파일을 올리고 핵심 내용 요약, 복잡한 과학 다이어그램에 대한 설명 요청
-`
-    },
-    {
-      id: 3, ai_model_id: 301, title: "글쓰기 강자, Claude 활용법", description: "방대한 양의 글을 이해하고, 놀랍도록 자연스러운 글을 생성하는 Claude의 모든 것을 알아봅니다.", category: "대화형 AI", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. Claude란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Claude**는 Anthropic사가 개발한 인공지능 챗봇으로, 특히 길고 복잡한 텍스트를 처리하고, 인간처럼 자연스럽고 사려 깊은 글을 생성하는 데 강점을 보입니다. 'AI의 안전성'을 최우선으로 고려하여 개발된 것이 특징입니다.
-- **개발사:** Anthropic
-- **핵심 특징:**
-    - **뛰어난 컨텍스트 처리 능력:** 한 번에 매우 많은 양의 텍스트(최대 200,000 토큰, 약 15만 단어)를 입력하고 대화할 수 있어, 긴 보고서나 책 한 권 분량의 내용을 요약하고 분석하는 데 탁월합니다.
-    - **자연스러운 글쓰기:** 문학적인 표현이나 비즈니스 이메일 등, 특정 톤앤매너에 맞춰 매우 자연스럽고 정교한 글을 생성합니다.
-    - **안전성:** 유해하거나 편향된 답변을 최소화하도록 설계되어, 비즈니스 환경에서 사용하기에 더 신뢰도가 높습니다.
-    - **뛰어난 분석 및 요약:** 복잡한 문서(법률 계약서, 재무 보고서 등)를 정확하게 요약하고 핵심을 파악하는 능력이 뛰어납니다.
-- **버전 및 가격:**
-    - **Haiku (하이쿠):** 가장 빠르고 가벼운 모델로, 간단한 질의응답에 적합합니다.
-    - **Sonnet (소네트):** 속도와 성능의 균형이 잡힌 모델로, 대부분의 작업에 적합하며 무료로 사용 가능합니다.
-    - **Opus (오푸스):** 가장 강력한 성능을 지닌 모델로, 복잡한 분석과 전문적인 글쓰기에 최적화되어 있습니다. (유료 플랜)
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 접속 및 가입:** [claude.ai](https://claude.ai) 에 접속하여 이메일 주소로 간단하게 가입합니다.
-- **2. 파일 업로드:** 화면 하단의 클립 모양 아이콘을 클릭하여 여러 개의 파일을 동시에 업로드할 수 있습니다. PDF, DOCX, TXT, CSV 등 다양한 형식의 파일을 지원합니다.
-- **3. 대화 시작:** 파일을 업로드한 후, 해당 파일의 내용에 대해 질문을 시작할 수 있습니다. 예를 들어, 여러 개의 사용자 리뷰 파일을 올리고 "이 리뷰들에서 공통적으로 나타나는 불만사항 3가지를 찾아줘" 라고 요청해보세요.
-
-#### **3. 프로처럼 쓰는 법 (Claude 활용 팁)**
-- **1. 여러 문서 동시 분석:** 여러 개의 PDF나 CSV 파일을 동시에 업로드하고, 이들을 종합하여 비교 분석하도록 요청할 수 있습니다.
-    - **Good:** \`(1분기, 2분기 실적 보고서 PDF를 각각 올린 후) 두 보고서를 비교하고, 2분기에 가장 눈에 띄게 성장한 제품 카테고리와 그 이유를 분석해줘.\`
-- **2. 글의 '페르소나' 지정하기:** 내가 원하는 글의 스타일과 어조를 가진 '페르소나'를 구체적으로 설정해주면, Claude가 그 역할에 빙의하여 글을 작성합니다.
-    - **Good:** \`당신은 유머러스하면서도 통찰력 있는 IT 칼럼니스트입니다. 최근 발표된 AI 기술에 대해, 비전공자도 쉽게 이해할 수 있도록 재미있는 비유를 들어 설명하는 블로그 글을 작성해줘.\`
-- **3. 긴 글의 초안 작성 및 다듬기:** 책이나 긴 보고서의 전체 개요를 설명하고 초안을 작성하게 한 뒤, 특정 챕터나 문단에 대해 더 자세히 써달라거나 다른 스타일로 바꿔달라고 요청하며 글의 완성도를 높여갈 수 있습니다.
-    - **Good:** \`'미래 사회의 AI 윤리'라는 주제로 책을 쓰려고 해. 전체 목차를 5개의 챕터로 구성해줘. 그 다음, 1장 서론의 초고를 작성해줘.\`
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **법률/금융 전문가:** 긴 계약서나 법률 문서를 올리고 위험 조항이나 독소 조항을 찾아달라고 요청, 재무제표를 분석하고 재무 건전성에 대한 요약 보고서 작성
-- **작가/콘텐츠 크리에이터:** 소설의 특정 챕터 초안 작성, 복잡한 주제의 글을 특정 독자층에 맞춰 쉽게 풀어쓰기, 인터뷰 녹취록 요약 및 기사 작성
-- **전략/기획자:** 여러 시장 조사 보고서를 종합하여 새로운 사업 기회에 대한 인사이트 도출, 사용자 피드백을 분석하여 서비스 개선 방향 제안
-- **학생:** 여러 논문을 동시에 분석하고 문헌 연구(Literature Review) 섹션 초안 작성, 긴 전공 서적 챕터 요약
-`
-    },
-    {
-      id: 4, ai_model_id: 401, title: "출처 기반 AI 검색 엔진, Perplexity", description: "잘못된 정보는 이제 그만! 정확한 출처와 함께 답변하는 Perplexity의 모든 것을 알아봅니다.", category: "AI 검색", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. Perplexity AI란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Perplexity AI**는 기존의 검색 엔진과 대화형 AI를 결합한 '답변 엔진(Answer Engine)'입니다. 사용자가 질문을 하면, 웹에서 실시간으로 정보를 검색한 뒤, 그 내용을 종합하고 **정확한 출처를 함께 제시**하며 답변을 생성해주는 것이 가장 큰 특징입니다.
-- **개발사:** Perplexity
-- **핵심 특징:**
-    - **출처 기반 답변:** 모든 답변에 정보의 출처(웹사이트 링크)를 번호로 표시하여, 사용자가 직접 사실을 검증하고 더 깊이 탐색할 수 있도록 돕습니다. 정보의 신뢰도가 매우 높습니다.
-    - **실시간 웹 검색:** 항상 최신 정보를 기반으로 답변을 생성하므로, 시의성이 중요한 질문에 매우 강합니다.
-    - **간결한 요약:** 여러 웹 페이지의 핵심 정보를 종합하여, 사용자가 원하는 부분만 간결하게 요약해서 보여줍니다.
-    - **다양한 검색 모드 (Focus):** 'Academic' 모드로 학술 자료만 검색하거나, 'YouTube' 모드로 영상 콘텐츠만 검색하는 등 특정 소스에 집중하여 검색할 수 있습니다.
-- **가격 정책:**
-    - **무료 버전:** 대부분의 핵심 기능을 무료로 사용할 수 있으며, 하루에 사용할 수 있는 'Pro Search' 횟수에 제한이 있습니다.
-    - **Pro (유료, 월 $20):** GPT-4, Claude 3 등 더 강력한 AI 모델을 선택하여 검색할 수 있으며, 파일 업로드, Pro Search 무제한 등 고급 기능을 제공합니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 접속:** [perplexity.ai](https://perplexity.ai) 에 접속하면 별도의 가입 없이 바로 검색을 시작할 수 있습니다. (대화 기록 저장을 위해 구글 계정 등으로 로그인하는 것을 추천합니다.)
-- **2. 질문하기:** 검색창에 궁금한 점을 자연스러운 문장으로 질문해보세요. 예를 들어, "최신 AI 기술 트렌드 5가지만 알려줘" 라고 입력해보세요.
-- **3. 답변 및 출처 확인:** Perplexity가 생성한 답변과 함께, 문장 끝에 붙어있는 '\\[1\\]', '\\[2\\]' 같은 번호를 확인해보세요. 이 번호를 클릭하면 해당 내용의 출처 웹사이트로 바로 이동할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (Perplexity 활용 팁)**
-- **1. 검색 포커스 (Focus) 활용하기:** 검색창 하단의 'Focus' 드롭다운 메뉴를 활용하여 검색 범위를 좁히면 훨씬 더 전문적인 결과를 얻을 수 있습니다.
-    - **Academic:** 논문, 학술 자료 검색에 최적화되어 있습니다. 과제나 연구 자료 조사 시 매우 유용합니다.
-    - **Writing:** AI가 생성한 텍스트 없이, 순수 검색 결과만 보여줍니다.
-    - **YouTube:** 유튜브 영상 중에서 정보를 검색하여 영상의 특정 타임스탬프와 함께 보여줍니다.
-    - **Reddit:** 레딧 커뮤니티의 실제 사용자들의 의견이나 토론 내용을 중심으로 검색합니다.
-- **2. 후속 질문 (Follow up) 던지기:** 첫 번째 답변 아래에 제시되는 관련 후속 질문들을 클릭하거나, 직접 추가 질문을 입력하여 대화를 이어가며 주제를 더 깊이 파고들 수 있습니다.
-    - **예시:** (첫 답변 후) "위에서 언급한 '생성형 AI'에 대해서만 더 자세히 설명해줘."
-- **3. Pro 모드로 모델 변경하기:** 유료 버전을 사용한다면, 답변 생성에 사용할 AI 모델을 Claude 3 Opus나 GPT-4 등으로 변경하여 더 높은 품질의 답변을 얻을 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **학생/연구원:** 논문 작성 시 필요한 레퍼런스 및 인용 자료 검색, 특정 학술 개념에 대한 신뢰도 높은 정의 찾기
-- **기자/콘텐츠 제작자:** 기사 작성을 위한 팩트 체크, 최신 뉴스나 이벤트에 대한 여러 출처의 정보 종합 및 요약
-- **IT 전문가:** 새로운 기술이나 라이브러리에 대한 공식 문서 및 실제 사용 후기(Reddit) 검색, 특정 에러 코드에 대한 해결책 찾기
-- **일반 사용자:** 제품 구매 전 여러 리뷰 종합 비교, 특정 주제에 대한 최신 정보나 뉴스 검색, 여행 계획 시 현지 정보 확인
-`
-    },
-    {
-      id: 5, ai_model_id: 501, title: "Midjourney로 나만의 작품 만들기", description: "간단한 텍스트 입력만으로 상상을 현실로 만드는 Midjourney 사용법을 A to Z로 알려드립니다.", category: "이미지 생성", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. Midjourney란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Midjourney**는 텍스트 설명(프롬프트)을 기반으로 고품질의 독창적인 이미지를 생성하는 인공지능 서비스입니다. 특히 예술적이고 미적인 감각이 뛰어난 결과물을 만드는 것으로 유명하며, 전문 디자이너부터 일반인까지 폭넓게 사용하고 있습니다.
-- **개발사:** Midjourney, Inc.
-- **핵심 특징:**
-    - **독보적인 예술성:** 사실적인 이미지뿐만 아니라, 특정 화가의 스타일이나 독특한 아트 스타일을 매우 높은 퀄리티로 구현해 냅니다.
-    - **직관적인 사용법:** 채팅 앱인 '디스코드(Discord)' 내에서 간단한 명령어(\`/imagine\`)를 통해 이미지를 생성하는 독특한 방식을 사용합니다.
-    - **강력한 커뮤니티:** 전 세계 사용자들이 생성한 이미지와 프롬프트를 실시간으로 공유하며 서로 영감을 주고받는 거대한 커뮤니티 생태계를 갖추고 있습니다.
-    - **지속적인 업데이트:** V6, Niji 등 모델이 꾸준히 업데이트되며 텍스트 표현력, 이미지의 사실성 등이 빠르게 발전하고 있습니다.
-- **가격 정책:**
-    - **무료 체험 종료:** 현재는 무료 체험 기간 없이 유료 플랜으로만 사용 가능합니다.
-    - **유료 플랜 (월 $10부터):** 플랜에 따라 한 달에 생성할 수 있는 이미지의 양(Fast Hours)과 동시 작업 가능 개수 등이 달라집니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 디스코드(Discord) 가입:** Midjourney는 디스코드를 통해 작동하므로, [discord.com](https://discord.com) 에서 먼저 계정을 만들어야 합니다.
-- **2. Midjourney 서버 접속:** [midjourney.com](https://midjourney.com) 에 방문하여 'Join the Beta' 버튼을 누르고, 디스코드 계정으로 Midjourney 공식 서버에 참여합니다.
-- **3. 이미지 생성 채널 입장:** 서버에 들어가면 왼쪽에 보이는 채널 목록에서 \`#newbies-xx\` 와 같이 초보자를 위한 채널 중 하나를 클릭하여 입장합니다.
-- **4. 첫 이미지 생성:** 채팅창에 \`/imagine\` 이라고 입력하고 스페이스바를 누르면 \`prompt\` 입력창이 나타납니다. 여기에 만들고 싶은 이미지에 대한 설명을 영어로 입력하고 Enter 키를 누릅니다.
-    - **예시:** \`/imagine prompt: a cute cat wearing a space helmet, cinematic lighting, hyperrealistic\`
-
-#### **3. 프로처럼 쓰는 법 (주요 파라미터 활용)**
-- **소개:** 프롬프트 뒤에 '--'를 붙이고 파라미터를 추가하여 이미지의 스타일과 형식을 제어할 수 있습니다.
-- **1. 종횡비 (--ar):** 이미지의 가로세로 비율을 조절합니다.
-    - **예시:** \`--ar 16:9\` (가로가 긴 영상 썸네일 비율), \`--ar 1:1\` (정사각형), \`--ar 2:3\` (세로가 긴 포스터 비율)
-- **2. 스타일 (--style raw 또는 --s):** AI의 예술적 개입 정도를 조절합니다.
-    - **--style raw:** 프롬프트를 더 사실적으로 해석하고, 사진과 같은 느낌을 낼 때 사용합니다.
-    - **--s [0-1000]:** 스타일 강도를 조절합니다. 숫자가 높을수록 Midjourney의 예술적 스타일이 강하게 적용됩니다. (기본값: 100)
-- **3. 특정 모델 사용 (--niji 6):** 애니메이션이나 일러스트 스타일에 특화된 Niji 모델을 사용할 수 있습니다.
-    - **예시:** \`/imagine prompt: a girl eating ramen --niji 6\`
-- **4. 이미지 프롬프트:** 텍스트뿐만 아니라, 기존 이미지의 URL을 프롬프트에 포함하여 해당 이미지의 스타일이나 구도를 참조하게 만들 수 있습니다.
-    - **예시:** \`/imagine prompt: [이미지 URL] a dog in the style of Van Gogh\`
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **디자이너/아티스트:** 작품의 초기 콘셉트 시각화, 새로운 스타일 탐색, 디자인 레퍼런스 이미지 생성
-- **마케터:** 블로그, SNS, 광고에 사용할 독창적이고 저작권 문제 없는 이미지 제작
-- **콘텐츠 크리에이터:** 유튜브 썸네일, 영상에 삽입할 일러스트, 소설의 삽화 제작
-- **개인 사용자:** 개인 프로필 사진, 휴대폰 배경화면 등 자신만의 커스텀 이미지 제작
-`
-    },
-    {
-      id: 6, ai_model_id: 601, title: "ChatGPT로 그림 그리기, DALL-E 3", description: "ChatGPT와 대화하듯 이미지를 만드는 가장 쉬운 방법, DALL-E 3의 모든 것을 알려드립니다.", category: "이미지 생성", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. DALL-E 3란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **DALL-E 3**는 OpenAI가 개발하고 ChatGPT Plus 및 Copilot에 통합된 최신 이미지 생성 모델입니다. 복잡하고 긴 문장의 프롬프트를 매우 정확하게 이해하여, 텍스트, 캐릭터, 장면을 사용자의 의도대로 구현하는 능력이 뛰어납니다.
-- **개발사:** OpenAI
-- **핵심 특징:**
-    - **ChatGPT 통합:** 별도의 서비스 없이, ChatGPT와의 대화창에서 바로 이미지를 생성하고 수정 요청을 할 수 있어 매우 편리합니다.
-    - **뛰어난 프롬프트 이해력:** "파란색 딸기를 들고 있는 우주비행사"와 같이 복잡하고 구체적인 문장을 놀라울 정도로 정확하게 이미지로 구현합니다. 이미지 내에 텍스트를 표현하는 능력도 뛰어납니다.
-    - **자동 프롬프트 개선:** 사용자가 간단한 아이디어를 입력하면, ChatGPT가 알아서 더 상세하고 효과적인 프롬프트로 발전시켜 이미지를 생성해줍니다. 초보자도 쉽게 고품질 이미지를 만들 수 있습니다.
-    - **일관된 캐릭터/스타일:** 'gen_id'라는 특정 ID를 사용하여, 여러 이미지에 걸쳐 일관된 캐릭터나 스타일을 유지하는 것이 비교적 용이합니다.
-- **가격 정책:**
-    - **ChatGPT Plus (유료, 월 $20):** ChatGPT Plus 구독 시, GPT-4o 모델을 사용하여 DALL-E 3를 이용한 이미지 생성이 가능합니다.
-    - **Microsoft Copilot:** Microsoft의 Copilot(구 Bing Image Creator)을 통해 무료로 DALL-E 3를 체험해 볼 수 있습니다. (생성 속도나 횟수 제한 있음)
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. ChatGPT Plus 구독:** DALL-E 3의 모든 기능을 활용하려면 ChatGPT Plus 구독이 필요합니다.
-- **2. GPT-4o 모델 선택:** ChatGPT 대화창 상단에서 모델을 'GPT-4o'로 선택합니다.
-- **3. 이미지 생성 요청:** 특별한 명령어 없이, 그냥 만들고 싶은 이미지에 대해 설명하면 됩니다.
-    - **예시:** \`노트북으로 코딩하고 있는 귀여운 강아지 캐릭터를 만들어줘. 스튜디오 지브리 애니메이션 스타일로.\`
-- **4. 이미지 수정 요청:** 생성된 이미지가 마음에 들지 않으면, 대화를 통해 수정 요청을 할 수 있습니다.
-    - **예시:** \`좋은데, 강아지한테 안경을 씌워주고 배경에 책장을 추가해줘.\`
-
-#### **3. 프로처럼 쓰는 법 (DALL-E 3 활용 팁)**
-- **1. 구체적인 스타일과 구도 묘사:** 원하는 결과물을 얻으려면 최대한 구체적으로 묘사하는 것이 좋습니다. 화풍, 카메라 앵글, 조명 등을 명시해보세요.
-    - **Good:** \`수채화 스타일로 그려진, 비 오는 날 창밖을 바라보는 한 남자의 뒷모습. 로우 앵글(low angle)로 촬영한 것처럼 그려주고, 창문에 빗방울이 맺혀있게 해줘.\`
-- **2. 'gen_id'로 일관성 유지하기:** 이미지를 생성한 후, "이 이미지의 gen_id를 알려줘"라고 요청하세요. 그 다음, 새로운 프롬프트와 함께 이 ID를 사용하면 비슷한 스타일이나 캐릭터를 유지할 수 있습니다.
-    - **Good:** \`gen_id [받아온 ID]를 사용해서, 이번에는 그 캐릭터가 공원에서 책을 읽는 모습을 그려줘.\`
-- **3. ChatGPT의 프롬프트 활용하기:** DALL-E 3가 이미지를 생성할 때 사용한 실제 프롬프트를 확인하고 배울 수 있습니다. 생성된 이미지를 클릭하면 나타나는 정보 아이콘(i)을 눌러보세요. ChatGPT가 내 짧은 요청을 어떻게 풍부하게 만들었는지 확인할 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **콘텐츠 크리에이터:** 블로그 포스트나 SNS에 딱 맞는 맞춤형 삽화, 썸네일, 배너 이미지 제작
-- **발표자/교육자:** 복잡한 개념을 시각적으로 설명하는 다이어그램이나 일러스트 제작
-- **웹툰/동화 작가:** 스토리보드의 특정 장면에 대한 콘셉트 아트나 캐릭터 시안 제작
-- **UI/UX 디자이너:** 앱이나 웹사이트에 사용할 아이콘, 버튼, 로고 등 디자인 요소의 프로토타입 제작
-`
-    },
-    {
-      id: 7, ai_model_id: 701, title: "상업적으로 안전한 AI, Adobe Firefly", description: "저작권 걱정 없이 상업적 이용이 가능한 Firefly의 핵심 기능과 포토샵 연동 활용법을 알아봅니다.", category: "이미지 생성", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. Adobe Firefly란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Adobe Firefly**는 Adobe가 개발한 생성형 AI 모델 제품군입니다. 가장 큰 특징은 Adobe Stock의 이미지와 저작권이 만료된 콘텐츠만을 학습 데이터로 사용하여, 생성된 이미지의 **상업적 이용에 대한 저작권 문제가 안전하다**는 점입니다. 포토샵, 일러스트레이터 등 Adobe의 다른 제품과 강력하게 연동됩니다.
-- **개발사:** Adobe
-- **핵심 특징:**
-    - **상업적 안전성:** 저작권이 확보된 데이터로만 학습하여, 기업이나 개인이 상업적 프로젝트에 안심하고 사용할 수 있는 이미지를 생성합니다.
-    - **Adobe 생태계 통합:** 포토샵의 '생성형 채우기(Generative Fill)', 일러스트레이터의 '텍스트를 벡터 그래픽으로' 등 기존 Adobe 툴 안에서 바로 AI 기능을 사용할 수 있어 작업 효율성이 매우 높습니다.
-    - **다양한 기능:** 단순 이미지 생성 외에도, 이미지의 일부를 자연스럽게 확장하거나(Generative Expand), 특정 부분만 다른 이미지로 채우고(Generative Fill), 텍스트 효과를 만드는 등 다채로운 편집 기능을 제공합니다.
-    - **직관적인 웹 인터페이스:** Firefly 웹사이트는 프롬프트 입력 외에도 스타일, 색상, 조명, 구도 등을 마우스 클릭으로 쉽게 제어할 수 있는 옵션을 제공합니다.
-- **가격 정책:**
-    - **무료 플랜:** 매월 일정량의 '생성 크레딧'을 제공하여 무료로 기능을 체험할 수 있습니다. (크레딧 소진 시 생성 속도 저하)
-    - **유료 플랜 (월 $4.99부터):** Adobe Creative Cloud 플랜 또는 Firefly 단독 플랜을 통해 더 많은 생성 크레딧과 추가 기능을 이용할 수 있습니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 접속 및 로그인:** [firefly.adobe.com](https://firefly.adobe.com) 에 접속하여 Adobe 계정으로 로그인합니다. (없다면 무료 가입)
-- **2. 주요 기능 선택:**
-    - **Text to Image:** 텍스트로 새로운 이미지를 생성합니다.
-    - **Generative Fill:** 이미지의 특정 영역을 선택하고, 텍스트로 묘사하여 다른 이미지로 채워 넣습니다.
-    - **Text Effects:** 텍스트에 독특한 질감이나 스타일을 입힙니다.
-- **3. 이미지 생성 (Text to Image):** 하단의 입력창에 프롬프트를 입력합니다. 오른쪽의 컨트롤 패널에서 이미지 비율(Aspect Ratio), 콘텐츠 유형(사진/아트), 스타일 등을 마우스로 선택하여 결과물을 제어할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (포토샵 연동)**
-- **1. 생성형 채우기 (Generative Fill):**
-    - 포토샵에서 올가미 툴(Lasso Tool)로 이미지의 비어있는 공간이나 지우고 싶은 부분을 선택합니다.
-    - 하단에 나타나는 '생성형 채우기' 버튼을 누르고, 추가하고 싶은 내용을 프롬프트로 입력하거나 비워두면 주변 배경과 어울리게 자동으로 채워줍니다.
-    - **활용 예시:** 인물 사진의 배경에 있는 행인 지우기, 좁은 풍경 사진의 양옆을 자연스럽게 확장하기.
-- **2. 생성형 확장 (Generative Expand):**
-    - 자르기 툴(Crop Tool)을 선택하고, 기존 이미지보다 캔버스 크기를 더 크게 확장합니다.
-    - '생성' 버튼을 누르면, 확장된 빈 공간을 Firefly가 원본 이미지의 스타일과 맥락에 맞춰 자연스럽게 채워줍니다.
-- **3. 참조 이미지 (Reference Image):**
-    - Firefly 웹사이트에서 'Text to Image' 작업 시, '구조' 또는 '스타일' 참조 이미지를 업로드할 수 있습니다.
-    - **구조 참조:** 업로드한 이미지의 구도를 유지하면서 프롬프트 내용으로 새로운 이미지를 생성합니다.
-    - **스타일 참조:** 업로드한 이미지의 색감, 질감, 분위기 등 전체적인 스타일을 적용하여 새로운 이미지를 만듭니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **디자이너:** 포토샵 작업 중 필요한 소스 이미지(예: 하늘, 나무)를 빠르게 생성하여 합성, 제품 목업 이미지에 자연스러운 배경 추가
-- **광고/마케팅:** 저작권 걱정 없는 광고 이미지, 배너, SNS 콘텐츠 제작, 기존 제품 사진을 다양한 배경과 구도로 변형
-- **사진 작가:** 촬영된 사진의 일부 불필요한 요소를 제거하거나, 프레임 밖의 풍경을 자연스럽게 확장하여 구도 수정
-- **쇼핑몰 운영자:** 제품 사진의 배경을 깔끔하게 제거하거나, 원하는 콘셉트의 새로운 배경으로 교체
-`
-    },
-    {
-      id: 8, ai_model_id: 801, title: "무한한 커스텀, Stable Diffusion", description: "내 컴퓨터에 직접 설치하고, 원하는 모델과 스타일을 무한히 확장할 수 있는 Stable Diffusion의 세계로 안내합니다.", category: "이미지 생성", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. Stable Diffusion이란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Stable Diffusion**은 Stability AI가 주도하여 개발한 오픈소스 이미지 생성 모델입니다. 누구나 모델을 다운로드하여 자신의 컴퓨터에 설치하고 사용할 수 있으며, 전 세계 개발자들이 만든 수많은 커스텀 모델과 확장 프로그램(Extensions)을 통해 무한에 가까운 확장이 가능하다는 것이 가장 큰 특징입니다.
-- **개발사:** Stability AI
-- **핵심 특징:**
-    - **오픈소스:** 모델 자체가 공개되어 있어 무료로 사용할 수 있고, 사용자가 직접 모델을 수정하거나 추가 학습(Fine-tuning) 시킬 수 있습니다.
-    - **높은 자유도와 제어:** 프롬프트 외에도 'Negative Prompt'(원하지 않는 요소 제외), 'Seed'(이미지 고유값), 'CFG Scale'(프롬프트 충실도) 등 수많은 파라미터를 세밀하게 제어하여 원하는 결과물을 정확하게 만들 수 있습니다.
-    - **방대한 생태계:** 특정 그림체(웹툰, 실사 등)를 학습한 '체크포인트 모델', 캐릭터의 포즈를 제어하는 'ControlNet', 특정 인물의 얼굴을 학습시키는 'LoRA' 등 방대한 커스텀 모델과 확장 기능 생태계를 자랑합니다.
-    - **로컬 설치:** 인터넷 연결 없이 자신의 컴퓨터에서 이미지를 생성할 수 있어, 프라이버시에 민감한 작업도 안심하고 수행할 수 있습니다.
-- **요구 사양 및 가격:**
-    - **요구 사양:** 로컬에 직접 설치하려면 VRAM이 최소 6GB 이상인 NVIDIA 그래픽카드(GPU)가 권장됩니다.
-    - **가격:** 모델 자체는 무료지만, WebUI를 쉽게 사용할 수 있게 해주는 유료 서비스나 클라우드 GPU를 사용하는 서비스도 있습니다. (예: Google Colab)
-
-#### **2. 초보자를 위한 시작하기 (Automatic1111 WebUI)**
-- **소개:** 로컬에 Stable Diffusion을 가장 쉽게 설치하고 사용하는 방법은 'Automatic1111'이라는 WebUI(웹 인터페이스)를 이용하는 것입니다.
-- **1. 설치:** GitHub의 [Automatic1111 WebUI 저장소](https://github.com/AUTOMATIC1111/stable-diffusion-webui) 가이드를 따라 설치를 진행합니다. (Python, Git 등 사전 설치 필요)
-- **2. 모델 다운로드:** [Civitai](https://civitai.com/)와 같은 모델 공유 사이트에서 원하는 스타일의 체크포인트 모델(.safetensors)을 다운로드하여, WebUI의 \`models/Stable-Diffusion\` 폴더에 넣습니다.
-- **3. WebUI 실행:** 설치 폴더의 \`webui-user.bat\` (Windows) 파일을 실행하면, 터미널 창이 열리고 잠시 후 "Running on local URL: http://127.0.0.1:7860" 메시지가 나타납니다.
-- **4. 이미지 생성:** 웹 브라우저에서 해당 주소로 접속한 뒤, 상단의 체크포인트 모델을 선택하고, 'txt2img' 탭에서 프롬프트를 입력하여 이미지를 생성합니다.
-
-#### **3. 프로처럼 쓰는 법 (핵심 개념)**
-- **1. 네거티브 프롬프트 (Negative Prompt):** 이미지에 나타나지 않았으면 하는 요소를 입력합니다. 품질을 높이는 데 매우 중요합니다.
-    - **예시:** \`(worst quality, low quality, extra fingers, deformed hands, blurry)\`
-- **2. LoRA (Low-Rank Adaptation):** 특정 캐릭터, 화풍, 사물 등을 적은 용량으로 학습시킨 추가 파일입니다. 체크포인트 모델 위에 덧씌우듯 적용하여 원하는 스타일을 쉽게 구현할 수 있습니다.
-    - **프롬프트 적용:** \`<lora:lora_filename:1>\` 과 같은 형식으로 프롬프트에 추가하여 사용합니다.
-- **3. 컨트롤넷 (ControlNet):** 원본 이미지의 포즈, 구도, 깊이감 등을 추출하여, 그 구조를 유지한 채 새로운 이미지를 생성하게 해주는 강력한 확장 기능입니다. 원하는 포즈의 캐릭터를 정확하게 만들어낼 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **일러스트레이터/웹툰 작가:** 자신이 원하는 특정 그림체의 모델을 학습시키거나 다운로드하여 작업에 활용, 일관된 캐릭터 생성
-- **콘셉트 아티스트:** LoRA와 ControlNet을 활용하여 게임이나 영화에 등장할 캐릭터의 다양한 의상과 포즈 시안 제작
-- **제품 디자이너:** 특정 제품의 목업 이미지를 다양한 배경과 환경에 합성하여 광고 이미지 제작
-- **연구자/개발자:** 모델을 직접 파인튜닝하여 의료 이미지 분석, 데이터 증강 등 특정 전문 분야에 맞는 AI 모델 개발
-`
-    },
-    {
-      id: 9, ai_model_id: 901, title: "문서 작업의 치트키, Notion AI", description: "글쓰기, 요약, 번역, 아이디어 정리까지 Notion 페이지 안에서 모든 것을 해결하는 방법을 알아봅니다.", category: "글쓰기 / 생산성", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. Notion AI란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Notion AI**는 올인원 생산성 도구인 Notion에 직접 통합된 인공지능 비서입니다. 별도의 탭이나 프로그램을 열 필요 없이, Notion 페이지 안에서 바로 글의 초안을 작성하고, 복잡한 내용을 요약하며, 회의록을 정리하는 등 다양한 문서 관련 작업을 즉시 수행할 수 있습니다.
-- **개발사:** Notion Labs Inc.
-- **핵심 특징:**
-    - **심리스한 통합 (Seamless Integration):** Notion의 모든 페이지에서 스페이스바나 '/' 키를 누르는 것만으로 AI 기능을 바로 호출할 수 있어 작업 흐름이 끊기지 않습니다.
-    - **문맥 인식 능력:** 현재 페이지에 작성된 다른 콘텐츠의 맥락을 이해하고, 그에 맞는 글을 생성하거나 아이디어를 제안합니다.
-    - **강력한 요약 및 정리:** 긴 회의록이나 복잡한 보고서를 단 한 번의 클릭으로 요약하고, 핵심적인 실행 항목(Action Item)만 깔끔하게 추출할 수 있습니다.
-    - **다양한 글쓰기 도구:** 글의 톤앤매너 변경(전문적으로, 친근하게 등), 번역, 오탈자 수정, 더 나은 단어 제안 등 글쓰기의 모든 과정을 돕습니다.
-- **가격 정책:**
-    - **무료 체험:** 모든 사용자는 일정 횟수만큼 AI 기능을 무료로 사용할 수 있습니다.
-    - **유료 구독 (월 $10):** Notion 유료 플랜에 AI 기능을 추가하는 형태로 구독하며, 무제한으로 AI 기능을 사용할 수 있습니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **소개:** Notion AI를 시작하는 방법은 매우 간단합니다.
-- **1. Notion 페이지 열기:** Notion에서 새 페이지를 열거나 기존 페이지로 이동합니다.
-- **2. AI 호출:**
-    - **스페이스바:** 빈 줄에서 스페이스바를 누르면 AI에게 요청할 수 있는 입력창이 나타납니다.
-    - **슬래시 명령어:** '/'를 입력하고 'Ask AI to write'를 선택합니다.
-    - **블록 선택:** 이미 작성된 텍스트 블록을 드래그하여 선택하면, 나타나는 메뉴에서 'Ask AI'를 클릭합니다.
-- **3. 명령어 입력:** 나타난 입력창에 원하는 작업을 지시합니다. 예를 들어, "AIHub의 3분기 마케팅 전략에 대한 초안을 작성해줘" 라고 입력해보세요.
-
-#### **3. 프로처럼 쓰는 법 (핵심 기능 활용)**
-- **1. 회의록 자동 정리:** 길게 받아 적은 회의록 전체를 드래그하여 선택한 뒤, 'Ask AI' 메뉴에서 'Summarize(요약)' 또는 'Find action items(실행 항목 찾기)'를 클릭해보세요. 복잡한 내용이 핵심만 담긴 요약본과 할 일 목록으로 즉시 변환됩니다.
-- **2. 글의 톤앤매너 변경:** 이미 작성한 글을 선택하고 'Ask AI' > 'Change tone'을 클릭하여 'Professional', 'Casual', 'Friendly' 등 원하는 분위기로 즉시 변경할 수 있습니다. 고객에게 보낼 이메일이나 내부 보고서 작성 시 매우 유용합니다.
-- **3. 브레인스토밍 파트너:** 빈 페이지에서 스페이스바를 눌러 AI를 호출하고, 아이디어를 요청하여 브레인스토밍을 시작할 수 있습니다.
-    - **Good:** \`AIHub 앱의 사용자 참여를 높일 수 있는 5가지 창의적인 아이디어를 제안해줘. 결과는 표 형식으로 정리해줘.\`
-- **4. 데이터베이스 자동 채우기 (Auto-fill):** Notion 데이터베이스(표)에 'AI custom autofill' 속성을 추가하면, 다른 속성의 내용을 기반으로 AI가 자동으로 내용을 채워줍니다.
-    - **활용 예시:** 회의록 데이터베이스에서 '회의 내용'을 기반으로 '핵심 요약'과 '참석자' 컬럼을 AI가 자동으로 채우도록 설정할 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **기획자/PM:** 회의록을 실시간으로 정리하고, 회의 종료와 동시에 담당자별 할 일 목록(Action Item)을 생성하여 공유
-- **마케터/콘텐츠 제작자:** 블로그 글, SNS 게시물, 보도자료 등 다양한 콘텐츠의 초안을 빠르게 작성하고, 여러 가지 톤앤매너로 변형하여 테스트
-- **인사 담당자:** 채용 공고나 내부 정책 문서의 초안을 작성하고, 더 명확하고 전문적인 표현으로 다듬기
-- **학생:** 강의 노트를 요약하여 시험 대비 자료를 만들거나, 복잡한 주제의 리포트 개요를 구성
-`
-    },
-    {
-      id: 10, ai_model_id: 1001, title: "Grammarly로 글쓰기 품질 높이기", description: "단순한 맞춤법 검사를 넘어, 문장의 톤, 명확성, 스타일까지 교정해주는 Grammarly의 모든 것을 알아봅니다.", category: "글쓰기 / 생산성", author: "AIHub 에디터", imageurl: "/placeholder.svg",
-      content: `
-#### **1. Grammarly란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Grammarly**는 단순한 맞춤법 검사기를 넘어, 인공지능을 기반으로 문법, 철자, 구두점뿐만 아니라 문장의 명확성, 간결성, 톤, 스타일까지 분석하고 제안해주는 포괄적인 글쓰기 비서입니다. 이메일, 보고서, 논문 등 모든 종류의 영문 글쓰기 품질을 향상시키는 데 도움을 줍니다.
-- **개발사:** Grammarly, Inc.
-- **핵심 특징:**
-    - **실시간 교정:** 글을 작성하는 동안 실시간으로 문법적 오류나 어색한 표현을 찾아 밑줄로 표시하고 수정안을 제안합니다.
-    - **톤 감지 (Tone Detector):** 글의 분위기가 '자신감 있는', '분석적인', '친근한' 등 어떤 톤으로 읽힐지 분석해주어, 독자에게 의도한 감정을 정확하게 전달하도록 돕습니다.
-    - **표절 검사 (Plagiarism Checker):** 작성한 글이 웹상의 다른 콘텐츠와 얼마나 유사한지 검사하여, 의도치 않은 표절을 방지합니다. (Premium 기능)
-    - **생성형 AI (GrammarlyGo):** 최근 도입된 생성형 AI 기능으로, 이메일 답장을 자동으로 생성하거나, 글의 길이를 조절하고, 아이디어를 제안하는 등 글쓰기 과정을 적극적으로 돕습니다.
-- **가격 정책:**
-    - **무료 버전:** 기본적인 문법, 철자, 구두점 오류를 교정해줍니다.
-    - **Premium (유료):** 문장 구조, 단어 선택, 톤 제안, 표절 검사 등 모든 고급 기능을 제공합니다.
-    - **Business (유료):** 팀 단위 사용자를 위한 기능으로, 팀 스타일 가이드 설정, 분석 대시보드 등을 제공합니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 회원가입 및 설치:** [grammarly.com](https://grammarly.com) 에서 가입한 후, 사용 환경에 맞는 확장 프로그램을 설치합니다.
-    - **브라우저 확장 프로그램 (강력 추천):** Chrome, Safari, Edge 등에 설치하면 Gmail, Google Docs, LinkedIn 등 웹사이트에서 글을 쓸 때마다 실시간으로 교정을 받을 수 있습니다.
-    - **데스크톱 앱:** Windows와 Mac용 데스크톱 앱을 설치하여 컴퓨터의 모든 프로그램에서 사용할 수 있습니다.
-- **2. 실시간 제안 확인:** 글을 쓰다 보면 Grammarly가 제안하는 부분이 밑줄로 표시됩니다. 밑줄 친 단어에 마우스를 올리면 수정 제안을 확인할 수 있고, 클릭 한 번으로 수정할 수 있습니다.
-- **3. 전체 분석:** 화면에 나타나는 Grammarly 아이콘을 클릭하면, 글 전체의 점수, 명확성, 개선점 등에 대한 종합적인 분석 리포트를 확인할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (GrammarlyGo 활용)**
-- **1. 빠른 답장 생성:** Gmail에서 받은 이메일에 대해, 원하는 톤(예: '고맙지만 거절하는')을 간단히 입력하면 GrammarlyGo가 격식에 맞는 답장 초안을 즉시 생성해줍니다.
-- **2. 글 재작성 및 길이 조절:** 내가 쓴 문단이나 문장을 선택하고 GrammarlyGo 아이콘을 클릭하여 'Improve it'(더 좋게 만들기), 'Make it shorter'(짧게 만들기), 'Make it more detailed'(자세하게 만들기) 등의 명령으로 글을 다듬을 수 있습니다.
-- **3. 아이디어 브레인스토밍:** 글을 시작하기 막막할 때, "Give me ideas for a blog post about AI productivity tools" 와 같이 요청하여 글의 개요나 핵심 아이디어를 얻을 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **직장인:** 해외 클라이언트나 동료에게 보내는 비즈니스 이메일의 문법과 격식을 검토, 보고서나 제안서의 전문성과 명확성 향상
-- **학생/유학생:** 영문 에세이나 논문의 문법 오류를 수정하고, 더 학술적인 표현으로 개선, 표절 검사를 통해 과제물의 독창성 확보
-- **마케터:** 광고 카피나 블로그 글이 타겟 고객에게 원하는 톤(예: 설득력 있는, 친근한)으로 전달되는지 확인하고 수정
-- **취업준비생:** 영문 이력서와 커버레터를 오류 없이 완벽하게 작성하여 전문적인 인상 주기
-`
-    },
-    {
-    id: 11,
-    ai_model_id: 1101, // 'Jasper'의 모델 ID
-    title: "비즈니스 글쓰기 전문가, Jasper",
-    description: "브랜드 보이스를 학습하여 일관된 톤의 마케팅 콘텐츠를 대량으로 생성하는 방법을 알아봅니다.",
-    category: "글쓰기 / 생산성",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. Jasper란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Jasper**는 특히 마케팅 및 비즈니스 콘텐츠 제작에 특화된 AI 글쓰기 어시스턴트입니다. 기업의 '브랜드 보이스(Brand Voice)'를 학습하여, 모든 콘텐츠가 일관된 톤앤매너를 유지하도록 돕는 기능이 매우 강력합니다. 블로그 글, 광고 카피, 이메일 등 마케팅에 필요한 거의 모든 종류의 콘텐츠를 생성할 수 있습니다.
-- **개발사:** Jasper AI, Inc.
-- **핵심 특징:**
-    - **브랜드 보이스 학습 (Brand Voice):** 회사의 스타일 가이드, 제품 정보, 카탈로그, 웹사이트 등을 학습시켜 Jasper가 우리 브랜드의 고유한 목소리로 글을 쓰게 할 수 있습니다.
-    - **템플릿 및 워크플로우 (Templates & Recipes):** 50개 이상의 전문적인 템플릿(예: AIDA 프레임워크, PAS 프레임워크)과 특정 콘텐츠를 만들기 위한 단계별 워크플로우('Recipes')를 제공하여 고품질 결과물을 쉽게 만들 수 있도록 돕습니다.
-    - **SEO 최적화:** 유명 SEO 도구인 'Surfer SEO'와의 연동을 통해, 검색 엔진에 최적화된 블로그 글을 작성하는 데 강점을 보입니다.
-    - **협업 기능:** 팀 단위 작업을 위한 캠페인 관리, 동시 편집, 폴더 공유 등의 기능을 제공하여 마케팅팀의 생산성을 높여줍니다.
-- **가격 정책:**
-    - **유료 플랜 전용:** Jasper는 주로 기업 및 전문가를 대상으로 하므로 무료 플랜 없이 유료 플랜만 제공합니다. (7일 무료 체험 가능)
-    - **플랜 종류:** Creator, Pro, Business 등 사용자 규모와 기능에 따라 다양한 요금제를 제공합니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 가입 및 브랜드 정보 입력:** [jasper.ai](https://jasper.ai) 에서 가입 후, 가장 먼저 'Brand Voice' 메뉴에서 우리 회사 웹사이트 주소나 핵심 가치를 설명하는 텍스트를 입력하여 Jasper가 브랜드를 학습하도록 합니다.
-- **2. 템플릿 선택:** 대시보드에서 'Templates'를 선택하고, 만들고 싶은 콘텐츠 유형을 클릭합니다. (예: 'Blog Post Outline')
-- **3. 정보 입력 및 생성:** 선택한 템플릿의 가이드에 따라 주제, 타겟 고객, 톤앤매너 등 필요한 정보를 입력하고 'Generate' 버튼을 누릅니다.
-- **4. 문서 편집기에서 작업:** 생성된 결과를 바탕으로 긴 글을 작성하고 싶다면, 'Documents' 편집기에서 결과물을 불러와 추가적인 편집과 생성을 이어갈 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (Jasper 활용 팁)**
-- **1. 레시피(Recipes) 활용하기:** 'Recipes'는 특정 목표(예: '완벽한 블로그 글 작성')를 달성하기 위한 명령어들의 집합입니다. 다른 사용자들이 만들어 공유한 검증된 레시피를 활용하면, 초보자도 전문가 수준의 결과물을 단계별로 쉽게 만들 수 있습니다.
-- **2. Jasper Chat으로 대화하며 글쓰기:** 단순 생성을 넘어, Jasper Chat을 활용하여 아이디어를 구체화하거나, 생성된 글을 특정 관점에서 비판하고 수정하도록 요청하는 등 AI와 협업하며 글의 깊이를 더할 수 있습니다.
-    - **Good:** \`위에서 작성한 블로그 글의 초안을 읽고, 잠재 고객의 구매를 유도할 수 있는 설득력 있는 문장 3개를 추가해줘.\`
-- **3. Surfer SEO 연동으로 순위 높이기:** 블로그 글 작성 시 Surfer SEO를 연동하면, 타겟 키워드에 대해 구글 상위 노출에 필요한 키워드, 문단 수, 이미지 수 등을 실시간으로 분석하고 가이드를 제공합니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **콘텐츠 마케터:** SEO에 최적화된 블로그 글을 대량으로 생산, 다양한 채널에 맞는 소셜 미디어 콘텐츠 제작, 고객 사례(Case Study) 및 백서(Whitepaper) 초안 작성
-- **카피라이터:** 광고, 랜딩 페이지, 제품 상세 페이지에 사용할 설득력 높은 카피 문구 A/B 테스트 버전 생성
-- **세일즈팀:** 잠재 고객의 특성에 맞춘 개인화된 이메일 아웃리치 스크립트 작성
-- **기업 블로그 운영자:** 회사의 전문성과 브랜드 보이스를 일관되게 유지하며 다수의 필진이 협업하여 블로그 콘텐츠 제작
-`
-    },
-    {
-    id: 12,
-    ai_model_id: 1201, // 'Copy.ai Chat'의 모델 ID
-    title: "빠른 콘텐츠 제작, Copy.ai 활용법",
-    description: "SNS 게시물부터 이메일, 광고 문구까지 템플릿을 활용해 순식간에 만드는 방법을 알아봅니다.",
-    category: "글쓰기 / 생산성",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. Copy.ai란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Copy.ai**는 마케팅, 세일즈, 소셜 미디어 등 다양한 목적의 카피(문구)를 빠르고 쉽게 생성하도록 돕는 AI 글쓰기 도구입니다. 90개 이상의 방대한 템플릿과 도구를 제공하여, 사용자가 원하는 콘텐츠 유형을 선택하고 몇 가지 핵심 정보만 입력하면 즉시 결과물을 만들어주는 것이 가장 큰 특징입니다.
-- **개발사:** Copy.ai
-- **핵심 특징:**
-    - **방대한 템플릿:** 블로그 포스트, 인스타그램 캡션, 구글 광고 헤드라인, 제품 설명 등 거의 모든 마케팅 콘텐츠 유형에 맞는 템플릿을 미리 갖추고 있습니다.
-    - **직관적인 워크플로우:** '템플릿 선택 -> 핵심 내용 입력 -> 결과 생성'의 간단한 3단계로 누구나 쉽게 전문적인 카피를 작성할 수 있습니다.
-    - **브랜드 보이스:** 우리 회사의 웹사이트나 특정 문서의 스타일을 학습시켜, 항상 일관된 톤앤매너의 글을 생성하도록 설정할 수 있습니다.
-    - **다국어 지원:** 25개 이상의 언어를 지원하여 글로벌 마케팅 콘텐츠를 제작하는 데 매우 유용합니다.
-- **가격 정책:**
-    - **무료 플랜:** 매월 2,000 단어까지 무료로 생성해볼 수 있습니다.
-    - **Pro (유료, 월 $49부터):** 단어 수 제한 없이 무제한으로 콘텐츠를 생성할 수 있습니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 가입 및 프로젝트 생성:** [copy.ai](https://copy.ai) 에 접속하여 구글 계정 등으로 가입한 뒤, 첫 프로젝트를 생성합니다.
-- **2. 템플릿/도구 선택:** 왼쪽 메뉴에서 'Tools'를 클릭하면 SNS, 이메일, 블로그 등 다양한 카테고리의 템플릿 목록이 나타납니다. 여기서 원하는 작업(예: 'Instagram Captions')을 선택합니다.
-- **3. 정보 입력 및 생성:** 선택한 템플릿의 입력창에 제품 이름, 핵심 설명, 원하는 톤(예: '재치있는', '전문적인') 등 필요한 정보를 입력하고 'Create Copy' 버튼을 누릅니다.
-- **4. 결과 확인 및 편집:** Copy.ai가 여러 버전의 결과물을 생성해줍니다. 마음에 드는 문구를 선택하여 저장하거나, 내장된 편집기에서 바로 수정하여 사용할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (Copy.ai 활용 팁)**
-- **1. Freestyle 툴 활용하기:** 정해진 템플릿이 아닌, 더 자유로운 형식의 글이 필요할 때는 'Freestyle' 툴을 사용해보세요. 만들고 싶은 콘텐츠의 종류와 핵심 포인트를 자유롭게 입력하면, 그에 맞춰 유연하게 글을 생성해줍니다.
-- **2. Chat 기능으로 대화하며 작업하기:** 단순 생성을 넘어, 'Chat by Copy.ai' 기능을 활용하여 "위에서 만든 광고 문구를 좀 더 젊은 세대의 말투로 바꿔줘" 또는 "이 제품의 장점을 3가지 뽑아서 목록으로 만들어줘" 와 같이 대화를 통해 결과물을 다듬어 나갈 수 있습니다.
-- **3. 여러 결과물 조합하기:** Copy.ai는 한 번에 여러 버전의 결과물을 제안합니다. 하나의 완벽한 결과물을 찾기보다는, 여러 결과물에서 좋은 문장이나 표현을 각각 가져와 조합하면 훨씬 더 훌륭한 최종 카피를 만들 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **소셜 미디어 매니저:** 인스타그램, 페이스북, 링크드인 등 각 채널의 특성에 맞는 게시물 캡션을 대량으로 빠르게 생성
-- **퍼포먼스 마케터:** 구글, 페이스북 광고에 사용할 여러 버전의 헤드라인과 설명 문구를 제작하고 A/B 테스트 진행
-- **세일즈 담당자:** 잠재 고객에게 보낼 콜드 메일이나 후속 이메일의 초안을 작성하여 업무 효율 향상
-- **쇼핑몰 운영자:** 수많은 상품의 상세 페이지 설명을 일관된 톤앤매너로 빠르게 작성
-`
-    },
-    {
-    id: 13,
-    ai_model_id: 1301, // 'GitHub Copilot'의 모델 ID
-    title: "개발 생산성 200% 향상, GitHub Copilot",
-    description: "단순 코드 완성을 넘어, 함수 전체를 생성하고 테스트 코드까지 작성해주는 AI 페어 프로그래머 활용법을 알아봅니다.",
-    category: "코딩 / 개발",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. GitHub Copilot이란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **GitHub Copilot**은 GitHub와 OpenAI가 협력하여 개발한 'AI 페어 프로그래머(AI Pair Programmer)'입니다. 개발자가 코드를 작성하는 동안, 다음에 올 코드를 실시간으로 예측하고 회색 글씨로 제안해줍니다. 단순 자동 완성을 넘어, 주석이나 함수 이름만으로 전체 함수 본문을 생성하는 등 강력한 기능을 제공하여 개발 속도를 획기적으로 향상시킵니다.
-- **개발사:** GitHub, OpenAI
-- **핵심 특징:**
-    - **컨텍스트 기반 코드 제안:** 현재 열려있는 파일과 프로젝트의 다른 코드들의 맥락을 파악하여, 프로젝트 스타일과 일관된 코드를 제안합니다.
-    - **다양한 언어 및 프레임워크 지원:** Python, JavaScript, TypeScript, Go, Java, C++ 등 수많은 프로그래밍 언어와 주요 프레임워크를 지원합니다.
-    - **IDE 통합:** Visual Studio Code, JetBrains IDEs(IntelliJ, PyCharm 등), Neovim 등 주요 코드 편집기에 확장 프로그램 형태로 완벽하게 통합되어 작동합니다.
-    - **Copilot Chat:** 주석이나 코드 작성을 넘어, 채팅을 통해 "이 함수에 대한 테스트 코드를 작성해줘" 또는 "이 코드의 버그를 찾아줘" 와 같이 대화형으로 개발 관련 질문을 하고 해결책을 얻을 수 있습니다.
-- **가격 정책:**
-    - **유료 구독:** 개인 개발자를 위한 'Copilot Individual'(월 $10)과 기업을 위한 'Copilot Business' 플랜이 있습니다. (학생 및 유명 오픈소스 기여자에게는 무료 제공)
-
-#### **2. 초보자를 위한 시작하기 (Getting Started in VS Code)**
-- **1. Copilot 구독:** [GitHub Copilot 페이지](https://github.com/features/copilot)에서 플랜을 구독합니다. (학생이라면 GitHub Student Developer Pack을 통해 무료로 신청할 수 있습니다.)
-- **2. 확장 프로그램 설치:** Visual Studio Code의 'Extensions' 탭(Ctrl+Shift+X)에서 'GitHub Copilot'을 검색하여 설치합니다. 'GitHub Copilot Chat'도 함께 설치하는 것을 강력히 추천합니다.
-- **3. GitHub 계정 연동:** 설치 후 VS Code 우측 하단에 나타나는 알림이나 아이콘을 클릭하여, Copilot을 구독한 GitHub 계정으로 로그인하여 인증합니다.
-- **4. 코드 제안 받기:** 이제 코드 파일(.js, .py 등)을 열고 코딩을 시작해보세요. 함수 이름을 입력하거나, 원하는 기능에 대한 주석을 작성하면, Copilot이 회색 글씨로 코드를 제안합니다. \`Tab\` 키를 누르면 제안을 수락할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (Copilot 활용 팁)**
-- **1. 주석으로 명확하게 지시하기:** Copilot은 주석을 매우 잘 이해합니다. 원하는 기능이 복잡할수록, 주석을 통해 어떤 파라미터를 받고, 무엇을 반환해야 하는지 명확하게 설명해주면 훨씬 더 정확한 코드를 생성합니다.
-    - **Good (Python):** \`# users 리스트에서 'active' 상태이고, 나이가 30세 이상인 사용자만 필터링하는 함수\`
-- **2. Copilot Chat 적극 활용:** 코딩 중 막히는 부분이 있다면, 굳이 웹 브라우저를 열어 검색할 필요가 없습니다.
-    - **활용 예시:**
-        - **코드 블록 선택 후 질문:** 특정 함수를 드래그하고, 채팅창에 \`@workspace /explain\` 이라고 입력하면 해당 코드의 작동 방식을 설명해줍니다.
-        - **에러 해결:** 터미널에 나타난 에러 메시지를 복사하여 채팅창에 붙여넣고 "이 에러 해결해줘"라고 요청할 수 있습니다.
-        - **새로운 기술 학습:** \`@workspace /new\` 명령어로 새 프로젝트의 기본 구조를 만들거나, "자바스크립트로 API 호출하는 기본 예제 보여줘" 와 같이 특정 기술에 대해 질문할 수 있습니다.
-- **3. 여러 제안 중 선택하기:** Copilot이 제안한 코드가 마음에 들지 않으면, \`Ctrl + ]\` 또는 \`Ctrl + [\` (Mac: \`Cmd + ]\`, \`Cmd + [\`) 키를 눌러 다른 제안들을 확인하고 선택할 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **웹 개발자:** 반복적인 컴포넌트(버튼, 입력창 등)나 API 호출 함수의 보일러플레이트 코드를 빠르게 생성하여 개발 시간 단축
-- **데이터 분석가:** Pandas, NumPy 라이브러리를 사용하여 데이터를 정제하거나 시각화하는 복잡한 코드 스니펫을 주석만으로 생성
-- **학생/초보 개발자:** 새로운 언어나 프레임워크를 학습할 때, 기본적인 문법이나 사용 예제를 Copilot의 제안을 통해 빠르게 습득
-- **모든 개발자:** 정규 표현식(Regex) 작성, 유닛 테스트 케이스 생성, 코드 문서(Docstrings) 자동 작성 등 귀찮고 시간이 많이 걸리는 작업을 자동화
-`
-    },
-    {
-    id: 14,
-    ai_model_id: 1401, // 'Replit AI'의 모델 ID
-    title: "설치 없는 클라우드 개발 환경, Replit",
-    description: "웹 브라우저만으로 코딩하고, AI와 함께 디버깅과 코드 생성을 하는 방법을 알아봅니다.",
-    category: "코딩 / 개발",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. Replit이란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Replit**은 웹 브라우저에서 바로 코딩, 컴파일, 실행, 배포까지 할 수 있는 올인원 클라우드 기반 통합 개발 환경(IDE)입니다. 복잡한 개발 환경 설정 없이 50개 이상의 프로그래밍 언어를 즉시 시작할 수 있으며, 강력한 AI 기능(Replit AI)을 내장하여 개발의 모든 과정을 돕습니다.
-- **개발사:** Replit
-- **핵심 특징:**
-    - **Zero-Setup 환경:** 내 컴퓨터에 아무것도 설치할 필요 없이 웹사이트 접속만으로 개발을 시작할 수 있습니다.
-    - **실시간 협업:** Google Docs처럼 여러 명의 개발자가 하나의 코드 파일에 동시에 접속하여 함께 코딩할 수 있습니다.
-    - **AI 코드 어시스턴트 (Replit AI):** 코드 자동 완성, 코드 설명, 디버깅, 리팩토링 등 GitHub Copilot과 유사하거나 더 강력한 AI 기능을 제공합니다.
-    - **원클릭 배포:** 개발한 웹 애플리케이션이나 봇을 클릭 한 번으로 간편하게 배포하고 다른 사람들과 공유할 수 있습니다.
-- **가격 정책:**
-    - **무료 플랜 (Starter):** 기본적인 공개 프로젝트 생성 및 AI 기능 일부를 체험해볼 수 있습니다.
-    - **Replit Core (유료):** 더 빠른 속도, 비공개 프로젝트(Private Repls), 향상된 AI 기능 등 전문적인 개발을 위한 모든 기능을 제공합니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 회원가입:** [replit.com](https://replit.com) 에 접속하여 GitHub나 구글 계정 등으로 간편하게 가입합니다.
-- **2. Repl 생성:** 대시보드에서 '+ Create Repl' 버튼을 누릅니다.
-- **3. 템플릿 선택:** 개발하려는 언어나 프레임워크 템플릿(예: 'Python', 'React.js')을 검색하고 선택한 뒤, Repl의 이름을 정하고 'Create Repl'을 클릭합니다.
-- **4. 코딩 시작 및 AI 사용:** 잠시 후 웹 기반 IDE가 나타납니다. 코드를 작성하기 시작하면 Replit AI가 자동으로 코드를 제안해주며, \`Ctrl + I\` (Mac: \`Cmd + I\`) 키를 눌러 AI 채팅창을 열고 질문할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (Replit AI 활용)**
-- **소개:** Replit AI는 'AI Complete', 'AI Edit', 'AI Explain' 세 가지 핵심 모드로 작동합니다.
-- **1. 코드 생성 (AI Complete):** GitHub Copilot과 유사하게, 주석이나 코드의 일부를 작성하면 나머지 부분을 자동으로 완성해줍니다. \`Tab\` 키로 제안을 수락할 수 있습니다.
-    - **Good (Python):** \`# Function to scrape a website and return the title\` 라는 주석만 작성하면, 나머지 함수 코드를 완성해줍니다.
-- **2. 코드 수정 (AI Edit):** 수정하고 싶은 코드 블록을 드래그하여 선택한 뒤, \`Ctrl + I\` (Mac: \`Cmd + I\`)를 눌러 AI 채팅창을 열고 "이 코드를 더 효율적으로 바꿔줘" 또는 "이 코드에 주석을 달아줘" 와 같이 수정 명령을 내릴 수 있습니다.
-- **3. 코드 설명 및 디버깅 (AI Explain):** 이해하기 어려운 코드나 에러가 발생한 코드를 선택하고 AI에게 설명을 요청하거나 버그를 찾아달라고 할 수 있습니다. "Explain this code" 또는 "Find the bug" 버튼을 클릭하거나 직접 질문하면 됩니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **프로토타이핑:** 새로운 아이디어나 기술을 복잡한 설정 없이 빠르게 테스트하고 프로토타입을 만들 때 유용합니다.
-- **코딩 교육 및 학습:** 학생들이나 코딩 입문자들이 개발 환경 설정의 장벽 없이 프로그래밍을 배우고 실습하는 데 최적화되어 있습니다.
-- **라이브 코딩/페어 프로그래밍:** 여러 개발자가 원격으로 하나의 프로젝트에 참여하여 실시간으로 코드를 함께 작성하고 리뷰합니다.
-- **간단한 웹 앱/봇 개발:** 만든 결과물을 즉시 배포하여 포트폴리오로 활용하거나 다른 사람들과 공유할 수 있습니다.
-`
-    },
-    {
-    id: 15,
-    ai_model_id: 1501, // 'Tabnine'의 모델 ID
-    title: "나만의 코딩 비서, Tabnine 활용법",
-    description: "나의 코딩 스타일을 학습하여 최적의 코드 자동완성을 제공하는 Tabnine의 모든 것을 알아봅니다.",
-    category: "코딩 / 개발",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. Tabnine이란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Tabnine**은 개발자의 고유한 코딩 스타일과 패턴을 학습하여, 개인에게 최적화된 코드 자동완성 기능을 제공하는 AI 코딩 어시스턴트입니다. GitHub Copilot이 방대한 공개 코드를 기반으로 제안하는 것과 달리, Tabnine은 로컬 프로젝트나 특정 코드베이스를 기반으로 학습하여 더 일관되고 개인화된 제안을 해주는 것에 중점을 둡니다.
-- **개발사:** Tabnine
-- **핵심 특징:**
-    - **개인화된 코드 완성:** 개발자의 코딩 습관과 프로젝트의 코드 스타일을 학습하여, 마치 내가 직접 쓴 것처럼 자연스러운 코드를 제안합니다.
-    - **프라이버시 및 보안:** 코드를 Tabnine 서버로 보내지 않고, 로컬 컴퓨터에서 모델을 실행하거나 VPC(가상 사설 클라우드)에 자체 호스팅할 수 있어 보안이 중요한 기업 환경에 적합합니다.
-    - **긴 코드 블록 완성:** 단순한 한 줄 완성을 넘어, 전체 함수나 코드 블록을 한 번에 완성해주는 'Full-function code completions' 기능을 제공합니다.
-    - **다양한 IDE 지원:** VS Code, JetBrains IDEs, Eclipse, Sublime Text 등 매우 폭넓은 코드 편집기를 지원합니다.
-- **가격 정책:**
-    - **Basic (무료):** 기본적인 짧은 코드 자동완성 기능을 제공합니다.
-    - **Pro (유료):** 더 발전된 AI 모델을 사용하여 전체 함수를 완성하고, 자연어(주석)를 코드로 변환하는 등 모든 고급 기능을 제공합니다.
-    - **Enterprise (유료):** 팀의 전체 코드베이스를 학습시켜 팀 전용 AI 모델을 만들고, 보안을 강화한 플랜입니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 확장 프로그램 설치:** 사용하는 코드 편집기(예: VS Code)의 마켓플레이스에서 'Tabnine'을 검색하여 설치합니다.
-- **2. 계정 연동:** 설치 후 Tabnine 허브에 가입하고 로그인하여 IDE와 계정을 연동합니다.
-- **3. 자동 완성 경험:** 별도의 설정 없이 코드를 작성하기 시작하면, Tabnine이 추천 목록 형태로 코드 조각을 제안합니다. \`Tab\` 키나 \`Enter\` 키로 제안을 수락할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (Tabnine Pro 활용)**
-- **1. 자연어로 코드 생성하기:** Pro 버전을 사용하면, 주석으로 원하는 기능에 대해 설명하는 것만으로 코드 전체를 생성할 수 있습니다.
-    - **Good (JavaScript):** \`// connect to redis server and get all keys\` 라고 주석을 작성하면, Redis 연결 및 키 조회에 필요한 코드를 자동으로 생성해줍니다.
-- **2. 팀 모델 학습시키기 (Enterprise):** 기업용 플랜을 사용하면, 회사의 GitHub, GitLab, Bitbucket 저장소를 연결하여 팀의 코드 스타일과 컨벤션을 학습한 AI 모델을 만들 수 있습니다. 이를 통해 모든 팀원이 일관된 스타일의 코드를 작성하도록 유도할 수 있습니다.
-- **3. 로컬 모델 활용하기:** 인터넷 연결이 없거나 보안이 매우 중요한 환경에서는, 로컬 컴퓨터의 리소스를 사용하여 AI 모델을 실행하도록 설정할 수 있습니다. (성능은 컴퓨터 사양에 따라 달라짐)
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **팀 프로젝트:** 모든 팀원이 회사의 표준 코딩 스타일을 따르도록 하여 코드의 일관성과 가독성을 높입니다.
-- **보안이 중요한 기업:** 외부에 코드를 유출하지 않고 내부망에서 안전하게 AI 코딩 어시스턴트를 활용합니다.
-- **레거시 프로젝트 유지보수:** 기존 코드베이스의 스타일과 패턴을 AI가 학습하여, 새로운 기능을 추가하거나 버그를 수정할 때 일관성을 유지하도록 돕습니다.
-- **개인 개발자:** 반복적으로 사용하는 자신만의 유틸리티 함수나 코드 패턴을 AI가 학습하게 하여, 개인의 생산성을 극대화합니다.
-`
-    },
-    {
-    id: 16,
-    ai_model_id: 1601, // 'Synthesia'의 모델 ID
-    title: "AI 아바타 영상 제작, Synthesia",
-    description: "실제 촬영 없이 텍스트 입력만으로 AI 아바타가 설명하는 고품질 영상을 만드는 방법을 알아봅니다.",
-    category: "영상 / 오디오",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. Synthesia란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Synthesia**는 텍스트 스크립트를 입력하면 실제 사람과 같은 AI 아바타가 해당 내용을 자연스럽게 말하는 영상을 만들어주는 AI 영상 제작 플랫폼입니다. 복잡한 촬영 장비나 전문 배우 없이도 교육, 마케팅, 사내 교육 등 다양한 목적의 비디오를 빠르고 저렴하게 제작할 수 있습니다.
-- **개발사:** Synthesia
-- **핵심 특징:**
-    - **사실적인 AI 아바타:** 150개 이상의 다양한 인종과 연령대의 기성 아바타를 제공하며, 자신의 모습을 본뜬 커스텀 아바타를 제작할 수도 있습니다.
-    - **다국어 음성 지원:** 120개 이상의 언어와 억양으로 텍스트를 자연스러운 목소리로 변환(TTS)해줍니다.
-    - **간편한 영상 편집:** 웹 기반 스튜디오에서 텍스트 수정, 배경 이미지/영상 추가, 음악 삽입 등 영상 제작에 필요한 모든 편집을 직관적으로 수행할 수 있습니다.
-    - **높은 생산성:** 스크립트만 수정하면 아바타의 대사가 즉시 바뀌므로, 내용이 자주 업데이트되어야 하는 교육 영상이나 다국어 버전의 마케팅 영상을 매우 효율적으로 제작할 수 있습니다.
-- **가격 정책:**
-    - **유료 플랜 전용:** 주로 기업을 대상으로 하는 B2B 서비스로, 개인을 위한 Starter 플랜과 기업용 Creator/Enterprise 플랜을 제공합니다. (무료 데모 영상 제작 가능)
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 가입 및 로그인:** [synthesia.io](https://synthesia.io) 에서 플랜을 선택하고 가입합니다.
-- **2. 새 비디오 생성:** 대시보드에서 'New video' 버튼을 클릭하고, 원하는 영상 템플릿을 선택합니다.
-- **3. 아바타 및 목소리 선택:** 영상에 등장할 AI 아바타를 선택하고, 하단의 목소리 선택 메뉴에서 언어와 톤을 결정합니다.
-- **4. 스크립트 입력:** 화면 중앙의 스크립트 창에 아바타가 말할 대사를 입력합니다. 문단별로 나누어 입력하면 자연스러운 호흡으로 말합니다.
-- **5. 영상 생성:** 배경, 텍스트, 이미지 등 원하는 요소를 추가한 뒤, 상단의 'Generate' 버튼을 누르면 잠시 후 렌더링이 완료된 영상을 확인할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (Synthesia 활용 팁)**
-- **1. 제스처(Gestures) 활용하기:** 스크립트를 작성할 때, 특정 단어에 고개를 끄덕이거나 손을 드는 등의 제스처를 추가할 수 있습니다. 스크립트 창에서 원하는 단어를 선택하고 상단의 제스처 메뉴를 활용하면 영상이 훨씬 더 자연스러워집니다.
-- **2. 음성 복제 (Voice Cloning):** 자신의 목소리를 녹음하여 업로드하면, 어떤 텍스트를 입력해도 내 목소리로 말하는 AI 음성을 만들 수 있습니다. 이를 통해 브랜드의 고유한 목소리를 담은 영상을 제작할 수 있습니다.
-- **3. 스크린 녹화 연동:** 제품 사용법이나 소프트웨어 튜토리얼 영상을 만들 때, 스크린 녹화 기능을 활용하여 화면을 녹화하고, AI 아바타가 옆에서 해당 화면을 설명하는 형식의 영상을 쉽게 제작할 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **기업 교육(L&D):** 사내 직무 교육, 신입사원 온보딩, 정책 변경 안내 등 반복적으로 필요한 교육 영상을 저렴하고 빠르게 제작 및 업데이트
-- **마케팅/세일즈:** 제품의 기능이나 서비스 소개 영상을 다국어 버전으로 제작하여 글로벌 고객에게 배포, 고객 성공 사례 인터뷰 영상 제작
-- **고객 지원:** 자주 묻는 질문(FAQ)에 대한 답변이나 서비스 이용 방법을 안내하는 영상 매뉴얼 제작
-- **개인 크리에이터:** 실제 얼굴을 드러내지 않고, AI 아바타를 활용하여 정보를 전달하는 유튜브 채널 운영
-`
-    },
-    {
-    id: 17,
-    ai_model_id: 1701, // 'ElevenLabs'의 모델 ID
-    title: "가장 사실적인 AI 음성, ElevenLabs",
-    description: "텍스트를 감정이 담긴 사람의 목소리로 변환하고, 내 목소리를 복제하는 놀라운 경험을 안내합니다.",
-    category: "영상 / 오디오",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. ElevenLabs란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **ElevenLabs**는 텍스트를 매우 사실적이고 감정이 풍부한 사람의 목소리로 변환해주는 TTS(Text-to-Speech) 분야의 선두주자입니다. 특히, 단 몇 분의 음성 데이터만으로 특정인의 목소리를 그대로 복제하는 '보이스 클로닝(Voice Cloning)' 기술로 유명합니다.
-- **개발사:** ElevenLabs
-- **핵심 특징:**
-    - **자연스러운 감정 표현:** 단순히 텍스트를 읽는 것을 넘어, 행복, 슬픔, 분노 등 문맥에 맞는 감정을 담아 목소리를 생성하여 몰입감이 매우 높습니다.
-    - **고품질 보이스 클로닝:** 단 1분 정도의 짧은 음성 샘플만으로도 특정인의 목소리 톤, 억양, 속도를 매우 유사하게 복제할 수 있습니다.
-    - **다국어 지원:** 한국어를 포함한 29개 언어를 지원하며, 여러 언어를 자연스럽게 구사하는 목소리를 생성할 수 있습니다.
-    - **음성 디자인 (Voice Lab):** 성별, 나이, 억양 등의 파라미터를 조절하여 세상에 없는 새로운 AI 목소리를 직접 디자인할 수 있습니다.
-- **가격 정책:**
-    - **무료 플랜:** 매월 10,000자까지 음성을 생성할 수 있으며, 3개의 커스텀 목소리를 만들 수 있습니다. (상업적 이용 불가)
-    - **유료 플랜 (월 $5부터):** 생성 가능한 글자 수가 늘어나고, 더 많은 커스텀 목소리를 만들 수 있으며, 상업적 이용 라이선스가 부여됩니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 가입 및 로그인:** [elevenlabs.io](https://elevenlabs.io) 에 접속하여 가입합니다.
-- **2. 음성 생성 (Speech Synthesis):**
-    - 'Speech' 메뉴로 이동합니다.
-    - 'Settings'에서 원하는 목소리를 선택하고, 안정성(Stability)과 선명도(Clarity)를 조절합니다. (초기에는 기본값을 추천)
-    - 텍스트 입력창에 원하는 문장을 입력하고 'Generate' 버튼을 누릅니다.
-    - 잠시 후 생성된 음성을 듣고 다운로드할 수 있습니다.
-- **3. 목소리 복제 (VoiceLab):**
-    - 'Voices' > 'Add Generative or Cloned Voice' > 'Voice Cloning'으로 이동합니다.
-    - 잡음 없는 환경에서 1분 이상의 자신의 목소리를 녹음하여 파일을 업로드합니다.
-    - 목소리의 특징을 분석하고 복제가 완료되면, 음성 생성 시 자신의 목소리를 사용할 수 있게 됩니다.
-
-#### **3. 프로처럼 쓰는 법 (ElevenLabs 활용 팁)**
-- **1. 목소리 설정(Voice Settings) 조절하기:**
-    - **Stability (안정성):** 값을 낮출수록(0%) 감정 표현이 풍부해지고 억양이 다양해지지만, 부자연스러워질 수 있습니다. 값을 높일수록(100%) 안정적이고 일관된 톤이 됩니다. (보통 25%~75% 사이에서 조절)
-    - **Clarity + Similarity (선명도 + 유사도):** 값을 높일수록 원본 목소리와 유사하고 발음이 명확해지지만, 약간 로봇처럼 들릴 수 있습니다.
-- **2. SSML(Speech Synthesis Markup Language) 사용하기:** HTML처럼 태그를 사용하여 특정 단어의 발음을 강조하거나, 잠시 쉬어가거나, 말하는 속도를 조절하는 등 더 세밀한 제어가 가능합니다.
-    - **예시:** \`<speak>I want to <emphasis level="strong">emphasize</emphasis> this word. <break time="1s"/> And then continue.</speak>\`
-- **3. Projects로 긴 콘텐츠 작업하기:** 오디오북이나 긴 프레젠테이션처럼 장문의 텍스트를 작업할 때는 'Projects' 기능을 사용하세요. 챕터별로 나누어 작업하고, 각 챕터의 목소리 톤을 다르게 설정하는 등 체계적인 관리가 가능합니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **콘텐츠 크리에이터:** 유튜브 영상, 팟캐스트, 오디오북의 내레이션을 자신의 목소리나 원하는 톤의 AI 목소리로 제작
-- **게임 개발자:** 게임 속 NPC(Non-Player Character)들에게 각기 다른 개성을 가진 목소리를 부여
-- **교육 콘텐츠 제작자:** 온라인 강의나 교육용 비디오의 설명을 명확하고 듣기 편안한 목소리로 녹음
-- **개인:** 돌아가신 가족의 목소리를 복원하거나, 자신의 목소리로 개인화된 AI 비서를 만드는 등 다양한 시도 가능 (윤리적 사용이 매우 중요)
-`
-    },
-    {
-    id: 18,
-    ai_model_id: 1801, // 'Suno'의 모델 ID
-    title: "나만의 노래 만들기, Suno AI",
-    description: "가사와 음악 스타일을 텍스트로 입력하여 보컬이 포함된 완전한 노래를 만드는 방법을 알아봅니다.",
-    category: "영상 / 오디오",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. Suno란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Suno**는 텍스트 프롬프트만으로 보컬, 악기, 멜로디가 모두 포함된 완전한 노래를 생성해주는 혁신적인 AI 음악 생성 서비스입니다. 사용자가 원하는 노래의 장르와 가사를 입력하면, AI가 그에 맞는 음악을 작곡하고 가상 보컬리스트가 노래까지 불러줍니다.
-- **개발사:** Suno
-- **핵심 특징:**
-    - **가사와 보컬 생성:** 단순한 연주곡을 넘어, 입력한 가사를 기반으로 자연스러운 보컬 트랙이 포함된 노래를 만들어주는 것이 가장 큰 특징입니다.
-    - **다양한 장르 지원:** 팝, 록, 힙합, 재즈, K-Pop 등 매우 폭넓은 음악 장르와 스타일을 구현할 수 있습니다.
-    - **간편한 사용법:** 복잡한 음악 이론이나 작곡 지식이 없어도, 누구나 쉽게 자신만의 노래를 만들 수 있습니다.
-    - **빠른 생성 속도:** 단 몇 분 만에 2분 길이의 노래 2가지 버전을 생성해주어, 다양한 아이디어를 빠르게 시도해볼 수 있습니다.
-- **가격 정책:**
-    - **무료 플랜:** 매일 50 크레딧(약 10곡)을 무료로 제공하여, 비상업적 용도로 노래를 만들어볼 수 있습니다.
-    - **유료 플랜 (월 $10부터):** 더 많은 크레딧을 제공하며, 생성한 노래에 대한 상업적 이용 권한을 부여합니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 가입 및 로그인:** [suno.com](https://suno.com) 에 접속하여 디스코드, 구글, 마이크로소프트 계정으로 간편하게 로그인합니다.
-- **2. 노래 생성 (Create):** 왼쪽 메뉴의 'Create' 버튼을 클릭합니다.
-- **3. 가사 및 스타일 입력:**
-    - **Song Description (음악 설명):** 만들고 싶은 노래의 장르, 분위기, 악기 등을 입력합니다. (예: \`Acoustic K-Pop, sentimental ballad\`)
-    - **Lyrics (가사):** 직접 가사를 작성하거나, 'Make Random Lyrics' 버튼으로 AI가 가사를 만들게 할 수 있습니다.
-- **4. 생성하기:** 'Create' 버튼을 누르면, Suno가 입력된 정보를 바탕으로 약 1~2분 길이의 노래 2가지 버전을 생성합니다.
-- **5. 확장 및 다운로드:** 생성된 노래가 마음에 든다면, 'Continue From This Song' 기능을 사용하여 뒷부분을 이어서 만들 수 있습니다. 완성된 노래는 MP3(오디오) 또는 MP4(비디오) 파일로 다운로드할 수 있습니다.
-
-#### **3. 프로처럼 쓰는 법 (Suno 활용 팁)**
-- **1. 커스텀 모드 (Custom Mode) 활용:** 'Song Description' 대신 'Custom Mode'를 활성화하면, 가사, 스타일, 제목을 각각의 입력창에 넣어 더 체계적으로 작업할 수 있습니다.
-- **2. 구조 태그로 곡 제어하기:** 가사 내에 \`[Verse]\`, \`[Chorus]\`, \`[Bridge]\`, \`[Guitar Solo]\` 와 같은 구조 태그를 추가하여 노래의 흐름과 구성을 직접 제어할 수 있습니다.
-- **3. 스타일 믹싱:** 단일 장르 대신, 여러 장르나 아티스트 스타일을 조합하여 독특한 분위기의 음악을 만들어보세요.
-    - **예시:** \`1980s synth-pop mixed with modern hip-hop beat\`
-- **4. 'Continue'로 완성도 높이기:** 처음 생성된 1분짜리 곡이 마음에 든다면, 'Continue From This Song' 기능을 반복 사용하여 3분 이상의 완결된 구조를 가진 노래를 만들 수 있습니다. 각 파트의 스타일을 조금씩 변형하여 곡의 다채로움을 더할 수 있습니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **콘텐츠 크리에이터:** 유튜브 영상, 팟캐스트, 개인 방송의 배경음악(BGM)이나 오프닝/엔딩 테마송을 저작권 걱정 없이 제작
-- **마케터:** 브랜드나 제품의 광고 영상에 사용할 CM송이나 홍보 음악 제작
-- **음악가/작곡가:** 새로운 멜로디나 편곡에 대한 영감을 얻기 위한 스케치 도구로 활용
-- **일반 사용자:** 친구의 생일 축하 노래, 기념일 축하 영상 배경음악 등 개인적인 이벤트를 위한 특별한 노래 제작
-`
-    },
-    {
-    id: 19,
-    ai_model_id: 1901, // 'Zapier AI'의 모델 ID
-    title: "반복 업무 자동화, Zapier",
-    description: "코딩 없이 앱과 서비스를 연결하여 반복적인 업무를 자동화하는 방법을 알아봅니다.",
-    category: "자동화",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. Zapier란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Zapier**는 코딩 지식 없이도 서로 다른 웹 애플리케이션들을 연결하여 반복적인 작업을 자동으로 처리하게 해주는 '워크플로우 자동화' 도구입니다. 'A 앱에서 어떤 일이 발생하면, B 앱에서 이런 행동을 해' 라는 간단한 규칙('Zap'이라고 부름)을 만들어 업무 효율을 극대화할 수 있습니다.
-- **개발사:** Zapier
-- **핵심 특징:**
-    - **수많은 앱 연동:** Gmail, Slack, Google Sheets, Notion, Trello 등 6,000개 이상의 다양한 앱과 서비스를 서로 연결할 수 있습니다.
-    - **코딩 불필요:** 모든 자동화 과정을 마우스 클릭과 간단한 설정만으로 구성할 수 있어, 비개발자도 쉽게 사용할 수 있습니다.
-    - **AI 기능 통합:** 최근에는 AI 기능을 도입하여, 이메일 내용을 분석하여 답장 초안을 만들거나, 접수된 고객 문의를 자동으로 분류하는 등 더 지능적인 자동화가 가능해졌습니다.
-    - **다단계 워크플로우 (Multi-step Zaps):** 하나의 트리거(시작 조건)에 대해 여러 개의 액션(수행할 작업)을 순차적으로 연결하여 복잡한 업무 프로세스도 자동화할 수 있습니다. (유료 기능)
-- **가격 정책:**
-    - **무료 플랜:** 매월 100개의 작업(Task)까지 무료로 사용할 수 있으며, 단일 단계의 Zap만 생성 가능합니다.
-    - **유료 플랜 (Starter, Professional 등):** 더 많은 작업량, 다단계 Zap, 필터, AI 기능 등 전문적인 자동화를 위한 다양한 기능을 제공합니다.
-
-#### **2. 초보자를 위한 시작하기 (첫 Zap 만들기)**
-- **1. 가입 및 로그인:** [zapier.com](https://zapier.com) 에 접속하여 가입합니다.
-- **2. Zap 생성:** 대시보드에서 'Create Zap' 버튼을 클릭합니다.
-- **3. 트리거(Trigger) 설정:** 자동화를 시작할 앱과 이벤트를 선택합니다.
-    - **예시:** When this happens... -> **Gmail** 선택 -> **New Email** (새 이메일이 오면) 선택 -> 구글 계정 연결
-- **4. 액션(Action) 설정:** 트리거가 발생했을 때 수행할 작업을 설정합니다.
-    - **예시:** Then do this... -> **Slack** 선택 -> **Send Channel Message** (채널에 메시지 보내기) 선택 -> 슬랙 계정 연결 -> 메시지를 보낼 채널과 내용 설정 (예: "새로운 이메일 도착: {{보낸사람}} - {{제목}}")
-- **5. Zap 활성화:** 'Publish' 버튼을 눌러 Zap을 활성화하면, 이제부터 Gmail에 새 메일이 올 때마다 지정된 Slack 채널로 알림이 자동으로 전송됩니다.
-
-#### **3. 프로처럼 쓰는 법 (Zapier AI 활용)**
-- **1. AI로 이메일 분류 및 답장 초안 작성:**
-    - **Trigger:** Gmail - New Email
-    - **Action 1:** OpenAI(ChatGPT) - Analyze Text (이메일 본문을 분석하여 '긴급', '일반', '스팸'으로 분류)
-    - **Action 2:** Filter (분류 결과가 '긴급'일 때만 계속 진행)
-    - **Action 3:** OpenAI(ChatGPT) - Create Draft Reply (분류 결과와 원본 메일을 바탕으로 답장 초안 생성)
-    - **Action 4:** Gmail - Create Draft (생성된 초안으로 Gmail에 임시보관 메일 만들기)
-- **2. 자연어로 Zap 생성하기:** 만들고 싶은 자동화를 복잡하게 설정할 필요 없이, Zapier의 AI에게 자연어로 요청하면 알아서 Zap의 초안을 만들어줍니다.
-    - **Good:** \`When I get a new submission in my Typeform, summarize the answers using AI and then post the summary to my #feedback Slack channel.\`
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **마케터:** 새로운 페이스북 리드 광고가 접수될 때마다, 자동으로 고객 정보를 Google Sheets에 추가하고 담당자에게 Slack 알림 보내기
-- **세일즈 담당자:** 고객이 Calendly로 미팅을 예약하면, 자동으로 Google Calendar에 일정을 추가하고, 미팅 24시간 전에 고객에게 확인 이메일 보내기
-- **프로젝트 매니저:** Trello 카드가 '완료' 상태로 변경되면, 관련된 Slack 채널에 "🎉 [카드 이름] 작업이 완료되었습니다!" 메시지 자동으로 보내기
-- **개인:** 인스타그램에 특정 해시태그가 포함된 새 게시물이 올라올 때마다, 해당 이미지와 링크를 내 Notion 페이지에 자동으로 저장하기
-`
-    },
-    {
-    id: 20,
-    ai_model_id: 2001, // 'Canva Magic Studio'의 모델 ID
-    title: "누구나 디자이너가 되는 곳, Canva",
-    description: "템플릿과 AI 기능을 활용하여 SNS 이미지, 프레젠테이션, 포스터 등을 손쉽게 제작하는 방법을 알아봅니다.",
-    category: "디자인",
-    author: "AIHub 에디터",
-    imageurl: "/placeholder.svg",
-    content: `
-#### **1. Canva란 무엇인가요? (소개 및 핵심 특징)**
-- **소개:** **Canva**는 전문적인 디자인 기술이 없는 사람도 누구나 쉽게 소셜 미디어 게시물, 프레젠테이션, 포스터, 영상 등 다양한 시각 콘텐츠를 만들 수 있도록 도와주는 올인원 온라인 디자인 플랫폼입니다. 최근에는 'Magic Studio'라는 AI 기능 모음을 도입하여, 단순한 디자인 보조를 넘어 콘텐츠 생성까지 가능해졌습니다.
-- **개발사:** Canva
-- **핵심 특징:**
-    - **방대한 템플릿:** 수십만 개의 전문적으로 디자인된 템플릿을 제공하여, 사용자는 내용만 수정하면 즉시 고품질의 결과물을 얻을 수 있습니다.
-    - **직관적인 드래그 앤 드롭:** 모든 디자인 요소를 마우스로 끌어다 놓는 방식으로 쉽게 편집하고 배치할 수 있습니다.
-    - **AI 기능 모음 (Magic Studio):**
-        - **Magic Design:** 만들고 싶은 디자인에 대해 텍스트로 설명하면, AI가 여러 개의 맞춤형 템플릿 시안을 즉시 제안해줍니다.
-        - **Magic Write:** Canva 내에서 바로 글의 초안을 작성하거나, 기존 글의 톤을 바꾸는 등 글쓰기 작업을 도와줍니다.
-        - **Magic Media:** 텍스트를 이미지나 영상으로 생성해주는 기능입니다.
-        - **Magic Switch:** 클릭 한 번으로 디자인의 형식을 다른 형식으로 변환해줍니다. (예: 프레젠테이션 -> 블로그 게시물)
-- **가격 정책:**
-    - **무료 플랜:** 대부분의 핵심 기능과 방대한 무료 템플릿, 사진, 그래픽을 제공하여 개인적인 용도로는 충분히 활용 가능합니다.
-    - **Canva Pro (유료):** 모든 프리미엄 템플릿과 스톡 사진, 브랜드 키트(로고, 색상, 글꼴 저장), 배경 제거, AI 기능 무제한 사용 등 전문적인 기능을 제공합니다.
-
-#### **2. 초보자를 위한 시작하기 (Getting Started)**
-- **1. 가입 및 로그인:** [canva.com](https://canva.com) 에 접속하여 구글, 페이스북, 이메일 등으로 간편하게 가입합니다.
-- **2. 디자인 유형 선택:** 홈페이지에서 만들고 싶은 디자인 유형(예: 'Instagram Post', 'Presentation')을 검색하거나 선택합니다.
-- **3. 템플릿 선택:** 왼쪽에 보이는 수많은 템플릿 중에서 마음에 드는 디자인을 클릭하여 편집을 시작합니다.
-- **4. 편집하기:** 텍스트를 더블클릭하여 내용을 수정하고, 왼쪽 메뉴의 'Elements'나 'Uploads'에서 원하는 사진이나 아이콘을 끌어다 놓으며 자신만의 디자인을 완성합니다.
-- **5. 다운로드:** 작업이 끝나면 오른쪽 상단의 'Share' > 'Download' 버튼을 눌러 원하는 파일 형식(PNG, JPG, PDF 등)으로 저장합니다.
-
-#### **3. 프로처럼 쓰는 법 (Magic Studio 활용)**
-- **1. Magic Design으로 빠르게 시작하기:** 빈 캔버스에서 시작하는 대신, "인공지능 컨퍼런스를 위한 파란색 톤의 포스터를 만들어줘" 와 같이 구체적으로 설명하여 디자인의 초안을 AI에게 맡겨보세요. 시간을 크게 단축할 수 있습니다.
-- **2. Magic Switch로 원소스 멀티유즈:** 공들여 만든 프레젠테이션 디자인이 있다면, Magic Switch 기능을 사용하여 클릭 몇 번만으로 인스타그램 게시물, 블로그 배너, A4 문서 형식으로 변환하여 다양한 채널에 활용할 수 있습니다.
-- **3. Magic Edit으로 감쪽같이 수정하기:** 이미지의 특정 부분을 브러시로 칠한 뒤, "이 부분을 꽃병으로 바꿔줘" 라고 입력하면 AI가 자연스럽게 해당 부분만 수정해줍니다. 제품 사진이나 광고 이미지 수정에 매우 유용합니다.
-
-#### **4. 실제 활용 사례 (Use Cases)**
-- **소상공인/1인 기업가:** 전문 디자이너 없이도 가게 홍보물, SNS 마케팅 이미지, 이벤트 배너 등을 직접 제작
-- **마케터:** 다양한 채널에 맞는 광고 소재를 빠르게 제작하고, A/B 테스트를 위한 여러 디자인 시안 생성
-- **학생/직장인:** 과제 발표나 업무 보고를 위한 프레젠테이션을 세련되고 전문적인 템플릿을 활용하여 제작
-- **콘텐츠 크리에이터:** 유튜브 썸네일, 카드 뉴스, 블로그 대표 이미지 등 시각적인 콘텐츠를 일관된 브랜딩으로 제작
-`
-    },
-  ];
-
-  const { error: guideError } = await supabase.from('guides').upsert(guidesToSeed);
-  if (guideError) {
-    console.error('Error seeding guides:', guideError);
-    return;
-  }
-  console.log('Seeded guides.');
-
-  // 4. use_cases
-  await supabase.from('use_cases').upsert([
-    { id: 1, category: '개발', situation: '코딩하다 막혔을 때 🤯', summary: '복잡한 에러, 새로운 로직 구현... 전문가의 도움이 필요하다면?' },
-    { id: 2, category: '개발', situation: '새 프로젝트를 시작할 때 🏗️', summary: '기술 스택 선정부터 전체 아키텍처 설계까지, 막막하다면?' },
-    { id: 3, category: '글쓰기', situation: '블로그, 리포트 초안을 쓸 때 📝', summary: '글의 뼈대를 잡고, 자연스러운 문장으로 내용을 채우고 싶다면?' },
-  ]);
-  console.log('Seeded use_cases.');
-
-  // 5. recommendations
-  await supabase.from('recommendations').upsert([
-    { use_case_id: 1, ai_model_id: 202, reason: '뛰어난 논리력과 방대한 코드로 복잡한 문제 해결에 최적화!' },
-    { use_case_id: 2, ai_model_id: 301, reason: '방대한 문서를 한 번에 이해하고, 체계적인 구조를 제안하는 데 탁월!' },
-    { use_case_id: 3, ai_model_id: 101, reason: '창의적이고 완성도 높은 긴 글 생성에 강점을 보입니다!' },
-  ]);
-  console.log('Seeded recommendations.');
-  
-  // 6. posts (커뮤니티)
-  await supabase.from('posts').upsert([
-    { title: 'AI 추천해주는 사이트 어디가 좋나요?', content: '참고할 만한 다른 좋은 사이트가 있을까요?', author_id: authorId },
-    { title: 'Vite + React에서 Supabase 연동 질문', content: 'RLS를 켜니 데이터가 안 불러와집니다.', author_id: authorId },
-  ]);
-  console.log('Seeded posts.');
-  
-  console.log('✅ Seeding finished successfully!');
 };
 
 seedDatabase();

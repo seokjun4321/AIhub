@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'; // useState, useMemo import
+import { useState, useMemo } from 'react';
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,11 +8,16 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from '@/components/ui/button'; // Button import
+import { Button } from '@/components/ui/button';
 
-// Supabase에서 데이터를 가져오는 비동기 함수
+// --- 🔧 FIX 1: Fetch query updated ---
+// We now join with `categories` and `profiles` to get their names.
 const fetchGuides = async () => {
-  const { data, error } = await supabase.from('guides').select('*').order('id'); // id 순으로 정렬
+  const { data, error } = await supabase
+    .from('guides')
+    .select('id, title, description, image_url, profiles(username), categories(name)')
+    .order('id');
+    
   if (error) {
     throw new Error(error.message);
   }
@@ -25,31 +30,28 @@ const Guides = () => {
     queryFn: fetchGuides,
   });
 
-  // ▼▼▼ [수정됨] 카테고리 필터링을 위한 상태 및 로직 추가 ▼▼▼
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // useMemo를 사용해 가이드 데이터가 변경될 때만 카테고리 목록을 새로 계산합니다.
+  // --- 🔧 FIX 2: Category filtering logic updated ---
+  // The logic now correctly extracts category names from the joined `categories` table.
   const categories = useMemo(() => {
     if (!guides) return [];
-    // 'category'가 null이나 undefined가 아닌 경우만 필터링합니다.
-    const allCategories = guides.map(guide => guide.category).filter(Boolean);
-    // 중복을 제거한 카테고리 목록에 'All'을 추가합니다.
-    return ['All', ...Array.from(new Set(allCategories as string[]))];
+    // The category object can be null, so we filter those out.
+    const allCategories = guides
+      .map(guide => guide.categories?.name)
+      .filter((name): name is string => !!name);
+    return ['All', ...Array.from(new Set(allCategories))];
   }, [guides]);
 
-  // 선택된 카테고리에 따라 가이드를 필터링합니다.
   const filteredGuides = useMemo(() => {
     if (!guides) return [];
     if (selectedCategory === 'All') {
       return guides;
     }
-    return guides.filter(guide => guide.category === selectedCategory);
+    return guides.filter(guide => guide.categories?.name === selectedCategory);
   }, [guides, selectedCategory]);
-  // ▲▲▲ [수정됨] 여기까지 ▲▲▲
-
 
   if (isLoading) {
-    // 로딩 UI (기존과 동일)
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -62,8 +64,8 @@ const Guides = () => {
               </p>
             </div>
              <div className="flex justify-center flex-wrap gap-2 mb-12">
-              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-24" />)}
-            </div>
+               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-24" />)}
+             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="flex flex-col">
@@ -120,14 +122,15 @@ const Guides = () => {
                 <Card className="group h-full flex flex-col hover:border-primary/50 hover:shadow-lg transition-all duration-300">
                   <CardHeader>
                     <div className="aspect-video w-full bg-muted rounded-md mb-4 overflow-hidden">
-                       <img src={guide.imageurl || "/placeholder.svg"} alt={guide.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      {/* --- 🔧 FIX 3: Corrected property names in JSX --- */}
+                      <img src={guide.image_url || "/placeholder.svg"} alt={guide.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     </div>
-                    <Badge variant="outline">{guide.category}</Badge>
+                    <Badge variant="outline">{guide.categories?.name || 'Uncategorized'}</Badge>
                     <CardTitle className="mt-2 group-hover:text-primary transition-colors">{guide.title}</CardTitle>
                     <CardDescription>{guide.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow flex items-end justify-between">
-                    <span className="text-sm text-muted-foreground">by {guide.author}</span>
+                    <span className="text-sm text-muted-foreground">by {guide.profiles?.username || 'Unknown Author'}</span>
                     <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </CardContent>
                 </Card>
