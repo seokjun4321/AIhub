@@ -49,31 +49,50 @@ begin
 end;
 $$;
 
-drop trigger if exists ratings_after_change on public.ratings;
-create trigger ratings_after_change
-after insert or update or delete on public.ratings
-for each row execute procedure public.handle_ratings_change();
+-- Only drop trigger if table exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ratings' AND table_schema = 'public') THEN
+    DROP TRIGGER IF EXISTS ratings_after_change ON public.ratings;
+  END IF;
+END $$;
+
+-- Only create trigger if table exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ratings' AND table_schema = 'public') THEN
+    CREATE TRIGGER ratings_after_change
+    AFTER INSERT OR UPDATE OR DELETE ON public.ratings
+    FOR EACH ROW EXECUTE PROCEDURE public.handle_ratings_change();
+  END IF;
+END $$;
 
 -- Backfill existing data so ui shows correct values immediately
--- Update models that have ratings
-update public.ai_models a
-   set average_rating = sub.avg,
-       rating_count   = sub.cnt,
-       updated_at     = now()
-  from (
-    select ai_model_id, coalesce(avg(rating),0)::numeric as avg, count(*)::int as cnt
-    from public.ratings
-    group by ai_model_id
-  ) sub
- where a.id = sub.ai_model_id;
+-- Only update if ratings table exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ratings' AND table_schema = 'public') THEN
+    -- Update models that have ratings
+    UPDATE public.ai_models a
+       SET average_rating = sub.avg,
+           rating_count   = sub.cnt,
+           updated_at     = now()
+      FROM (
+        SELECT ai_model_id, coalesce(avg(rating),0)::numeric as avg, count(*)::int as cnt
+        FROM public.ratings
+        GROUP BY ai_model_id
+      ) sub
+     WHERE a.id = sub.ai_model_id;
 
--- Set zero for models without any ratings
-update public.ai_models a
-   set average_rating = 0,
-       rating_count   = 0,
-       updated_at     = now()
- where not exists (
-   select 1 from public.ratings r where r.ai_model_id = a.id
- );
+    -- Set zero for models without any ratings
+    UPDATE public.ai_models a
+       SET average_rating = 0,
+           rating_count   = 0,
+           updated_at     = now()
+     WHERE NOT EXISTS (
+       SELECT 1 FROM public.ratings r WHERE r.ai_model_id = a.id
+     );
+  END IF;
+END $$;
 
 

@@ -172,6 +172,53 @@ const Community = () => {
   const queryClient = useQueryClient();
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  // 🔧 NEW: Supabase Realtime 구독 - posts 테이블 업데이트를 실시간으로 반영
+  useEffect(() => {
+    const channel = supabase
+      .channel('community-posts')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'posts' },
+        (payload) => {
+          const updatedPost = payload.new as { 
+            id: number;
+            upvotes_count?: number; 
+            downvotes_count?: number; 
+            view_count?: number;
+            comment_count?: number;
+          };
+          
+          // posts-infinite 쿼리 데이터 업데이트
+          queryClient.setQueriesData({ queryKey: ['posts-infinite'] }, (oldData: any) => {
+            if (!oldData) return oldData;
+            
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                data: page.data.map((post: any) => 
+                  post.id === updatedPost.id 
+                    ? {
+                        ...post,
+                        upvotes_count: updatedPost.upvotes_count ?? post.upvotes_count,
+                        downvotes_count: updatedPost.downvotes_count ?? post.downvotes_count,
+                        view_count: updatedPost.view_count ?? post.view_count,
+                        comment_count: updatedPost.comment_count ?? post.comment_count,
+                      }
+                    : post
+                )
+              }))
+            };
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   // 커뮤니티 섹션 데이터
   const { data: sections } = useQuery({
     queryKey: ['community-sections'],

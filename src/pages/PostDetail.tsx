@@ -351,6 +351,42 @@ const PostDetail = () => {
     enabled: !!user && !!postId,
   });
 
+  // 🔧 NEW: Supabase Realtime 구독 - posts 테이블 업데이트를 실시간으로 반영
+  useEffect(() => {
+    if (!postId) return;
+
+    const channel = supabase
+      .channel(`post-${postId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` },
+        (payload) => {
+          const updatedPost = payload.new as { 
+            upvotes_count?: number; 
+            downvotes_count?: number; 
+            view_count?: number;
+            comment_count?: number;
+          };
+          
+          queryClient.setQueryData(['post', id], (prev: any) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              upvotes_count: updatedPost.upvotes_count ?? prev.upvotes_count,
+              downvotes_count: updatedPost.downvotes_count ?? prev.downvotes_count,
+              view_count: updatedPost.view_count ?? prev.view_count,
+              comment_count: updatedPost.comment_count ?? prev.comment_count,
+            };
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [postId, id, queryClient]);
+
   // 조회수 기록
   useEffect(() => {
     if (postId) {

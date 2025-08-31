@@ -10,6 +10,10 @@ import Bookmarks from './pages/Bookmarks';
 import Recommend from './pages/Recommend';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
+import About from './pages/About';
+import Team from './pages/Team';
+import Careers from './pages/Careers';
+import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ui/protected-route';
 
@@ -28,6 +32,10 @@ function App() {
         <Route path="/recommend" element={<Recommend />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/about" element={<About />} />
+        <Route path="/team" element={<Team />} />
+        <Route path="/careers" element={<Careers />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

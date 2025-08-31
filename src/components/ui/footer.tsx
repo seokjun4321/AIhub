@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Brain, Github, Twitter, Mail, ArrowRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Brain, Github, Twitter, Mail, ArrowRight, Users, Target, Lightbulb, Code, TrendingUp, Phone, MapPin } from "lucide-react";
 
 const Footer = () => {
   const footerLinks = {
@@ -11,23 +13,25 @@ const Footer = () => {
       { name: "AI 도구", href: "/tools" },
     ],
     company: [
-      { name: "소개", href: "#about" },
-      { name: "팀", href: "#team" },
-      { name: "채용", href: "#careers" },
-      { name: "연락처", href: "#contact" },
+      { name: "소개", href: "/about" },
+      { name: "팀", href: "/team" },
+      { name: "채용", href: "/careers" },
+      { name: "연락처", href: "/contact" },
     ],
     support: [
-      { name: "도움말", href: "#help" },
-      { name: "FAQ", href: "#faq" },
-      { name: "피드백", href: "#feedback" },
-      { name: "문의하기", href: "#contact" },
+      { name: "도움말", href: "/help" },
+      { name: "FAQ", href: "/faq" },
+      { name: "피드백", href: "/feedback" },
+      { name: "문의하기", href: "/contact" },
     ],
     legal: [
-      { name: "이용약관", href: "#terms" },
-      { name: "개인정보처리방침", href: "#privacy" },
-      { name: "쿠키 정책", href: "#cookies" },
+      { name: "이용약관", href: "/terms" },
+      { name: "개인정보처리방침", href: "/privacy" },
+      { name: "쿠키 정책", href: "/cookies" },
     ],
   };
+
+
 
   return (
     <footer className="bg-card border-t border-border/50">
@@ -137,6 +141,8 @@ const Footer = () => {
             </div>
           </div>
         </div>
+
+
 
         {/* Bottom Section */}
         <Separator className="opacity-50" />

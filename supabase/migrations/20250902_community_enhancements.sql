@@ -1,6 +1,60 @@
 -- 커뮤니티 기능 대폭 개선을 위한 마이그레이션
 -- 레딧, 디시인사이드 등의 성공적인 커뮤니티 사이트를 참조한 기능들
 
+-- 0. 게시글 투표 테이블 (가장 먼저 생성)
+CREATE TABLE IF NOT EXISTS public.post_votes (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    vote_type SMALLINT NOT NULL CHECK (vote_type IN (1, -1)),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(post_id, user_id)
+);
+
+-- 게시글 투표 카운트 업데이트 함수
+CREATE OR REPLACE FUNCTION public.update_post_vote_counts()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.vote_type = 1 THEN
+            UPDATE public.posts SET upvotes_count = upvotes_count + 1 WHERE id = NEW.post_id;
+        ELSE
+            UPDATE public.posts SET downvotes_count = downvotes_count + 1 WHERE id = NEW.post_id;
+        END IF;
+        RETURN NEW;
+    ELSIF TG_OP = 'UPDATE' THEN
+        -- 이전 투표 취소
+        IF OLD.vote_type = 1 THEN
+            UPDATE public.posts SET upvotes_count = upvotes_count - 1 WHERE id = OLD.post_id;
+        ELSE
+            UPDATE public.posts SET downvotes_count = downvotes_count - 1 WHERE id = OLD.post_id;
+        END IF;
+        -- 새로운 투표 추가
+        IF NEW.vote_type = 1 THEN
+            UPDATE public.posts SET upvotes_count = upvotes_count + 1 WHERE id = NEW.post_id;
+        ELSE
+            UPDATE public.posts SET downvotes_count = downvotes_count + 1 WHERE id = NEW.post_id;
+        END IF;
+        RETURN NEW;
+    ELSIF TG_OP = 'DELETE' THEN
+        IF OLD.vote_type = 1 THEN
+            UPDATE public.posts SET upvotes_count = upvotes_count - 1 WHERE id = OLD.post_id;
+        ELSE
+            UPDATE public.posts SET downvotes_count = downvotes_count - 1 WHERE id = OLD.post_id;
+        END IF;
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 게시글 투표 트리거
+DROP TRIGGER IF EXISTS post_votes_trigger ON public.post_votes;
+CREATE TRIGGER post_votes_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON public.post_votes
+    FOR EACH ROW EXECUTE FUNCTION public.update_post_vote_counts();
+
 -- 1. 게시글 카테고리 테이블 (질문, 정보공유, 토론, 유머 등)
 CREATE TABLE IF NOT EXISTS public.post_categories (
     id SERIAL PRIMARY KEY,
