@@ -6,6 +6,7 @@ import GuideDetail from './pages/GuideDetail';
 import Community from './pages/Community';
 import PostDetail from './pages/PostDetail';
 import NewPost from './pages/NewPost';
+import Bookmarks from './pages/Bookmarks';
 import Recommend from './pages/Recommend';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
@@ -23,6 +24,7 @@ function App() {
         <Route path="/community" element={<Community />} />
         <Route path="/community/:id" element={<PostDetail />} />
         <Route path="/community/new" element={<ProtectedRoute><NewPost /></ProtectedRoute>} />
+        <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
         <Route path="/recommend" element={<Recommend />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

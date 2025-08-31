@@ -10,17 +10,128 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
-import { Upload, Trash2, Loader2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Upload, Trash2, Loader2, MessageSquare, ThumbsUp, Bookmark, Eye, Calendar, User } from 'lucide-react';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
-// ... (fetchProfile 함수는 기존과 동일)
+// 프로필 데이터를 가져오는 함수
 const fetchProfile = async (userId: string) => {
   const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
   if (error) throw new Error(error.message);
   return data;
+};
+
+// 사용자의 게시글을 가져오는 함수
+const fetchUserPosts = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`
+      id,
+      title,
+      content,
+      created_at,
+      upvotes_count,
+      downvotes_count,
+      view_count,
+      comment_count,
+      is_pinned,
+      images,
+      community_sections ( name, color, icon ),
+      post_categories ( name, color, icon )
+    `)
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw new Error(error.message);
+  return data || [];
+};
+
+// 사용자의 댓글을 가져오는 함수
+const fetchUserComments = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('comments')
+    .select(`
+      id,
+      content,
+      created_at,
+      upvotes_count,
+      downvotes_count,
+      posts (
+        id,
+        title,
+        community_sections ( name, color, icon ),
+        post_categories ( name, color, icon )
+      )
+    `)
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw new Error(error.message);
+  return data || [];
+};
+
+// 사용자가 추천한 게시글을 가져오는 함수
+const fetchUserVotedPosts = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('post_votes')
+    .select(`
+      vote_type,
+      created_at,
+      posts (
+        id,
+        title,
+        content,
+        created_at,
+        upvotes_count,
+        downvotes_count,
+        view_count,
+        comment_count,
+        is_pinned,
+        images,
+        profiles ( username ),
+        community_sections ( name, color, icon ),
+        post_categories ( name, color, icon )
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw new Error(error.message);
+  return data || [];
+};
+
+// 사용자가 북마크한 게시글을 가져오는 함수
+const fetchUserBookmarkedPosts = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('post_bookmarks')
+    .select(`
+      created_at,
+      posts (
+        id,
+        title,
+        content,
+        created_at,
+        upvotes_count,
+        downvotes_count,
+        view_count,
+        comment_count,
+        is_pinned,
+        images,
+        profiles ( username ),
+        community_sections ( name, color, icon ),
+        post_categories ( name, color, icon )
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw new Error(error.message);
+  return data?.map(item => item.posts).filter(Boolean) || [];
 };
 
 // --- ▼▼▼ 이미지 크롭을 위한 헬퍼 함수 ▼▼▼ ---
@@ -80,11 +191,35 @@ const Profile = () => {
   const [completedCrop, setCompletedCrop] = useState<Crop>();
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // ... (useQuery, useEffect 등 기존 로직)
-
-    const { data: profile, isLoading: isProfileLoading, error } = useQuery({
+  // 프로필 데이터
+  const { data: profile, isLoading: isProfileLoading, error } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: () => fetchProfile(user!.id),
+    enabled: !!user,
+  });
+
+  // 사용자 활동 내역 데이터
+  const { data: userPosts, isLoading: isPostsLoading } = useQuery({
+    queryKey: ['userPosts', user?.id],
+    queryFn: () => fetchUserPosts(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: userComments, isLoading: isCommentsLoading } = useQuery({
+    queryKey: ['userComments', user?.id],
+    queryFn: () => fetchUserComments(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: userVotedPosts, isLoading: isVotedPostsLoading } = useQuery({
+    queryKey: ['userVotedPosts', user?.id],
+    queryFn: () => fetchUserVotedPosts(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: userBookmarkedPosts, isLoading: isBookmarkedPostsLoading } = useQuery({
+    queryKey: ['userBookmarkedPosts', user?.id],
+    queryFn: () => fetchUserBookmarkedPosts(user!.id),
     enabled: !!user,
   });
 
@@ -233,74 +368,380 @@ const Profile = () => {
     <div className="min-h-screen">
       <Navbar />
       <main className="pt-24 pb-12">
-        <div className="container mx-auto px-6 max-w-2xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>프로필 설정</CardTitle>
-              <CardDescription>회원님의 정보를 관리하세요.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 mb-8">
-                <div className="relative">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={profile.avatar_url || ''} alt={profile.username || ''} />
-                    <AvatarFallback>{profile.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <Label 
-                    htmlFor="avatar-upload"
-                    className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {/* --- ▼▼▼ 파일 선택 로직 변경 ▼▼▼ --- */}
-                    <input 
-                      id="avatar-upload" 
-                      type="file" 
-                      accept="image/png, image/jpeg"
-                      className="hidden"
-                      onChange={onSelectFile}
-                      disabled={uploading}
-                    />
-                  </Label>
-                </div>
-                {/* ▼▼▼ 삭제 버튼 추가 ▼▼▼ */}
-                {profile.avatar_url && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-muted-foreground"
-                    onClick={handleAvatarRemove}
-                    disabled={removing || uploading}
-                  >
-                    {removing ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Trash2 className="mr-2 h-3 w-3" />}
-                    사진 제거
-                  </Button>
-                )}
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold">{profile.full_name}</h2>
-                  <p className="text-muted-foreground">@{profile.username}</p>
-                </div>
-              </div>
-              
-              <form onSubmit={handleUpdateProfile} className="space-y-6">
-                {/* ... (이메일, 성명, 아이디 입력 폼은 동일) ... */}
-                   <div className="space-y-2">
-                  <Label htmlFor="email">이메일</Label>
-                  <Input id="email" type="email" value={user?.email || ''} disabled />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">성명</Label>
-                  <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="username">아이디</Label>
-                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} />
-                </div>
-                <Button type="submit" disabled={updateProfileMutation.isPending || uploading}>
-                  {updateProfileMutation.isPending || uploading ? "저장 중..." : "변경사항 저장"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+        <div className="container mx-auto px-6 max-w-4xl">
+          <Tabs defaultValue="profile" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="profile">프로필</TabsTrigger>
+              <TabsTrigger value="posts">게시글</TabsTrigger>
+              <TabsTrigger value="comments">댓글</TabsTrigger>
+              <TabsTrigger value="votes">추천</TabsTrigger>
+              <TabsTrigger value="bookmarks">북마크</TabsTrigger>
+            </TabsList>
+
+            {/* 프로필 설정 탭 */}
+            <TabsContent value="profile">
+              <Card>
+                <CardHeader>
+                  <CardTitle>프로필 설정</CardTitle>
+                  <CardDescription>회원님의 정보를 관리하세요.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="relative">
+                      <Avatar className="h-24 w-24">
+                        <AvatarImage src={profile.avatar_url || ''} alt={profile.username || ''} />
+                        <AvatarFallback>{profile.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <Label 
+                        htmlFor="avatar-upload"
+                        className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <input 
+                          id="avatar-upload" 
+                          type="file" 
+                          accept="image/png, image/jpeg"
+                          className="hidden"
+                          onChange={onSelectFile}
+                          disabled={uploading}
+                        />
+                      </Label>
+                    </div>
+                    {profile.avatar_url && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground"
+                        onClick={handleAvatarRemove}
+                        disabled={removing || uploading}
+                      >
+                        {removing ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Trash2 className="mr-2 h-3 w-3" />}
+                        사진 제거
+                      </Button>
+                    )}
+                    <div className="text-center">
+                      <h2 className="text-2xl font-bold">{profile.full_name}</h2>
+                      <p className="text-muted-foreground">@{profile.username}</p>
+                    </div>
+                  </div>
+                  
+                  <form onSubmit={handleUpdateProfile} className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">이메일</Label>
+                      <Input id="email" type="email" value={user?.email || ''} disabled />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">성명</Label>
+                      <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="username">아이디</Label>
+                      <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} />
+                    </div>
+                    <Button type="submit" disabled={updateProfileMutation.isPending || uploading}>
+                      {updateProfileMutation.isPending || uploading ? "저장 중..." : "변경사항 저장"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 게시글 탭 */}
+            <TabsContent value="posts">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    내 게시글 ({userPosts?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isPostsLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                    </div>
+                  ) : userPosts && userPosts.length > 0 ? (
+                    <div className="space-y-4">
+                      {userPosts.map((post) => (
+                        <div key={post.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {post.is_pinned && (
+                                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
+                                  고정
+                                </Badge>
+                              )}
+                              {post.community_sections && (
+                                <Badge 
+                                  variant="secondary"
+                                  style={{ backgroundColor: post.community_sections.color + '20', color: post.community_sections.color }}
+                                  className="text-xs"
+                                >
+                                  {post.community_sections.name}
+                                </Badge>
+                              )}
+                              {post.post_categories && (
+                                <Badge 
+                                  variant="outline"
+                                  style={{ borderColor: post.post_categories.color, color: post.post_categories.color }}
+                                  className="text-xs"
+                                >
+                                  {post.post_categories.name}
+                                </Badge>
+                              )}
+                            </div>
+                            <Link to={`/community/${post.id}`} className="block">
+                              <h3 className="font-medium hover:text-primary transition-colors">
+                                {post.title}
+                              </h3>
+                            </Link>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                              <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                              <div className="flex items-center gap-1">
+                                <Eye className="w-3 h-3" />
+                                <span>{post.view_count || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3" />
+                                <span>{post.comment_count || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <ThumbsUp className="w-3 h-3" />
+                                <span>{post.upvotes_count || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">아직 작성한 게시글이 없습니다.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 댓글 탭 */}
+            <TabsContent value="comments">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    내 댓글 ({userComments?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isCommentsLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                    </div>
+                  ) : userComments && userComments.length > 0 ? (
+                    <div className="space-y-4">
+                      {userComments.map((comment) => (
+                        <div key={comment.id} className="p-4 border rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            {comment.posts?.community_sections && (
+                              <Badge 
+                                variant="secondary"
+                                style={{ backgroundColor: comment.posts.community_sections.color + '20', color: comment.posts.community_sections.color }}
+                                className="text-xs"
+                              >
+                                {comment.posts.community_sections.name}
+                              </Badge>
+                            )}
+                            {comment.posts?.post_categories && (
+                              <Badge 
+                                variant="outline"
+                                style={{ borderColor: comment.posts.post_categories.color, color: comment.posts.post_categories.color }}
+                                className="text-xs"
+                              >
+                                {comment.posts.post_categories.name}
+                              </Badge>
+                            )}
+                          </div>
+                          <Link to={`/community/${comment.posts?.id}`} className="block mb-2">
+                            <h3 className="font-medium hover:text-primary transition-colors">
+                              {comment.posts?.title}
+                            </h3>
+                          </Link>
+                          <p className="text-sm text-muted-foreground mb-2">{comment.content}</p>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>{new Date(comment.created_at).toLocaleDateString()}</span>
+                            <div className="flex items-center gap-1">
+                              <ThumbsUp className="w-3 h-3" />
+                              <span>{comment.upvotes_count || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <ThumbsUp className="w-3 h-3 rotate-180" />
+                              <span>{comment.downvotes_count || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">아직 작성한 댓글이 없습니다.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 추천 탭 */}
+            <TabsContent value="votes">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ThumbsUp className="w-5 h-5" />
+                    추천한 게시글 ({userVotedPosts?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isVotedPostsLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                    </div>
+                  ) : userVotedPosts && userVotedPosts.length > 0 ? (
+                    <div className="space-y-4">
+                      {userVotedPosts.map((vote) => (
+                        <div key={vote.posts.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant={vote.vote_type === 1 ? "default" : "destructive"} className="text-xs">
+                                {vote.vote_type === 1 ? "추천" : "비추천"}
+                              </Badge>
+                              {vote.posts.is_pinned && (
+                                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
+                                  고정
+                                </Badge>
+                              )}
+                              {vote.posts.community_sections && (
+                                <Badge 
+                                  variant="secondary"
+                                  style={{ backgroundColor: vote.posts.community_sections.color + '20', color: vote.posts.community_sections.color }}
+                                  className="text-xs"
+                                >
+                                  {vote.posts.community_sections.name}
+                                </Badge>
+                              )}
+                            </div>
+                            <Link to={`/community/${vote.posts.id}`} className="block">
+                              <h3 className="font-medium hover:text-primary transition-colors">
+                                {vote.posts.title}
+                              </h3>
+                            </Link>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                              <span>{new Date(vote.created_at).toLocaleDateString()}</span>
+                              <div className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                <span>{vote.posts.profiles?.username || '익명'}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Eye className="w-3 h-3" />
+                                <span>{vote.posts.view_count || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3" />
+                                <span>{vote.posts.comment_count || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <ThumbsUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">아직 추천한 게시글이 없습니다.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 북마크 탭 */}
+            <TabsContent value="bookmarks">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bookmark className="w-5 h-5" />
+                    북마크한 게시글 ({userBookmarkedPosts?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isBookmarkedPostsLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                    </div>
+                  ) : userBookmarkedPosts && userBookmarkedPosts.length > 0 ? (
+                    <div className="space-y-4">
+                      {userBookmarkedPosts.map((post) => (
+                        <div key={post.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {post.is_pinned && (
+                                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
+                                  고정
+                                </Badge>
+                              )}
+                              {post.community_sections && (
+                                <Badge 
+                                  variant="secondary"
+                                  style={{ backgroundColor: post.community_sections.color + '20', color: post.community_sections.color }}
+                                  className="text-xs"
+                                >
+                                  {post.community_sections.name}
+                                </Badge>
+                              )}
+                              {post.post_categories && (
+                                <Badge 
+                                  variant="outline"
+                                  style={{ borderColor: post.post_categories.color, color: post.post_categories.color }}
+                                  className="text-xs"
+                                >
+                                  {post.post_categories.name}
+                                </Badge>
+                              )}
+                            </div>
+                            <Link to={`/community/${post.id}`} className="block">
+                              <h3 className="font-medium hover:text-primary transition-colors">
+                                {post.title}
+                              </h3>
+                            </Link>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                              <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                              <div className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                <span>{post.profiles?.username || '익명'}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Eye className="w-3 h-3" />
+                                <span>{post.view_count || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3" />
+                                <span>{post.comment_count || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">아직 북마크한 게시글이 없습니다.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
       <Footer />

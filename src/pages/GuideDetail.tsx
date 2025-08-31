@@ -7,11 +7,13 @@ import Footer from "@/components/ui/footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import StarRating from "@/components/ui/StarRating";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { UserCircle, Calendar, Star } from "lucide-react";
+import { UserCircle, Calendar, Star, Search, ArrowRight, CheckCircle, XCircle, BookOpen, Presentation, FileText, Globe, Users, Zap, Target, Lightbulb } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from "@/lib/utils";
@@ -47,6 +49,7 @@ const GuideDetail = () => {
   const [currentRating, setCurrentRating] = useState(0);
   const [uiAverage, setUiAverage] = useState<number | null>(null);
   const [uiCount, setUiCount] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -228,67 +231,477 @@ const GuideDetail = () => {
   if (!guide || !aiModel) return <div>Guide not found.</div>;
 
   return (
-    // JSX 부분은 이전과 동일하게 완벽하므로 수정할 필요가 없습니다.
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="pt-24 pb-12">
-        <article className="container mx-auto px-6 max-w-4xl">
-          <header className="mb-8">
-            <Badge variant="outline" className="mb-4">{guide.categories?.name || 'Uncategorized'}</Badge>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">{guide.title}</h1>
-            <p className="text-xl text-muted-foreground mt-4">{guide.description}</p>
-            <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
-              <div className="flex items-center gap-8 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2"><UserCircle className="w-4 h-4" /><span>by {guide.profiles?.username || 'Unknown Author'}</span></div>
-                <div className="flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{new Date(guide.created_at).toLocaleString()}</span></div>
-              </div>
-              <div className="flex items-center gap-4">
-                 <div className="flex items-center gap-2">
-                    <StarRating key={`avg-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`} rating={Number(uiAverage ?? aiModel.average_rating) || 0} size={16} readOnly />
-                    <span className="font-semibold text-sm text-foreground">
-                        {(Number(uiAverage ?? aiModel.average_rating) || 0).toFixed(1)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                        ({(uiCount ?? aiModel.rating_count) || 0} ratings)
-                    </span>
+        <div className="container mx-auto px-6 max-w-7xl">
+          {/* 상단 섹션 - 로고, 제목, 액션 버튼 */}
+          <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center">
+                  <Globe className="w-8 h-8 text-white" />
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>
-                  <Star className="w-4 h-4 mr-2" />Rate this AI
-                </Button>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{aiModel.name}</h1>
+                  <p className="text-lg text-gray-600 mb-4">{guide.description}</p>
+                  <div className="flex items-center gap-4">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                      바로 사용해보기
+                    </Button>
+                    <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                      공식 사이트 가기
+                    </Button>
+                  </div>
+                </div>
               </div>
+                              <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <StarRating key={`avg-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`} rating={Number(uiAverage ?? aiModel.average_rating) || 0} size={20} readOnly />
+                      <span className="font-bold text-lg text-gray-900">
+                        {(Number(uiAverage ?? aiModel.average_rating) || 0).toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <div className="font-medium">{(uiCount ?? aiModel.rating_count) || 0}개의 평가</div>
+                      <div className="text-xs">사용자 평점</div>
+                    </div>
+                  </div>
+                  <Button 
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-0" 
+                    size="sm" 
+                    onClick={() => setIsModalOpen(true)}
+                  >
+                    <Star className="w-4 h-4 mr-2" />평점 남기기
+                  </Button>
+                </div>
             </div>
-          </header>
-          
-          <div className="aspect-video w-full bg-muted rounded-lg mb-8 overflow-hidden">
-            <img src={guide.image_url || "/placeholder.svg"} alt={guide.title} className="w-full h-full object-cover" />
           </div>
-          
-          <div className={cn("prose dark:prose-invert max-w-none")}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{guide.content || ""}</ReactMarkdown>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* 왼쪽 컬럼 */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* 가격 및 출시사 정보 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="w-5 h-5" />
+                    가격 및 정보
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="font-bold text-lg text-green-600">무료</div>
+                      <div className="text-sm text-gray-600">$0/월</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="font-bold text-lg text-blue-600">Pro</div>
+                      <div className="text-sm text-gray-600">$20/월</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="font-bold text-lg text-purple-600">Team</div>
+                      <div className="text-sm text-gray-600">$25/월</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">출시사:</span> {aiModel.provider || 'Unknown'}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">특징:</span> 한국어 지원, 앱 제공
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 사용법 튜토리얼 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5" />
+                    사용법 (튜토리얼!)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                      <div>
+                        <p className="font-medium">계정 생성 후 로그인</p>
+                        <p className="text-sm text-gray-600">AI 모델 공식 사이트에서 계정을 만들고 로그인합니다.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                      <div>
+                        <p className="font-medium">첫 프롬프트 작성하기</p>
+                        <p className="text-sm text-gray-600">원하는 작업에 대한 구체적인 프롬프트를 작성합니다.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                      <div>
+                        <p className="font-medium">프롬프트 최적화</p>
+                        <p className="text-sm text-gray-600">더 나은 결과를 위해 프롬프트를 개선하고 반복합니다.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
+                      <div>
+                        <p className="font-medium">실용적 활용</p>
+                        <p className="text-sm text-gray-600">보고서, PPT, 코드 작성 등 다양한 작업에 활용합니다.</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 실용적 예시 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5" />
+                    실용적 예시
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <FileText className="w-8 h-8 text-blue-600" />
+                      <div>
+                        <p className="font-medium">번역 및 문서 작성</p>
+                        <p className="text-sm text-gray-600">DeepL과 함께 활용하여 고품질 번역</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <Presentation className="w-8 h-8 text-green-600" />
+                      <div>
+                        <p className="font-medium">PPT 및 프레젠테이션</p>
+                        <p className="text-sm text-gray-600">Canva와 연동하여 멋진 슬라이드 제작</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 추천 대체 도구 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    추천 대체 도구
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="AI 도구를 검색해보세요..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                      바로 사용해보기
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 오른쪽 컬럼 */}
+            <div className="space-y-8">
+              {/* 장단점 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="w-5 h-5" />
+                    장단점 분석
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-green-600 mb-2 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        장점
+                      </h4>
+                      <ul className="space-y-1 text-sm text-gray-600">
+                        <li>• 빠른 응답 속도</li>
+                        <li>• 깊이 있는 분석</li>
+                        <li>• 다양한 언어 지원</li>
+                        <li>• 사용자 친화적 인터페이스</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-red-600 mb-2 flex items-center gap-2">
+                        <XCircle className="w-4 h-4" />
+                        단점
+                      </h4>
+                      <ul className="space-y-1 text-sm text-gray-600">
+                        <li>• 최신 정보 부족</li>
+                        <li>• 무료 버전 제한</li>
+                        <li>• 인터넷 연결 필요</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI 도구 비교 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="w-5 h-5" />
+                    AI 도구 비교
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2 text-xs font-medium text-gray-600">
+                      <div>도구</div>
+                      <div>장점</div>
+                      <div>단점</div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="font-medium">Claude</div>
+                      <div className="text-green-600">최신 정보</div>
+                      <div className="text-red-600">-</div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="font-medium">Gemini</div>
+                      <div className="text-green-600">무료</div>
+                      <div className="text-red-600">제한적</div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="font-medium">Perplexity</div>
+                      <div className="text-green-600">실시간</div>
+                      <div className="text-red-600">불안정</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 별점 및 평가 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    별점 및 평가
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="flex justify-center mb-2">
+                        <StarRating 
+                          key={`sidebar-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`} 
+                          rating={Number(uiAverage ?? aiModel.average_rating) || 0} 
+                          size={24} 
+                          readOnly 
+                        />
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">
+                        {(Number(uiAverage ?? aiModel.average_rating) || 0).toFixed(1)}
+                      </div>
+                      <div className="text-sm text-gray-600 mb-3">
+                        {(uiCount ?? aiModel.rating_count) || 0}개의 평가
+                      </div>
+                      <Button 
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white" 
+                        onClick={() => setIsModalOpen(true)}
+                      >
+                        <Star className="w-4 h-4 mr-2" />
+                        내 평점 남기기
+                      </Button>
+                    </div>
+                    
+                    {/* 별점 분포 */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">5점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '70%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">70%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">4점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '20%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">20%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">3점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '7%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">7%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">2점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '2%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">2%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">1점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '1%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">1%</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 사용자 피드백 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCircle className="w-5 h-5" />
+                    사용자 피드백
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <UserCircle className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 mb-1">
+                          <StarRating rating={5} size={12} readOnly />
+                        </div>
+                        <p className="text-sm font-medium">알바생</p>
+                        <p className="text-xs text-gray-600">근무 중에도 유용하게 사용하고 있습니다!</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <UserCircle className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 mb-1">
+                          <StarRating rating={4} size={12} readOnly />
+                        </div>
+                        <p className="text-sm font-medium">개발자</p>
+                        <p className="text-xs text-gray-600">코드 작성에 매우 도움이 됩니다.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <UserCircle className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 mb-1">
+                          <StarRating rating={5} size={12} readOnly />
+                        </div>
+                        <p className="text-sm font-medium">학생</p>
+                        <p className="text-xs text-gray-600">과제 작성할 때 정말 유용해요!</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 프리미엄 업그레이드 */}
+              <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <h3 className="font-bold text-lg mb-2">프리미엄으로 업그레이드</h3>
+                    <p className="text-sm text-blue-100 mb-4">더 많은 기능과 고급 AI 모델을 사용해보세요</p>
+                    <Button className="w-full bg-white text-blue-600 hover:bg-gray-100">
+                      프리미엄 업그레이드하기
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </article>
+
+          {/* 가이드 상세 내용 */}
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>상세 가이드</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={cn("prose dark:prose-invert max-w-none")}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{guide.content || ""}</ReactMarkdown>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </main>
       <Footer />
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{aiModel?.name}</DialogTitle>
-            <DialogDescription>Please leave a rating for this AI tool!</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-500" />
+              {aiModel?.name} 평점 남기기
+            </DialogTitle>
+            <DialogDescription>이 AI 도구에 대한 솔직한 평점을 남겨주세요!</DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <h3 className="text-lg font-medium mb-2 text-center">My Rating</h3>
-            <div className="flex justify-center">
-              <StarRating rating={currentRating} size={32} onRate={handleRate} readOnly={!user || rateMutation.isPending} />
+          <div className="py-6">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <StarRating 
+                  rating={currentRating} 
+                  size={40} 
+                  onRate={handleRate} 
+                  readOnly={!user || rateMutation.isPending} 
+                />
+              </div>
+              <div className="text-lg font-medium text-gray-900">
+                {currentRating > 0 ? `${currentRating}점을 선택하셨습니다` : '별점을 선택해주세요'}
+              </div>
+              {currentRating > 0 && (
+                <div className="text-sm text-gray-600">
+                  {currentRating === 5 && '매우 만족스러워요! 😍'}
+                  {currentRating === 4 && '좋아요! 👍'}
+                  {currentRating === 3 && '보통이에요 😊'}
+                  {currentRating === 2 && '아쉬워요 😕'}
+                  {currentRating === 1 && '별로예요 😞'}
+                </div>
+              )}
+              {rateMutation.isPending && (
+                <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  평점을 등록하는 중...
+                </div>
+              )}
+              {!user && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800">
+                    평점을 남기려면 <Link to="/auth" className="text-blue-600 underline font-medium">로그인</Link>이 필요합니다.
+                  </p>
+                </div>
+              )}
             </div>
-            {rateMutation.isPending && <p className="text-center text-sm text-muted-foreground mt-2">Submitting rating...</p>}
-            {!user && (
-              <p className="text-center text-sm text-muted-foreground mt-4">
-                <Link to="/auth" className="text-primary underline">Log in</Link> to leave a rating.
-              </p>
-            )}
           </div>
-          <DialogFooter><Button onClick={() => setIsModalOpen(false)}>Close</Button></DialogFooter>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+              취소
+            </Button>
+            {user && (
+              <Button 
+                onClick={() => setIsModalOpen(false)}
+                disabled={currentRating === 0 || rateMutation.isPending}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              >
+                평점 등록하기
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

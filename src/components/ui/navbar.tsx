@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, Menu, X, Search, BookOpen, Users, Zap, LogOut, User, UserCog } from "lucide-react";
+import { Brain, Menu, X, Search, BookOpen, Users, Zap, LogOut, User, UserCog, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -74,6 +74,12 @@ const Navbar = () => {
                       <span>프로필 설정</span>
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link to="/bookmarks" className="flex items-center gap-2">
+                      <Bookmark className="w-4 h-4" />
+                      <span>북마크</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut} className="cursor-pointer flex items-center gap-2 text-red-500 focus:text-red-500">
                     <LogOut className="w-4 h-4" />
                     <span>로그아웃</span>
@@ -130,6 +136,12 @@ const Navbar = () => {
                     <Button variant="ghost" className="w-full justify-start gap-2">
                       <UserCog className="w-4 h-4" />
                       프로필 설정
+                    </Button>
+                  </Link>
+                  <Link to="/bookmarks" className="w-full" onClick={() => setIsOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <Bookmark className="w-4 h-4" />
+                      북마크
                     </Button>
                   </Link>
                   <Button variant="ghost" className="w-full justify-start gap-2 text-red-500 hover:text-red-500" onClick={signOut}>
