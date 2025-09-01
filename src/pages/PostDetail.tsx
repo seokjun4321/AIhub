@@ -24,7 +24,9 @@ import {
   Pin,
   Share2,
   MoreHorizontal,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -459,6 +461,43 @@ const PostDetail = () => {
     },
   });
 
+  // 게시글 삭제 뮤테이션
+  const deletePostMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("로그인이 필요합니다.");
+      
+      // 게시글 작성자 확인
+      const { data: existingPost, error: fetchError } = await supabase
+        .from('posts')
+        .select('author_id')
+        .eq('id', postId)
+        .single();
+      
+      if (fetchError) throw new Error(fetchError.message);
+      if (existingPost.author_id !== user.id) throw new Error("삭제 권한이 없습니다.");
+      
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+      
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("게시글이 삭제되었습니다!");
+      navigate('/community');
+    },
+    onError: (error) => {
+      toast.error(`삭제 실패: ${error.message}`);
+    },
+  });
+
+  const handleDeletePost = () => {
+    if (confirm("정말로 이 게시글을 삭제하시겠습니까?")) {
+      deletePostMutation.mutate();
+    }
+  };
+
   // 북마크 뮤테이션
   const bookmarkMutation = useMutation({
     mutationFn: async ({ isBookmarked }: { isBookmarked: boolean }) => {
@@ -589,38 +628,64 @@ const PostDetail = () => {
                   </div>
                 </div>
                 
-                {/* 액션 버튼들 */}
-                <div className="flex items-center gap-2">
-                  {/* SNS 공유 버튼 */}
-                  <SocialShare
-                    url={window.location.href}
-                    title={post.title}
-                    description={post.content?.substring(0, 100)}
-                    hashtags={['AIHub', '커뮤니티', post.post_categories?.name || '']}
-                  />
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBookmark}
-                    disabled={!user || bookmarkMutation.isPending}
-                    className={`${
-                      isBookmarked
-                        ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200" 
-                        : "hover:bg-gray-100"
-                    }`}
-                  >
-                    <Bookmark className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toast.info("신고 기능은 곧 추가될 예정입니다!")}
-                    className="hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Flag className="w-4 h-4" />
-                  </Button>
-                </div>
+                                 {/* 액션 버튼들 */}
+                 <div className="flex items-center gap-2">
+                   {/* 게시글 작성자만 보이는 수정/삭제 버튼 */}
+                   {user && post.author_id === user.id && (
+                     <>
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         asChild
+                       >
+                         <Link to={`/community/edit/${post.id}`}>
+                           <Edit className="w-4 h-4 mr-1" />
+                           수정
+                         </Link>
+                       </Button>
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         onClick={handleDeletePost}
+                         disabled={deletePostMutation.isPending}
+                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                       >
+                         <Trash2 className="w-4 h-4 mr-1" />
+                         삭제
+                       </Button>
+                     </>
+                   )}
+                   
+                   {/* SNS 공유 버튼 */}
+                   <SocialShare
+                     url={window.location.href}
+                     title={post.title}
+                     description={post.content?.substring(0, 100)}
+                     hashtags={['AIHub', '커뮤니티', post.post_categories?.name || '']}
+                   />
+                   
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={handleBookmark}
+                     disabled={!user || bookmarkMutation.isPending}
+                     className={`${
+                       isBookmarked
+                         ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200" 
+                         : "hover:bg-gray-100"
+                     }`}
+                   >
+                     <Bookmark className="w-4 h-4" />
+                   </Button>
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => toast.info("신고 기능은 곧 추가될 예정입니다!")}
+                     className="hover:bg-red-50 hover:text-red-600"
+                   >
+                     <Flag className="w-4 h-4" />
+                   </Button>
+                 </div>
               </div>
             </header>
             <Card className="mb-8">
