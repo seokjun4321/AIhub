@@ -27,9 +27,11 @@ import {
   Pin,
   Filter,
   MoreHorizontal,
-  Loader2
+  Loader2,
+  X
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
 // 페이지당 게시글 수
@@ -168,9 +170,12 @@ const Community = () => {
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [sortBy, setSortBy] = useState('latest');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // 🔧 NEW: Supabase Realtime 구독 - posts 테이블 업데이트를 실시간으로 반영
   useEffect(() => {
@@ -218,6 +223,17 @@ const Community = () => {
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
+
+  // 스크롤 감지
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 100);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // 커뮤니티 섹션 데이터
   const { data: sections } = useQuery({
@@ -457,112 +473,209 @@ const Community = () => {
             </Button>
           </div>
 
-          {/* 검색 */}
-          <form onSubmit={handleSearch} className="mb-6">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="게시글 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </form>
+          {/* 검색창 - 스크롤 시 숨김 */}
+          <div className={`transition-all duration-300 ${isScrolled ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100 h-auto mb-6'}`}>
+            <form onSubmit={handleSearch}>
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="게시글 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </form>
+          </div>
 
-          {/* 필터 및 정렬 */}
-          <div className="flex flex-col lg:flex-row gap-4 mb-8">
-            {/* 커뮤니티 섹션 필터 */}
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={selectedSection === undefined ? "default" : "outline"}
-                onClick={() => setSelectedSection(undefined)}
-                className="text-sm"
-              >
-                전체
-              </Button>
-              {sections?.map((section) => (
+          {/* 필터 및 정렬 - 스크롤 시 sticky */}
+          <div className={`bg-background/95 backdrop-blur-sm border-b transition-all duration-300 ${
+            isScrolled ? 'sticky top-16 z-40 py-4 -mx-6 px-6 shadow-sm' : 'mb-8'
+          }`}>
+            {/* 모바일 필터 토글 버튼 */}
+            {isMobile && (
+              <div className="flex items-center justify-between mb-4">
                 <Button
-                  key={section.id}
-                  variant={selectedSection === section.id ? "default" : "outline"}
-                  onClick={() => setSelectedSection(section.id)}
-                  className="text-sm"
-                  style={{ 
-                    backgroundColor: selectedSection === section.id ? section.color : undefined,
-                    borderColor: section.color
-                  }}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMobileFilters(!showMobileFilters)}
+                  className="flex items-center gap-2"
                 >
-                  {section.name}
+                  <Filter className="w-4 h-4" />
+                  필터
+                  {showMobileFilters && <X className="w-4 h-4" />}
                 </Button>
-              ))}
-            </div>
+                
+                {/* 모바일 정렬 옵션 */}
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="latest">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        최신순
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="popular">
+                      <div className="flex items-center gap-2">
+                        <ThumbsUp className="w-4 h-4" />
+                        인기순
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="trending">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        트렌딩
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="views">
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4" />
+                        조회순
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="comments">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="w-4 h-4" />
+                        댓글순
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            {/* 카테고리 필터 (중요도 순으로 표시) */}
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={selectedCategory === undefined ? "default" : "outline"}
-                onClick={() => setSelectedCategory(undefined)}
-                className="text-sm"
-              >
-                전체 카테고리
-              </Button>
-              {categories?.map((category) => (
-                <Button
-                  key={category.id}
-                  variant={selectedCategory === category.id ? "default" : "outline"}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className="text-sm"
-                  style={{ 
-                    backgroundColor: selectedCategory === category.id ? category.color : undefined,
-                    borderColor: category.color
-                  }}
-                >
-                  {category.name}
-                </Button>
-              ))}
-            </div>
-            
-            {/* 정렬 옵션 */}
-            <div className="flex gap-2 ml-auto">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="latest">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      최신순
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="popular">
-                    <div className="flex items-center gap-2">
-                      <ThumbsUp className="w-4 h-4" />
-                      인기순
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="trending">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4" />
-                      트렌딩
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="views">
-                    <div className="flex items-center gap-2">
-                      <Eye className="w-4 h-4" />
-                      조회순
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="comments">
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="w-4 h-4" />
-                      댓글순
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            {/* 필터 컨테이너 - 모바일에서는 토글 */}
+            <div className={`transition-all duration-300 ${
+              isMobile 
+                ? showMobileFilters 
+                  ? 'opacity-100 max-h-96 overflow-visible' 
+                  : 'opacity-0 max-h-0 overflow-hidden'
+                : 'opacity-100'
+            }`}>
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* 커뮤니티 섹션 필터 */}
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant={selectedSection === undefined ? "default" : "outline"}
+                    onClick={() => setSelectedSection(undefined)}
+                    className="text-sm"
+                  >
+                    전체
+                  </Button>
+                  {sections?.map((section) => (
+                    <Button
+                      key={section.id}
+                      variant={selectedSection === section.id ? "default" : "outline"}
+                      onClick={() => setSelectedSection(section.id)}
+                      className="text-sm"
+                      style={{ 
+                        backgroundColor: selectedSection === section.id ? section.color : undefined,
+                        borderColor: section.color
+                      }}
+                    >
+                      {section.name}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* 카테고리 필터 (중요도 순으로 표시) */}
+                <div className="flex gap-2 flex-wrap">
+                  <Select value={selectedCategory?.toString() || "all"} onValueChange={(value) => {
+                    if (value === "all") {
+                      setSelectedCategory(undefined);
+                    } else {
+                      setSelectedCategory(parseInt(value));
+                    }
+                  }}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="카테고리 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        전체 카테고리
+                      </SelectItem>
+                      {categories?.map((category) => (
+                        <SelectItem key={category.id} value={category.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: category.color }}
+                            />
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* 정렬 옵션 - 데스크톱에서만 표시 */}
+                {!isMobile && (
+                  <div className="flex gap-2 ml-auto">
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="latest">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            최신순
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="popular">
+                          <div className="flex items-center gap-2">
+                            <ThumbsUp className="w-4 h-4" />
+                            인기순
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="trending">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4" />
+                            트렌딩
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="views">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-4 h-4" />
+                            조회순
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="comments">
+                          <div className="flex items-center gap-2">
+                            <MessageCircle className="w-4 h-4" />
+                            댓글순
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* 검색창이 숨겨진 상태에서 검색 결과 표시 */}
+          {isScrolled && searchQuery && (
+            <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">검색어:</span>
+                <span className="font-medium">"{searchQuery}"</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="ml-auto h-6 w-6 p-0"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="space-y-4">
