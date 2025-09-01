@@ -256,11 +256,22 @@ const Profile = () => {
       
       const filePath = `${user.id}.png`;
 
+      // Storage에 업로드 (RLS 정책이 설정되어 있지 않으면 실패할 수 있음)
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, croppedImageFile, { upsert: true });
+        .upload(filePath, croppedImageFile, { 
+          upsert: true,
+          cacheControl: '3600'
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        // RLS 정책 에러인 경우 더 자세한 에러 메시지 제공
+        if (uploadError.message.includes('row-level security')) {
+          throw new Error('Storage 정책이 설정되지 않았습니다. 관리자에게 문의하세요.');
+        }
+        throw uploadError;
+      }
 
       const { data } = supabase.storage
         .from('avatars')
@@ -269,10 +280,15 @@ const Profile = () => {
       const publicUrl = data.publicUrl;
       const newAvatarUrl = `${publicUrl}?t=${new Date().getTime()}`;
 
+      // 프로필 테이블 업데이트
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: newAvatarUrl })
-        .eq('id', user.id);
+        .update({ 
+          avatar_url: newAvatarUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+        .select();
 
       if (updateError) throw updateError;
       
@@ -280,6 +296,7 @@ const Profile = () => {
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
       setImgSrc(''); // 모달 닫기
     } catch (error: any) {
+      console.error('Image upload error:', error);
       toast.error(`업로드 실패: ${error.message}`);
     } finally {
       setUploading(false);
@@ -309,14 +326,19 @@ const Profile = () => {
       // 3. profiles 테이블에서 avatar_url을 null로 업데이트
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: null })
-        .eq('id', user.id);
+        .update({ 
+          avatar_url: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+        .select();
 
       if (updateError) throw updateError;
 
       toast.success("프로필 사진이 삭제되었습니다.");
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
     } catch (error: any) {
+      console.error('Avatar remove error:', error);
       toast.error(`삭제 실패: ${error.message}`);
     } finally {
       setRemoving(false);
@@ -329,7 +351,11 @@ const Profile = () => {
       if (!user) throw new Error("User not found");
       const { data, error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName, username: username })
+        .update({ 
+          full_name: fullName, 
+          username: username,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', user.id)
         .select()
         .single();
@@ -341,6 +367,7 @@ const Profile = () => {
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
     },
     onError: (error) => {
+      console.error('Profile update error:', error);
       toast.error(`업데이트 실패: ${error.message}`);
     }
   });
