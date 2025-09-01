@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -389,12 +389,14 @@ const PostDetail = () => {
     };
   }, [postId, id, queryClient]);
 
-  // 조회수 기록
+  // 조회수 기록 (개발 모드 StrictMode로 인한 중복 실행 방지)
+  const hasRecordedViewRef = useRef(false);
   useEffect(() => {
-    if (postId) {
-      recordPostView(postId, user?.id);
-    }
-  }, [postId, user?.id]);
+    if (!postId) return;
+    if (hasRecordedViewRef.current) return;
+    hasRecordedViewRef.current = true;
+    recordPostView(postId, user?.id);
+  }, [postId]);
 
   // 투표 뮤테이션
   const voteMutation = useMutation({
