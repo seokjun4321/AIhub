@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MentionInput } from "@/components/ui/mention-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -15,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { processMentions } from "@/lib/mentions";
 import { toast } from "sonner";
 
 // 커뮤니티 섹션 데이터를 가져오는 함수
@@ -158,6 +160,11 @@ const EditPost = () => {
         .single();
 
       if (error) throw new Error(error.message);
+      
+      // 멘션 처리 (기존 멘션은 삭제 후 새로 생성)
+      await supabase.from('mentions').delete().eq('post_id', numericId);
+      await processMentions(updatedPost.content, user.id, numericId, undefined);
+      
       return data;
     },
     onSuccess: (data) => {
@@ -369,13 +376,12 @@ const EditPost = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="content">내용</Label>
-                  <Textarea
-                    id="content"
+                  <MentionInput
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="게시글 내용을 입력하세요"
-                    rows={10}
+                    onChange={setContent}
+                    placeholder="게시글 내용을 입력하세요... (@사용자명으로 멘션 가능)"
                     disabled={updatePostMutation.isPending}
+                    className="min-h-[250px]"
                   />
                 </div>
 

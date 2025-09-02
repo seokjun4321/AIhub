@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePoints } from '@/hooks/usePoints';
 import Navbar from '@/components/ui/navbar';
 import Footer from '@/components/ui/footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,9 +16,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useNavigate, Link } from 'react-router-dom';
-import { Upload, Trash2, Loader2, MessageSquare, ThumbsUp, Bookmark, Eye, Calendar, User } from 'lucide-react';
+import { Upload, Trash2, Loader2, MessageSquare, ThumbsUp, Bookmark, Eye, Calendar, User, Star, Trophy, TrendingUp } from 'lucide-react';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { PointDisplay } from '@/components/ui/point-display';
+import { LevelProgress } from '@/components/ui/level-progress';
+import { AchievementList } from '@/components/ui/achievement-badge';
+import { PointHistory } from '@/components/ui/point-history';
 
 // 프로필 데이터를 가져오는 함수
 const fetchProfile = async (userId: string) => {
@@ -178,6 +183,12 @@ const Profile = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { 
+    pointHistoryQuery, 
+    levelConfigQuery, 
+    achievementsQuery, 
+    getCurrentLevelInfo 
+  } = usePoints();
 
   // --- 기존 상태 ---
   const [fullName, setFullName] = useState('');
@@ -397,8 +408,11 @@ const Profile = () => {
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-6 max-w-4xl">
           <Tabs defaultValue="profile" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="profile">프로필</TabsTrigger>
+              <TabsTrigger value="level">레벨</TabsTrigger>
+              <TabsTrigger value="achievements">업적</TabsTrigger>
+              <TabsTrigger value="points">포인트</TabsTrigger>
               <TabsTrigger value="posts">게시글</TabsTrigger>
               <TabsTrigger value="comments">댓글</TabsTrigger>
               <TabsTrigger value="votes">추천</TabsTrigger>
@@ -449,6 +463,43 @@ const Profile = () => {
                     <div className="text-center">
                       <h2 className="text-2xl font-bold">{profile.full_name}</h2>
                       <p className="text-muted-foreground">@{profile.username}</p>
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const level = profile.level || 1;
+                            const getLevelStyle = (level: number) => {
+                              if (level >= 10) {
+                                return {
+                                  gradient: "from-yellow-500 to-orange-600",
+                                  icon: "👑"
+                                };
+                              } else if (level >= 5) {
+                                return {
+                                  gradient: "from-purple-500 to-pink-600",
+                                  icon: "⚡"
+                                };
+                              } else {
+                                return {
+                                  gradient: "from-blue-500 to-purple-600",
+                                  icon: "⭐"
+                                };
+                              }
+                            };
+                            const levelStyle = getLevelStyle(level);
+                            return (
+                              <div className={`bg-gradient-to-r ${levelStyle.gradient} text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1.5 border border-white/20`}>
+                                <span className="text-xs">{levelStyle.icon}</span>
+                                <span>Lv.{level}</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <PointDisplay 
+                          points={profile.total_points || 0} 
+                          type="total" 
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   </div>
                   
@@ -469,6 +520,116 @@ const Profile = () => {
                       {updateProfileMutation.isPending || uploading ? "저장 중..." : "변경사항 저장"}
                     </Button>
                   </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 레벨 탭 */}
+            <TabsContent value="level">
+              <div className="grid gap-6 md:grid-cols-2">
+                <LevelProgress 
+                  currentLevel={profile.level || 1}
+                  currentExp={profile.experience_points || 0}
+                  levelTitle={levelConfigQuery.data?.find(lc => lc.level === (profile.level || 1))?.title}
+                  nextLevelExp={levelConfigQuery.data?.find(lc => lc.level === (profile.level || 1) + 1)?.min_experience}
+                />
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-blue-500" />
+                      활동 통계
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">{profile.post_count || 0}</div>
+                        <div className="text-sm text-gray-600">게시글</div>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">{profile.comment_count || 0}</div>
+                        <div className="text-sm text-gray-600">댓글</div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">총 포인트</span>
+                        <PointDisplay points={profile.total_points || 0} type="total" size="sm" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">이번 주 포인트</span>
+                        <PointDisplay points={profile.points_this_week || 0} type="weekly" size="sm" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">이번 달 포인트</span>
+                        <PointDisplay points={profile.points_this_month || 0} type="monthly" size="sm" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">연속 활동</span>
+                        <PointDisplay points={profile.streak_days || 0} type="streak" size="sm" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* 업적 탭 */}
+            <TabsContent value="achievements">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-yellow-500" />
+                    업적 ({achievementsQuery.data?.filter(a => a.earned).length || 0} / {achievementsQuery.data?.length || 0})
+                  </CardTitle>
+                  <CardDescription>
+                    다양한 활동을 통해 업적을 달성해보세요!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {achievementsQuery.isLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
+                    </div>
+                  ) : achievementsQuery.data ? (
+                    <AchievementList achievements={achievementsQuery.data} />
+                  ) : (
+                    <div className="text-center py-8">
+                      <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">업적을 불러올 수 없습니다.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 포인트 탭 */}
+            <TabsContent value="points">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    포인트 이력
+                  </CardTitle>
+                  <CardDescription>
+                    포인트 획득 및 사용 내역을 확인하세요.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pointHistoryQuery.isLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                    </div>
+                  ) : pointHistoryQuery.data ? (
+                    <PointHistory history={pointHistoryQuery.data} />
+                  ) : (
+                    <div className="text-center py-8">
+                      <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">포인트 이력을 불러올 수 없습니다.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

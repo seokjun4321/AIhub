@@ -8,11 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MentionInput } from "@/components/ui/mention-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ImageUpload } from "@/components/ui/image-upload";
 
 import { useAuth } from "@/hooks/useAuth";
+import { usePoints } from "@/hooks/usePoints";
+import { processMentions } from "@/lib/mentions";
 import { toast } from "sonner";
 
 // 커뮤니티 섹션 데이터를 가져오는 함수
@@ -54,6 +57,7 @@ const fetchPostCategories = async () => {
 const NewPost = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addPointsForPost } = usePoints();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedSection, setSelectedSection] = useState<string>("");
@@ -83,24 +87,30 @@ const NewPost = () => {
     }) => {
       if (!user) throw new Error("로그인이 필요합니다.");
 
-             const { data, error } = await supabase
-         .from('posts')
-         .insert({
-           title: newPost.title,
-           content: newPost.content,
-           author_id: user.id,
-           community_section_id: newPost.community_section_id,
-           category_id: newPost.category_id,
-           images: newPost.images,
-         })
-        .select()
-        .single();
+                   const { data, error } = await supabase
+        .from('posts')
+        .insert({
+          title: newPost.title,
+          content: newPost.content,
+          author_id: user.id,
+          community_section_id: newPost.community_section_id,
+          category_id: newPost.category_id,
+          images: newPost.images,
+        })
+       .select()
+       .single();
 
       if (error) throw new Error(error.message);
+      
+      // 멘션 처리
+      await processMentions(newPost.content, user.id, data.id, undefined);
+      
       return data;
     },
     onSuccess: (data) => {
       toast.success("게시글이 성공적으로 작성되었습니다!");
+      // 포인트 적립
+      addPointsForPost(data.id);
       navigate(`/community/${data.id}`);
     },
     onError: (error) => {
@@ -228,17 +238,16 @@ const NewPost = () => {
                   </div>
                 </div>
 
-                                 <div className="space-y-2">
-                   <Label htmlFor="content">내용</Label>
-                   <Textarea
-                     id="content"
-                     value={content}
-                     onChange={(e) => setContent(e.target.value)}
-                     placeholder="게시글 내용을 입력하세요"
-                     rows={10}
-                     disabled={createPostMutation.isPending}
-                   />
-                 </div>
+                                                 <div className="space-y-2">
+                  <Label htmlFor="content">내용</Label>
+                  <MentionInput
+                    value={content}
+                    onChange={setContent}
+                    placeholder="게시글 내용을 입력하세요... (@사용자명으로 멘션 가능)"
+                    disabled={createPostMutation.isPending}
+                    className="min-h-[250px]"
+                  />
+                </div>
 
                  {/* 이미지 업로드 */}
                  <div className="space-y-2">

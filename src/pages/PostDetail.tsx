@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/ui/navbar";
@@ -9,7 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MentionInput } from "@/components/ui/mention-input";
 import { SocialShare } from "@/components/ui/social-share";
+import { AcceptAnswer } from "@/components/ui/accept-answer";
+import { processMentions, renderMentionsAsLinks } from "@/lib/mentions";
+import { cn } from "@/lib/utils";
 import { 
   UserCircle, 
   Calendar, 
@@ -26,9 +30,11 @@ import {
   MoreHorizontal,
   Image as ImageIcon,
   Edit,
-  Trash2
+  Trash2,
+  CheckCircle2
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePoints } from "@/hooks/usePoints";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -36,6 +42,7 @@ import type { Database } from "@/integrations/supabase/types";
 type CommentWithReplies = Database['public']['Tables']['comments']['Row'] & {
   profiles: { username: string | null } | null;
   replies: CommentWithReplies[];
+  is_accepted?: boolean;
 };
 
 // --- Data Loading Functions ---
@@ -61,7 +68,7 @@ const fetchCommentsByPostId = async (postId: string) => {
   if (isNaN(numericId)) throw new Error("Invalid post ID");
   const { data, error } = await supabase
     .from('comments')
-    .select('*, profiles (username)')
+    .select('*, profiles (username), is_accepted')
     .eq('post_id', numericId)
     .order('created_at', { ascending: true });
   if (error) throw new Error(error.message);
@@ -99,14 +106,36 @@ const CommentForm = ({
   postId,
   parentId = null,
   onSuccess,
+  addPointsForComment,
+  postAuthorId,
 }: {
   postId: number;
   parentId?: number | null;
   onSuccess: () => void;
+  addPointsForComment: (commentId: number) => void;
+  postAuthorId?: string;
 }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
+
+  // 해당 게시물에 이미 댓글을 작성했는지 확인하는 쿼리
+  const { data: existingComments } = useQuery({
+    queryKey: ['userCommentsOnPost', postId, user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('comments')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('author_id', user.id)
+        .is('parent_comment_id', null); // 최상위 댓글만 확인
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id && !parentId, // 답변이 아닌 최상위 댓글만 확인
+  });
 
      const addCommentMutation = useMutation({
      mutationFn: async (newContent: string) => {
@@ -122,12 +151,31 @@ const CommentForm = ({
         .select()
         .single();
       if (error) throw new Error(error.message);
+      
+      // 멘션 처리
+      await processMentions(newContent, user.id, undefined, data.id);
+      
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['comments', String(postId)] });
+      queryClient.invalidateQueries({ queryKey: ['userCommentsOnPost', postId, user?.id] });
       setContent("");
       toast.success(parentId ? "답변이 등록되었습니다!" : "댓글이 등록되었습니다!");
+      
+      // 포인트 적립 조건:
+      // 1. 자기 게시물이 아닌 경우
+      // 2. 최상위 댓글인 경우 (답변이 아닌 경우)
+      // 3. 해당 게시물에 처음 댓글을 작성하는 경우
+      const shouldAddPoints = 
+        postAuthorId && user && postAuthorId !== user.id && // 자기 게시물이 아닌 경우
+        !parentId && // 최상위 댓글인 경우
+        existingComments && existingComments.length === 0; // 해당 게시물에 처음 댓글을 작성하는 경우
+      
+      if (shouldAddPoints) {
+        addPointsForComment(data.id);
+      }
+      
       onSuccess();
     },
     onError: (error) => {
@@ -152,12 +200,12 @@ const CommentForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 mt-4">
-      <Textarea
-        placeholder={parentId ? "답변을 작성하세요..." : "댓글을 작성하세요..."}
+      <MentionInput
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={setContent}
+        placeholder={parentId ? "답변을 작성하세요... (@사용자명으로 멘션 가능)" : "댓글을 작성하세요... (@사용자명으로 멘션 가능)"}
         disabled={addCommentMutation.isPending}
-        rows={2}
+        className="flex-1"
       />
       <Button type="submit" size="icon" disabled={addCommentMutation.isPending}>
         <Send className="w-4 h-4" />
@@ -167,7 +215,19 @@ const CommentForm = ({
 };
 
 // --- 🔧 NEW: Recursive Comment Component ---
-const Comment = ({ comment, postId }: { comment: CommentWithReplies; postId: number }) => {
+const Comment = ({ 
+  comment, 
+  postId, 
+  post,
+  addPointsForComment,
+  allComments
+}: { 
+  comment: CommentWithReplies; 
+  postId: number;
+  post?: { author_id: string; category_id: number };
+  addPointsForComment: (commentId: number) => void;
+  allComments: CommentWithReplies[];
+}) => {
   const [isReplying, setIsReplying] = useState(false);
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -220,8 +280,12 @@ const Comment = ({ comment, postId }: { comment: CommentWithReplies; postId: num
         return { action: 'voted' };
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['comments', String(postId)] });
+      // 댓글 작성자에게 포인트 적립 (추천인 경우)
+      if (result.action === 'voted' && comment.author_id && comment.author_id !== user?.id) {
+        addPointsForVote('comment', comment.id);
+      }
     },
     onError: (error) => {
       toast.error(`오류가 발생했습니다: ${error.message}`);
@@ -232,9 +296,15 @@ const Comment = ({ comment, postId }: { comment: CommentWithReplies; postId: num
     commentVoteMutation.mutate({ voteType });
   };
 
+  // 이미 채택된 답변이 있는지 확인
+  const hasAcceptedAnswer = allComments.some(c => c.is_accepted);
+
   return (
     <div className="flex flex-col">
-      <Card key={comment.id}>
+      <Card key={comment.id} className={cn(
+        "transition-all duration-200",
+        comment.is_accepted && "border-2 border-green-200 bg-green-50/30 shadow-md"
+      )}>
         <CardHeader>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
             <UserCircle className="w-4 h-4" />
@@ -247,8 +317,19 @@ const Comment = ({ comment, postId }: { comment: CommentWithReplies; postId: num
                 <span className="text-xs">수정됨</span>
               </>
             )}
+            {comment.is_accepted && (
+              <>
+                <span>·</span>
+                <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  채택된 답변
+                </Badge>
+              </>
+            )}
           </div>
-          <p>{comment.content}</p>
+          <p className={cn(
+            comment.is_accepted && "font-medium"
+          )}>{comment.content}</p>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
@@ -258,7 +339,7 @@ const Comment = ({ comment, postId }: { comment: CommentWithReplies; postId: num
                 size="sm"
                 onClick={() => handleCommentVote(1)}
                 disabled={!user || commentVoteMutation.isPending}
-                className="hover:bg-green-100 hover:text-green-700"
+                className="hover:bg-blue-100 hover:text-blue-700"
               >
                 <ThumbsUp className="w-4 h-4 mr-1" />
                 {comment.upvotes_count || 0}
@@ -274,6 +355,19 @@ const Comment = ({ comment, postId }: { comment: CommentWithReplies; postId: num
                 {comment.downvotes_count || 0}
               </Button>
             </div>
+
+            {/* 답변 채택 기능 - 질문 카테고리이고 최상위 댓글인 경우만 표시 */}
+            {post && post.category_id === 1 && !comment.parent_comment_id && (
+              <AcceptAnswer
+                commentId={comment.id}
+                postId={postId}
+                postAuthorId={post.author_id}
+                commentAuthorId={comment.author_id}
+                isAccepted={comment.is_accepted || false}
+                hasAcceptedAnswer={hasAcceptedAnswer}
+              />
+            )}
+
             <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)}>
               답변 달기
             </Button>
@@ -291,17 +385,23 @@ const Comment = ({ comment, postId }: { comment: CommentWithReplies; postId: num
 
       {isReplying && (
         <div className="ml-8 mt-2">
-          <CommentForm postId={postId} parentId={comment.id} onSuccess={() => setIsReplying(false)} />
+          <CommentForm 
+            postId={postId} 
+            parentId={comment.id} 
+            onSuccess={() => setIsReplying(false)} 
+            addPointsForComment={addPointsForComment}
+            postAuthorId={post?.author_id}
+          />
         </div>
       )}
 
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-8 mt-4 space-y-4 border-l-2 pl-4">
-          {comment.replies.map(reply => (
-            <Comment key={reply.id} comment={reply} postId={postId} />
-          ))}
-        </div>
-      )}
+                {comment.replies && comment.replies.length > 0 && (
+            <div className="ml-8 mt-4 space-y-4 border-l-2 pl-4">
+              {comment.replies.map(reply => (
+                <Comment key={reply.id} comment={reply} postId={postId} post={post} addPointsForComment={addPointsForComment} allComments={allComments} />
+              ))}
+            </div>
+          )}
     </div>
   );
 };
@@ -309,7 +409,9 @@ const Comment = ({ comment, postId }: { comment: CommentWithReplies; postId: num
 const PostDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { addPointsForComment, addPointsForVote, addPointsForAcceptedAnswer } = usePoints();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
   const postId = id ? parseInt(id, 10) : 0;
 
@@ -456,6 +558,10 @@ const PostDetail = () => {
         toast.success("투표가 변경되었습니다!");
       } else {
         toast.success("투표가 반영되었습니다!");
+        // 게시글 작성자에게 포인트 적립 (추천인 경우)
+        if (result.action === 'voted' && post?.author_id && post.author_id !== user?.id) {
+          addPointsForVote('post', postId);
+        }
       }
     },
     onError: (error) => {
@@ -565,6 +671,13 @@ const PostDetail = () => {
       } else {
         nested.push(commentMap[comment.id]);
       }
+    });
+
+    // 채택된 답변을 맨 위로 정렬
+    nested.sort((a, b) => {
+      if (a.is_accepted && !b.is_accepted) return -1;
+      if (!a.is_accepted && b.is_accepted) return 1;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 
     return nested;
@@ -731,7 +844,7 @@ const PostDetail = () => {
                 className={`${
                   userVote?.vote_type === 1 
                     ? "bg-blue-100 text-blue-700 hover:bg-blue-200" 
-                    : "hover:bg-green-100 hover:text-green-700"
+                    : "hover:bg-blue-100 hover:text-blue-700"
                 }`}
               >
                 <ThumbsUp className="w-6 h-6 mr-2" />
@@ -765,7 +878,14 @@ const PostDetail = () => {
                 <Skeleton className="h-20 w-full" />
               ) : (
                 nestedComments.map(comment => (
-                  <Comment key={comment.id} comment={comment} postId={postId} />
+                  <Comment 
+                    key={comment.id} 
+                    comment={comment} 
+                    postId={postId} 
+                    post={post ? { author_id: post.author_id, category_id: post.category_id } : undefined}
+                    addPointsForComment={addPointsForComment}
+                    allComments={nestedComments}
+                  />
                 ))
               )}
             </div>
@@ -775,7 +895,12 @@ const PostDetail = () => {
                 <CardTitle>댓글 작성</CardTitle>
               </CardHeader>
               <CardContent>
-                <CommentForm postId={postId} onSuccess={() => {}} />
+                <CommentForm 
+                  postId={postId} 
+                  onSuccess={() => {}} 
+                  addPointsForComment={addPointsForComment} 
+                  postAuthorId={post?.author_id}
+                />
               </CardContent>
             </Card>
           </section>

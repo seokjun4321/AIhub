@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Brain, Menu, X, Search, BookOpen, Users, Zap, LogOut, User, UserCog, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { NotificationDropdown } from "@/components/ui/notifications";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,9 +17,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// 사용자 프로필을 가져오는 함수
+const fetchUserProfile = async (userId: string) => {
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  if (error) throw new Error(error.message);
+  return data;
+};
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuth();
+  
+  // 사용자 프로필 데이터
+  const { data: userProfile } = useQuery({
+    queryKey: ['userProfile', user?.id],
+    queryFn: () => fetchUserProfile(user!.id),
+    enabled: !!user,
+  });
 
   const navItems = [
     { name: "AI 추천", href: "/recommend", icon: Zap },
@@ -58,15 +76,32 @@ const Navbar = () => {
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
             {user ? (
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="rounded-full">
-                    <User className="w-4 h-4" />
-                    <span className="sr-only">Open user menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
+              <>
+                <NotificationDropdown />
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="rounded-full p-0 h-8 w-8">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage 
+                          src={userProfile?.avatar_url || ''} 
+                          alt={userProfile?.username || 'User'} 
+                        />
+                        <AvatarFallback>
+                          {userProfile?.username?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="sr-only">Open user menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>내 계정</DropdownMenuLabel>
+                  <DropdownMenuLabel>
+                    <div>
+                      <div>내 계정</div>
+                      <div className="text-xs text-muted-foreground font-normal mt-1">
+                        @{userProfile?.username || 'user'}
+                      </div>
+                    </div>
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link to="/profile" className="flex items-center gap-2">
@@ -86,13 +121,14 @@ const Navbar = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <>
                 <Button variant="outline" size="sm" asChild>
-                  <Link to="/auth">로그인</Link>
+                  <Link to="/auth?tab=signin">로그인</Link>
                 </Button>
                 <Button size="sm" className="bg-gradient-primary hover:opacity-90" asChild>
-                  <Link to="/auth">시작하기</Link>
+                  <Link to="/auth?tab=signup">회원가입</Link>
                 </Button>
               </>
             )}
@@ -152,10 +188,10 @@ const Navbar = () => {
               ) : (
                 <>
                   <Button variant="outline" className="w-full" asChild>
-                    <Link to="/auth">로그인</Link>
+                    <Link to="/auth?tab=signin">로그인</Link>
                   </Button>
                   <Button className="w-full bg-gradient-primary hover:opacity-90" asChild>
-                    <Link to="/auth">시작하기</Link>
+                    <Link to="/auth?tab=signup">회원가입</Link>
                   </Button>
                 </>
               )}

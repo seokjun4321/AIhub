@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,10 @@ const Auth = () => {
   
   const { signIn, signUp, user } = useAuth();
   const nagivate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // URL 파라미터에서 탭 정보 가져오기
+  const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -83,7 +87,7 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">로그인</TabsTrigger>
                 <TabsTrigger value="signup">회원가입</TabsTrigger>

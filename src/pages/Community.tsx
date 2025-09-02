@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,9 +34,13 @@ import {
   Trash2,
   Settings,
   Calendar,
+  CheckCircle2,
   ThumbsUp as ThumbsUpIcon,
   MessageSquare as MessageSquareIcon
 } from "lucide-react";
+import { PointDisplay } from "@/components/ui/point-display";
+import { SimpleLevelProgress } from "@/components/ui/level-progress";
+import { usePoints } from "@/hooks/usePoints";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -109,6 +113,7 @@ const fetchPostsPage = async ({
       is_locked,
       images,
       author_id,
+      accepted_answer_id,
       profiles ( username ),
       community_sections ( name, color, icon ),
       post_categories ( name, color, icon )
@@ -205,12 +210,15 @@ const Community = () => {
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [sortBy, setSortBy] = useState('latest');
   const [searchQuery, setSearchQuery] = useState('');
+  const [solutionFilter, setSolutionFilter] = useState<'all' | 'solved' | 'unsolved'>('all');
   const [isScrolled, setIsScrolled] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { getCurrentLevelInfo, levelConfigQuery } = usePoints();
+  const navigate = useNavigate();
 
   // 🔧 NEW: Supabase Realtime 구독 - posts 테이블 업데이트를 실시간으로 반영
   useEffect(() => {
@@ -292,7 +300,7 @@ const Community = () => {
     error,
     refetch
   } = useInfiniteQuery({
-    queryKey: ['posts-infinite', selectedSection, selectedCategory, sortBy, searchQuery],
+    queryKey: ['posts-infinite', selectedSection, selectedCategory, sortBy, searchQuery, solutionFilter],
     queryFn: ({ pageParam }) => fetchPostsPage({ 
       pageParam, 
       sectionId: selectedSection, 
@@ -323,7 +331,15 @@ const Community = () => {
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   // 전체 게시글 데이터를 평면화
-  const posts = postsData?.pages.flatMap(page => page.data) || [];
+  const allPosts = postsData?.pages.flatMap(page => page.data) || [];
+  
+  // 해결 상태 필터링 (클라이언트 사이드)
+  const posts = allPosts.filter(post => {
+    if (solutionFilter === 'all') return true;
+    if (solutionFilter === 'solved') return post.accepted_answer_id !== null;
+    if (solutionFilter === 'unsolved') return post.accepted_answer_id === null;
+    return true;
+  });
 
   // 사용자의 모든 투표 상태를 한 번에 가져오기
   const { data: userVotes } = useQuery({
@@ -659,36 +675,67 @@ const Community = () => {
                   ))}
                 </div>
 
-                {/* 카테고리 필터 (중요도 순으로 표시) */}
-                <div className="flex gap-2 flex-wrap">
-                  <Select value={selectedCategory?.toString() || "all"} onValueChange={(value) => {
-                    if (value === "all") {
-                      setSelectedCategory(undefined);
-                    } else {
-                      setSelectedCategory(parseInt(value));
-                    }
-                  }}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="카테고리 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        전체 카테고리
-                      </SelectItem>
-                      {categories?.map((category) => (
-                        <SelectItem key={category.id} value={category.id.toString()}>
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: category.color }}
-                            />
-                            {category.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                                 {/* 카테고리 필터 (중요도 순으로 표시) */}
+                 <div className="flex gap-2 flex-wrap">
+                   <Select value={selectedCategory?.toString() || "all"} onValueChange={(value) => {
+                     if (value === "all") {
+                       setSelectedCategory(undefined);
+                     } else {
+                       setSelectedCategory(parseInt(value));
+                     }
+                   }}>
+                     <SelectTrigger className="w-[180px]">
+                       <SelectValue placeholder="카테고리 선택" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="all">
+                         전체 카테고리
+                       </SelectItem>
+                       {categories?.map((category) => (
+                         <SelectItem key={category.id} value={category.id.toString()}>
+                           <div className="flex items-center gap-2">
+                             <div 
+                               className="w-3 h-3 rounded-full" 
+                               style={{ backgroundColor: category.color }}
+                             />
+                             {category.name}
+                           </div>
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                   
+                   {/* 해결 상태 필터 - 질문 카테고리일 때만 표시 */}
+                   {selectedCategory === 1 && (
+                     <div className="flex gap-2">
+                       <Button
+                         variant={solutionFilter === 'all' ? "default" : "outline"}
+                         onClick={() => setSolutionFilter('all')}
+                         size="sm"
+                         className="text-sm"
+                       >
+                         전체
+                       </Button>
+                       <Button
+                         variant={solutionFilter === 'solved' ? "default" : "outline"}
+                         onClick={() => setSolutionFilter('solved')}
+                         size="sm"
+                         className="text-sm bg-green-100 text-green-800 hover:bg-green-200 border-green-200"
+                       >
+                         <CheckCircle2 className="w-3 h-3 mr-1" />
+                         해결됨
+                       </Button>
+                       <Button
+                         variant={solutionFilter === 'unsolved' ? "default" : "outline"}
+                         onClick={() => setSolutionFilter('unsolved')}
+                         size="sm"
+                         className="text-sm bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200"
+                       >
+                         미해결
+                       </Button>
+                     </div>
+                   )}
+                 </div>
                 
                 {/* 정렬 옵션 - 데스크톱에서만 표시 */}
                 {!isMobile && (
@@ -767,7 +814,13 @@ const Community = () => {
               ) : (
                 <div className="space-y-4">
                   {posts?.map((post) => (
-                    <Card key={post.id} className={`hover:shadow-md transition-shadow ${post.is_pinned ? 'border-l-4 border-l-yellow-500' : ''}`}>
+                    <Card
+                      key={post.id}
+                      className={`hover:shadow-md transition-shadow cursor-pointer ${post.is_pinned ? 'border-l-4 border-l-yellow-500' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`/community/${post.id}`)}
+                    >
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -792,6 +845,13 @@ const Community = () => {
                                   style={{ borderColor: post.post_categories.color, color: post.post_categories.color }}
                                 >
                                   {post.post_categories.name}
+                                </Badge>
+                              )}
+                              {/* 해결 상태 표시 - 질문 카테고리이고 답변이 채택된 경우 */}
+                              {post.post_categories?.name === '질문' && post.accepted_answer_id && (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  해결됨
                                 </Badge>
                               )}
                             </div>
@@ -838,14 +898,14 @@ const Community = () => {
                                 asChild
                                 className="h-8 w-8 p-0"
                               >
-                                <Link to={`/community/edit/${post.id}`}>
+                                <Link to={`/community/edit/${post.id}`} onClick={(e) => e.stopPropagation()}>
                                   <Edit className="w-4 h-4" />
                                 </Link>
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeletePost(post.id)}
+                                onClick={(e) => { e.stopPropagation(); handleDeletePost(post.id); }}
                                 disabled={deletePostMutation.isPending}
                                 className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
@@ -885,7 +945,7 @@ const Community = () => {
                               className={`${
                                 getUserVote(post.id) === 1
                                   ? "bg-blue-100 text-blue-700 hover:bg-blue-200" 
-                                  : "hover:bg-green-100 hover:text-green-700"
+                                  : "hover:bg-blue-100 hover:text-blue-700"
                               }`}
                             >
                               <ThumbsUp className="w-4 h-4 mr-1" />
@@ -995,22 +1055,59 @@ const Community = () => {
             {/* 오른쪽 사이드바 - 프로필 미리보기 (데스크톱에서만 표시) */}
             {!isMobile && user && (
               <div className="w-80 flex-shrink-0">
-                <Card className="sticky top-32">
+                <Card className="sticky top-40">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Settings className="w-4 h-4" />
-                      내 프로필
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-16 w-16">
                         <AvatarImage src={userProfile?.avatar_url || ''} alt={userProfile?.username || ''} />
                         <AvatarFallback>{userProfile?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-medium">{userProfile?.full_name || '사용자'}</p>
-                        <p className="text-sm text-muted-foreground">@{userProfile?.username || 'username'}</p>
+                      <div className="flex-1">
+                        <p className="text-xl font-bold leading-tight">{userProfile?.full_name || '사용자'}</p>
+                        <p className="text-base text-muted-foreground">@{userProfile?.username || 'username'}</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    
+                    
+                    {/* 레벨 진행률 */}
+                    {userProfile && (() => {
+                      const currentLevel = userProfile.level || 1;
+                      const currentExp = userProfile.experience_points || 0;
+                      
+                      // levelConfig에서 다음 레벨 경험치 찾기
+                      const nextLevelConfig = levelConfigQuery.data?.find(lc => lc.level === currentLevel + 1);
+                      const nextLevelExp = nextLevelConfig?.min_experience || (currentLevel * 100);
+                      
+                      return (
+                        <SimpleLevelProgress
+                          currentLevel={currentLevel}
+                          currentExp={currentExp}
+                          nextLevelExp={nextLevelExp}
+                          className="mb-3"
+                        />
+                      );
+                    })()}
+                    
+                    {/* 포인트 정보 */}
+                    <div className="space-y-2">
+                      <PointDisplay 
+                        points={userProfile?.total_points || 0} 
+                        type="total" 
+                        size="sm"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <PointDisplay 
+                          points={userProfile?.points_this_week || 0} 
+                          type="weekly" 
+                          size="sm"
+                        />
+                        <PointDisplay 
+                          points={userProfile?.streak_days || 0} 
+                          type="streak" 
+                          size="sm"
+                        />
                       </div>
                     </div>
                     
