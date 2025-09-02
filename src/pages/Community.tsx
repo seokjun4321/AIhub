@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +38,7 @@ import {
   ThumbsUp as ThumbsUpIcon,
   MessageSquare as MessageSquareIcon
 } from "lucide-react";
+import { Trophy, Sparkles } from "lucide-react";
 import { PointDisplay } from "@/components/ui/point-display";
 import { SimpleLevelProgress } from "@/components/ui/level-progress";
 import { usePoints } from "@/hooks/usePoints";
@@ -47,6 +48,74 @@ import { toast } from "sonner";
 
 // 페이지당 게시글 수
 const POSTS_PER_PAGE = 10;
+// 최근 7일 Top3 인기 게시물 계산을 위한 헬퍼
+const calculateHotScore = (post: any, bookmarksCount: number) => {
+  const likes = post.upvotes_count || 0;
+  const comments = post.comment_count || 0;
+  const bookmarks = bookmarksCount || 0;
+  const views = post.view_count || 0;
+  const createdAt = new Date(post.created_at).getTime();
+  const ageHours = Math.max(0, (Date.now() - createdAt) / (1000 * 60 * 60));
+  const base = likes * 3 + comments * 2 + bookmarks * 2 + Math.log(views + 1) * 0.5;
+  const decay = Math.exp(-ageHours / 24);
+  return base * decay;
+};
+
+const fetchTopHotPosts = async () => {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // 1) 최근 7일 게시글 가져오기 (상한을 두어 클라이언트 계산 비용 제한)
+  const { data: posts, error } = await supabase
+    .from('posts')
+    .select(`
+      id,
+      title,
+      created_at,
+      upvotes_count,
+      comment_count,
+      view_count,
+      images,
+      profiles ( username )
+    `)
+    .gte('created_at', sevenDaysAgo.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) throw new Error(error.message);
+  const postsArr = posts || [];
+
+  if (postsArr.length === 0) return [] as any[];
+
+  // 2) 북마크 수 집계
+  const postIds = postsArr.map(p => p.id);
+  const { data: bookmarks, error: bmError } = await supabase
+    .from('post_bookmarks')
+    .select('post_id')
+    .in('post_id', postIds);
+  if (bmError) throw new Error(bmError.message);
+  const bookmarkCounts = new Map<number, number>();
+  (bookmarks || []).forEach(b => {
+    bookmarkCounts.set(b.post_id, (bookmarkCounts.get(b.post_id) || 0) + 1);
+  });
+
+  // 3) 점수 계산 및 정렬 + 타이브레이커
+  const ranked = postsArr
+    .map(p => ({
+      post: p,
+      score: calculateHotScore(p, bookmarkCounts.get(p.id) || 0),
+      bookmarks: bookmarkCounts.get(p.id) || 0,
+    }))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const bc = (b.post.comment_count || 0) - (a.post.comment_count || 0);
+      if (bc !== 0) return bc;
+      return new Date(b.post.created_at).getTime() - new Date(a.post.created_at).getTime();
+    })
+    .slice(0, 3);
+
+  return ranked;
+};
 
 // 커뮤니티 섹션 데이터를 가져오는 함수
 const fetchCommunitySections = async () => {
@@ -69,7 +138,7 @@ const fetchPostCategories = async () => {
   if (error) throw new Error(error.message);
   
   // 중요도 순으로 재정렬 (기타는 맨 마지막에)
-  const categoryOrder = ['질문', '정보공유', '토론', '리뷰', '뉴스', '프로젝트', '유머', '기타'];
+  const categoryOrder = ['질문', '정보공유', '프롬프트 공유', '토론', '리뷰', '뉴스', '프로젝트', '유머', '기타'];
   const sortedData = data?.sort((a, b) => {
     const indexA = categoryOrder.indexOf(a.name);
     const indexB = categoryOrder.indexOf(b.name);
@@ -214,6 +283,7 @@ const Community = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const { user } = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -278,6 +348,50 @@ const Community = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // 게시글 상세에서 돌아올 때 이전 스크롤 위치 복구 (데이터 로드 후)
+  const restoreScroll = useCallback(() => {
+    // navigate state와 sessionStorage 둘 다 체크
+    const state = location.state as any;
+    const stateY = state?.restoreY;
+    const sessionY = sessionStorage.getItem('communityScrollY');
+    
+    const y = stateY !== undefined ? stateY : (sessionY ? parseInt(sessionY) : null);
+    
+    // console.log('Community: 복원할 스크롤 위치:', { stateY, sessionY, finalY: y });
+    
+    if (y === undefined || y === null) return;
+    
+    // 여러 단계로 스크롤 복원을 시도하여 확실하게 처리
+    const attemptScroll = (attempts = 0) => {
+      if (attempts >= 3) return; // 부드러운 스크롤이므로 최대 3번 시도
+      
+      requestAnimationFrame(() => {
+        const targetY = Number(y) || 0;
+        // console.log(`Community: 스크롤 시도 ${attempts + 1}, 목표: ${targetY}`);
+        
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+        
+        // 부드러운 스크롤을 위해 더 긴 대기 시간
+        setTimeout(() => {
+          const currentY = window.scrollY || document.documentElement.scrollTop;
+          // console.log(`Community: 현재 스크롤 위치: ${currentY}, 목표: ${targetY}`);
+          
+          if (Math.abs(currentY - targetY) > 10 && attempts < 3) {
+            // 부드러운 스크롤이므로 재시도 횟수를 줄이고 오차 허용 범위를 늘림
+            attemptScroll(attempts + 1);
+          } else {
+            // 성공했거나 최대 시도 횟수에 도달했으면 상태 정리
+            // console.log('Community: 스크롤 복원 완료');
+            sessionStorage.removeItem('communityScrollY');
+            navigate('.', { replace: true, state: {} });
+          }
+        }, 300);
+      });
+    };
+    
+    attemptScroll();
+  }, [location.state, navigate]);
+
   // 커뮤니티 섹션 데이터
   const { data: sections } = useQuery({
     queryKey: ['community-sections'],
@@ -311,6 +425,19 @@ const Community = () => {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
   });
+
+  // 데이터가 바뀌는 타이밍(필터/정렬/검색)과 첫 로드 완료 시 복원 시도
+  useEffect(() => {
+    if (!isLoading && postsData && postsData.pages.length > 0) {
+      // console.log('Community: 데이터 로드 완료, 스크롤 복원 시도');
+      // DOM이 완전히 렌더링된 후 복원 시도
+      const timer = setTimeout(() => {
+        restoreScroll();
+      }, 200);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, postsData, restoreScroll]);
 
   // 무한 스크롤 감지를 위한 Intersection Observer
   useEffect(() => {
@@ -555,11 +682,18 @@ const Community = () => {
     enabled: !!user,
   });
 
+  // Top 3 인기 게시물
+  const { data: topHotPosts } = useQuery({
+    queryKey: ['top-hot-posts'],
+    queryFn: fetchTopHotPosts,
+    staleTime: 60 * 1000,
+  });
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background community-page">
       <Navbar />
       <main className="pt-24 pb-12">
-        <div className="container mx-auto px-6">
+        <div className="mx-auto px-6 max-w-[1100px]">
                      <div className="text-center md:text-left mb-8">
              <h1 className="text-4xl md:text-5xl font-bold">커뮤니티</h1>
              <p className="text-xl text-muted-foreground mt-4">
@@ -583,9 +717,12 @@ const Community = () => {
           </div>
 
                      {/* 필터 및 정렬 - 스크롤 시 sticky */}
-           <div className={`bg-background/95 backdrop-blur-sm border-b transition-all duration-300 ${
-             isScrolled ? 'sticky top-16 z-40 py-4 -mx-6 px-6 shadow-sm' : 'mb-8 py-6'
-           }`}>
+           <div
+            className={`bg-background/95 backdrop-blur-sm border-b transition-all duration-300 ${
+              isScrolled ? 'sticky top-16 z-40 py-4 shadow-sm' : 'mb-8 py-6'
+            }`}
+            style={{ left: 0, right: 0 }}
+           >
             {/* 모바일 필터 토글 버튼 */}
             {isMobile && (
               <div className="flex items-center justify-between mb-4">
@@ -805,6 +942,39 @@ const Community = () => {
           <div className="flex gap-6">
             {/* 메인 콘텐츠 */}
             <div className="flex-1">
+              {/* Top 3 인기 게시물 - 메인 왼쪽 상단 */}
+              <Card className="mb-6 border-2 border-primary/20 shadow-md overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-amber-100 to-rose-100 pb-2">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-500" />
+                    Top 3 인기 게시물
+                  </CardTitle>
+                  <CardDescription className="text-sm">최근 7일, 시간가중 점수</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-2">
+                  {(!topHotPosts || topHotPosts.length === 0) ? (
+                    <div className="text-sm text-muted-foreground">표시할 게시물이 없습니다.</div>
+                  ) : (
+                    topHotPosts.map((item: any, idx: number) => (
+                      <Link key={item.post.id} to={`/community/${item.post.id}`} className="block group">
+                        <div className="flex items-start gap-2">
+                          <div className={`w-8 h-8 rounded-full text-white text-xs flex items-center justify-center mt-0.5 shadow ${idx===0 ? 'bg-amber-500' : idx===1 ? 'bg-slate-400' : 'bg-orange-700'}`}>{idx + 1}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-[16px] md:text-[17px] group-hover:text-primary truncate">{item.post.title}</div>
+                            <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1"><ThumbsUpIcon className="w-3 h-3" />{item.post.upvotes_count || 0}</div>
+                              <div className="flex items-center gap-1"><MessageSquareIcon className="w-3 h-3" />{item.post.comment_count || 0}</div>
+                              <div className="flex items-center gap-1"><Bookmark className="w-3 h-3" />{item.bookmarks || 0}</div>
+                              <div className="flex items-center gap-1"><Eye className="w-3 h-3" />{item.post.view_count || 0}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
               {isLoading ? (
                 <div className="space-y-4">
                   {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
@@ -819,7 +989,13 @@ const Community = () => {
                       className={`hover:shadow-md transition-shadow cursor-pointer ${post.is_pinned ? 'border-l-4 border-l-yellow-500' : ''}`}
                       role="button"
                       tabIndex={0}
-                      onClick={() => navigate(`/community/${post.id}`)}
+                      onClick={() => {
+                        // 게시글 클릭 시 현재 스크롤 위치 저장
+                        const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+                        // console.log('Community: 게시글 클릭 시 스크롤 위치 저장:', currentScrollY);
+                        sessionStorage.setItem('communityScrollY', currentScrollY.toString());
+                        navigate(`/community/${post.id}`);
+                      }}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -855,7 +1031,15 @@ const Community = () => {
                                 </Badge>
                               )}
                             </div>
-                            <Link to={`/community/${post.id}`}>
+                            <Link 
+                              to={`/community/${post.id}`}
+                              onClick={(e) => {
+                                // 링크 클릭 시에도 스크롤 위치 저장
+                                const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+                                // console.log('Community: 링크 클릭 시 스크롤 위치 저장:', currentScrollY);
+                                sessionStorage.setItem('communityScrollY', currentScrollY.toString());
+                              }}
+                            >
                               <CardTitle className="text-lg hover:text-primary transition-colors">
                                 {post.title}
                               </CardTitle>
@@ -1054,8 +1238,8 @@ const Community = () => {
 
             {/* 오른쪽 사이드바 - 프로필 미리보기 (데스크톱에서만 표시) */}
             {!isMobile && user && (
-              <div className="w-80 flex-shrink-0">
-                <Card className="sticky top-40">
+              <div className="w-80 flex-shrink-0 profile-card-container">
+                <Card className="profile-card">
                   <CardHeader>
                     <div className="flex items-center gap-4">
                       <Avatar className="h-16 w-16">
@@ -1079,6 +1263,8 @@ const Community = () => {
                       // levelConfig에서 다음 레벨 경험치 찾기
                       const nextLevelConfig = levelConfigQuery.data?.find(lc => lc.level === currentLevel + 1);
                       const nextLevelExp = nextLevelConfig?.min_experience || (currentLevel * 100);
+                      
+
                       
                       return (
                         <SimpleLevelProgress
@@ -1140,6 +1326,47 @@ const Community = () => {
                         </Link>
                       </Button>
                     </div>
+                  </CardContent>
+                </Card>
+
+              </div>
+            )}
+
+            {/* 게스트용 CTA 사이드 카드 */}
+            {!isMobile && !user && (
+              <div className="w-80 flex-shrink-0 profile-card-container">
+                <Card className="border-2 border-primary/20 shadow-md overflow-hidden profile-card">
+                  <CardHeader className="bg-gradient-to-r from-indigo-50 to-pink-50">
+                    <CardTitle className="text-xl">AIHub 커뮤니티에 참여하세요</CardTitle>
+                    <CardDescription>AI의 무한한 가능성, 혼자 탐색하지 마세요.</CardDescription>
+                    <div className="mt-2 flex gap-2">
+                      <Badge variant="secondary" className="text-xs">무료 참여</Badge>
+                      <Badge variant="secondary" className="text-xs">초보 환영</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-3">
+                    <div className="text-sm">
+                      <span className="font-semibold">막막한 AI 학습</span>도, <span className="font-semibold">막히는 코드 에러</span>도 혼자 끙끙대지 마세요.
+                    </div>
+                    <div className="text-sm">여기서 <span className="font-semibold">질문</span>하고 <span className="font-semibold">답변</span>하며, 함께 성장해요.</div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-start gap-2">
+                        <Sparkles className="w-4 h-4 mt-0.5 text-amber-500" />
+                        <p><span className="font-medium">지식 공유의 즐거움</span> · 궁금증을 풀고 노하우를 나누며 <span className="font-semibold">포인트</span>를 쌓으세요.</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <TrendingUp className="w-4 h-4 mt-0.5 text-green-600" />
+                        <p><span className="font-medium">성장의 기쁨</span> · 질문/답변으로 지식을 채우고 <span className="font-semibold">레벨업</span> 하세요.</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Bookmark className="w-4 h-4 mt-0.5 text-blue-600" />
+                        <p><span className="font-medium">나만의 AI 라이브러리</span> · 유용한 답변을 <span className="font-semibold">북마크</span>해 나만의 지식 창고를 만드세요.</p>
+                      </div>
+                    </div>
+                    <Button asChild className="w-full mt-2 bg-gradient-to-r from-primary to-pink-500 hover:from-primary/90 hover:to-pink-500/90">
+                      <Link to="/auth">지금 가입하고 시작하기</Link>
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center">가입은 1분이면 완료돼요. 언제든 탈퇴 가능.</p>
                   </CardContent>
                 </Card>
               </div>

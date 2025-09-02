@@ -160,6 +160,11 @@ const CommentForm = ({
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['comments', String(postId)] });
       queryClient.invalidateQueries({ queryKey: ['userCommentsOnPost', postId, user?.id] });
+      // 프로필 > 내 댓글 / 사용자 통계 갱신을 위해 관련 쿼리 무효화
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: ['userComments', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['userStats', user.id] });
+      }
       setContent("");
       toast.success(parentId ? "답변이 등록되었습니다!" : "댓글이 등록되었습니다!");
       
@@ -199,17 +204,19 @@ const CommentForm = ({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 mt-4">
-      <MentionInput
-        value={content}
-        onChange={setContent}
-        placeholder={parentId ? "답변을 작성하세요... (@사용자명으로 멘션 가능)" : "댓글을 작성하세요... (@사용자명으로 멘션 가능)"}
-        disabled={addCommentMutation.isPending}
-        className="flex-1"
-      />
-      <Button type="submit" size="icon" disabled={addCommentMutation.isPending}>
-        <Send className="w-4 h-4" />
-      </Button>
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="flex gap-2 w-full">
+        <MentionInput
+          value={content}
+          onChange={setContent}
+          placeholder={parentId ? "답변을 작성하세요... (@사용자명으로 멘션 가능)" : "댓글을 작성하세요... (@사용자명으로 멘션 가능)"}
+          disabled={addCommentMutation.isPending}
+          className="flex-1 w-full min-h-[60px] text-sm"
+        />
+        <Button type="submit" size="icon" disabled={addCommentMutation.isPending} className="self-start">
+          <Send className="w-4 h-4" />
+        </Button>
+      </div>
     </form>
   );
 };
@@ -693,11 +700,24 @@ const PostDetail = () => {
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-6 max-w-4xl">
           <div className="mb-6">
-            <Button asChild variant="outline">
-              <Link to="/community">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                목록으로
-              </Link>
+            <Button
+              variant="outline"
+              onClick={() => {
+                // sessionStorage에서 저장된 커뮤니티 스크롤 위치 가져오기
+                const savedScrollY = sessionStorage.getItem('communityScrollY');
+                const y = savedScrollY ? parseInt(savedScrollY) : 0;
+                
+                // console.log('PostDetail: 저장된 커뮤니티 스크롤 위치 사용:', y);
+                
+                // 즉시 네비게이션
+                navigate('/community', { 
+                  state: { restoreY: y },
+                  replace: false
+                });
+              }}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              목록으로
             </Button>
           </div>
           <article>
@@ -809,17 +829,21 @@ const PostDetail = () => {
                   <p>{post.content}</p>
                 </div>
                 
-                {/* 게시글 이미지 표시 */}
+                {/* 게시글 이미지 표시 - 레딧 스타일 */}
                 {post.images && post.images.length > 0 && (
                   <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-3">첨부된 이미지</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-6">
                       {post.images.map((imageUrl, index) => (
                         <div key={index} className="relative group">
                           <img
                             src={imageUrl}
                             alt={`게시글 이미지 ${index + 1}`}
-                            className="w-full h-48 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                            className="w-full rounded-lg cursor-pointer hover:opacity-95 transition-opacity"
+                            style={{ 
+                              maxHeight: '80vh',
+                              objectFit: 'contain',
+                              backgroundColor: '#f8f9fa'
+                            }}
                             onClick={() => window.open(imageUrl, '_blank')}
                             onError={(e) => {
                               e.currentTarget.src = '/placeholder.svg';
@@ -873,7 +897,28 @@ const PostDetail = () => {
               댓글 ({comments?.length || 0})
             </h2>
             
-            <div className="space-y-6 mb-8">
+            {/* 댓글 작성창 - 맨 위에 고정 */}
+            <Card className="sticky top-20 z-30 bg-background/95 backdrop-blur-sm border border-primary/20 shadow-md mb-4">
+              <CardHeader className="pb-2 px-4 pt-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  댓글 작성
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 px-0 pb-3">
+                <div className="px-4">
+                  <CommentForm 
+                    postId={postId} 
+                    onSuccess={() => {}} 
+                    addPointsForComment={addPointsForComment} 
+                    postAuthorId={post?.author_id}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* 댓글 목록 */}
+            <div className="space-y-6">
               {areCommentsLoading ? (
                 <Skeleton className="h-20 w-full" />
               ) : (
@@ -889,20 +934,6 @@ const PostDetail = () => {
                 ))
               )}
             </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>댓글 작성</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CommentForm 
-                  postId={postId} 
-                  onSuccess={() => {}} 
-                  addPointsForComment={addPointsForComment} 
-                  postAuthorId={post?.author_id}
-                />
-              </CardContent>
-            </Card>
           </section>
         </div>
       </main>

@@ -7,7 +7,9 @@ All colors MUST be HSL.
 */
 
 html {
-  overflow-y: scroll;
+  overflow-y: scroll !important;
+  /* Prevent layout shift when vertical scrollbar appears/disappears */
+  scrollbar-gutter: stable both-edges;
 }
 
 @layer base {
@@ -114,5 +116,43 @@ html {
 
   body {
     @apply bg-background text-foreground;
+    /* Also reserve scrollbar space at body level for some browsers */
+    overflow-y: scroll !important;
+    scrollbar-gutter: stable both-edges;
+    /* Prevent horizontal shift on dropdowns locking scroll */
+    width: 100%;
   }
+
+  /* If libraries set inline overflow:hidden on body, keep layout width stable */
+  body[style*="overflow: hidden"] {
+    padding-right: 0 !important;
+  }
+}
+
+/* 프로필 카드 sticky 강제 제거 */
+.profile-card-container,
+.profile-card-container * {
+  position: static !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+}
+
+.profile-card,
+.profile-card * {
+  position: static !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+}
+
+/* 프로필 카드 sticky 문제 해결 - 정확한 타겟팅 */
+.community-page .w-80.flex-shrink-0.profile-card-container {
+  position: static !important;
+  top: auto !important;
+}
+
+.community-page .w-80.flex-shrink-0.profile-card-container .profile-card {
+  position: static !important;
+  top: auto !important;
 }

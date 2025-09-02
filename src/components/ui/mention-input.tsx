@@ -130,14 +130,14 @@ export const MentionInput = ({
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <Textarea
         ref={textareaRef}
         value={value}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className={cn("min-h-[100px] resize-none", className)}
+        className={cn("min-h-[60px] resize-none text-sm w-full", className)}
         disabled={disabled}
         maxLength={maxLength}
       />

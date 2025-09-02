@@ -20,12 +20,17 @@ export function LevelProgress({
   levelTitle,
   className 
 }: LevelProgressProps) {
-  // 다음 레벨 경험치가 없으면 현재 레벨의 최소 경험치를 기준으로 계산
-  const currentLevelExp = (currentLevel - 1) * 100; // 간단한 계산 (실제로는 DB에서 가져와야 함)
+  // 현재 레벨의 최소 경험치 계산 (레벨 1: 0, 레벨 2: 100, 레벨 3: 200, ...)
+  const currentLevelMinExp = (currentLevel - 1) * 100;
   const nextLevelRequiredExp = nextLevelExp || currentLevel * 100;
-  const progress = nextLevelRequiredExp > currentLevelExp 
-    ? ((currentExp - currentLevelExp) / (nextLevelRequiredExp - currentLevelExp)) * 100
+  
+  // 현재 레벨에서의 진행률 계산
+  const progress = nextLevelRequiredExp > currentLevelMinExp 
+    ? ((currentExp - currentLevelMinExp) / (nextLevelRequiredExp - currentLevelMinExp)) * 100
     : 100;
+  
+  // progress가 100을 초과하지 않도록 제한
+  const clampedProgress = Math.min(progress, 100);
 
   // 레벨에 따른 스타일 결정
   const getLevelStyle = (level: number) => {
@@ -83,7 +88,7 @@ export function LevelProgress({
               {currentExp.toLocaleString()} / {nextLevelRequiredExp.toLocaleString()}
             </span>
           </div>
-          <Progress value={progress} className="h-3" />
+          <Progress value={clampedProgress} className="h-3" />
         </div>
 
         <div className="flex items-center gap-4 text-sm">
@@ -95,7 +100,7 @@ export function LevelProgress({
           />
           <div className="flex items-center gap-1 text-gray-600">
             <Star className="w-4 h-4 text-yellow-500" />
-            <span>진행률: {Math.round(progress)}%</span>
+            <span>진행률: {Math.round(clampedProgress)}%</span>
           </div>
         </div>
       </CardContent>
@@ -117,11 +122,19 @@ export function SimpleLevelProgress({
   nextLevelExp,
   className 
 }: SimpleLevelProgressProps) {
-  const currentLevelExp = (currentLevel - 1) * 100;
+  // 현재 레벨의 최소 경험치 계산 (레벨 1: 0, 레벨 2: 100, 레벨 3: 200, ...)
+  const currentLevelMinExp = (currentLevel - 1) * 100;
   const nextLevelRequiredExp = nextLevelExp || currentLevel * 100;
-  const progress = nextLevelRequiredExp > currentLevelExp 
-    ? ((currentExp - currentLevelExp) / (nextLevelRequiredExp - currentLevelExp)) * 100
+  
+  // 현재 레벨에서의 진행률 계산
+  const progress = nextLevelRequiredExp > currentLevelMinExp 
+    ? ((currentExp - currentLevelMinExp) / (nextLevelRequiredExp - currentLevelMinExp)) * 100
     : 100;
+  
+  // progress가 100을 초과하지 않도록 제한
+  const clampedProgress = Math.min(progress, 100);
+  
+
 
   // 레벨에 따른 스타일 결정
   const getLevelStyle = (level: number) => {
@@ -162,7 +175,13 @@ export function SimpleLevelProgress({
           {currentExp.toLocaleString()} / {nextLevelRequiredExp.toLocaleString()} EXP
         </span>
       </div>
-      <Progress value={progress} className="h-2" />
+      {/* Progress 컴포넌트 대신 직접 div로 구현 */}
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+          style={{ width: `${clampedProgress}%` }}
+        />
+      </div>
     </div>
   );
 }

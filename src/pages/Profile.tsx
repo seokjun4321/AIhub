@@ -56,22 +56,17 @@ const fetchUserPosts = async (userId: string) => {
   return data || [];
 };
 
-// 사용자의 댓글을 가져오는 함수
+// 사용자의 댓글을 가져오는 함수 (단순 조회로 변경: 조인 이슈 회피)
 const fetchUserComments = async (userId: string) => {
   const { data, error } = await supabase
     .from('comments')
     .select(`
       id,
+      post_id,
       content,
       created_at,
       upvotes_count,
-      downvotes_count,
-      posts (
-        id,
-        title,
-        community_sections ( name, color, icon ),
-        post_categories ( name, color, icon )
-      )
+      downvotes_count
     `)
     .eq('author_id', userId)
     .order('created_at', { ascending: false });
@@ -191,6 +186,7 @@ const Profile = () => {
   } = usePoints();
 
   // --- 기존 상태 ---
+  const [activeTab, setActiveTab] = useState('profile');
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -214,24 +210,36 @@ const Profile = () => {
     queryKey: ['userPosts', user?.id],
     queryFn: () => fetchUserPosts(user!.id),
     enabled: !!user,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: userComments, isLoading: isCommentsLoading } = useQuery({
     queryKey: ['userComments', user?.id],
     queryFn: () => fetchUserComments(user!.id),
     enabled: !!user,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: userVotedPosts, isLoading: isVotedPostsLoading } = useQuery({
     queryKey: ['userVotedPosts', user?.id],
     queryFn: () => fetchUserVotedPosts(user!.id),
     enabled: !!user,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: userBookmarkedPosts, isLoading: isBookmarkedPostsLoading } = useQuery({
     queryKey: ['userBookmarkedPosts', user?.id],
     queryFn: () => fetchUserBookmarkedPosts(user!.id),
     enabled: !!user,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   useEffect(() => {
@@ -407,7 +415,14 @@ const Profile = () => {
       <Navbar />
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-6 max-w-4xl">
-          <Tabs defaultValue="profile" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={(v) => {
+            setActiveTab(v);
+            if (v === 'comments' && user?.id) {
+              // 프로필의 내 댓글 탭으로 전환 시 즉시 최신 데이터로 새로고침
+              queryClient.invalidateQueries({ queryKey: ['userComments', user.id] });
+              queryClient.refetchQueries({ queryKey: ['userComments', user.id] });
+            }
+          }} className="space-y-6">
             <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="profile">프로필</TabsTrigger>
               <TabsTrigger value="level">레벨</TabsTrigger>
@@ -727,37 +742,18 @@ const Profile = () => {
                       {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
                     </div>
                   ) : userComments && userComments.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       {userComments.map((comment) => (
-                        <div key={comment.id} className="p-4 border rounded-lg">
-                          <div className="flex items-center gap-2 mb-2">
-                            {comment.posts?.community_sections && (
-                              <Badge 
-                                variant="secondary"
-                                style={{ backgroundColor: comment.posts.community_sections.color + '20', color: comment.posts.community_sections.color }}
-                                className="text-xs"
-                              >
-                                {comment.posts.community_sections.name}
-                              </Badge>
-                            )}
-                            {comment.posts?.post_categories && (
-                              <Badge 
-                                variant="outline"
-                                style={{ borderColor: comment.posts.post_categories.color, color: comment.posts.post_categories.color }}
-                                className="text-xs"
-                              >
-                                {comment.posts.post_categories.name}
-                              </Badge>
-                            )}
+                        <Link
+                          key={comment.id}
+                          to={`/community/${comment.post_id}`}
+                          className="block p-3 border rounded-md hover:bg-muted/40 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
                           </div>
-                          <Link to={`/community/${comment.posts?.id}`} className="block mb-2">
-                            <h3 className="font-medium hover:text-primary transition-colors">
-                              {comment.posts?.title}
-                            </h3>
-                          </Link>
-                          <p className="text-sm text-muted-foreground mb-2">{comment.content}</p>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>{new Date(comment.created_at).toLocaleDateString()}</span>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{comment.content}</p>
+                          <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <ThumbsUp className="w-3 h-3" />
                               <span>{comment.upvotes_count || 0}</span>
@@ -767,7 +763,7 @@ const Profile = () => {
                               <span>{comment.downvotes_count || 0}</span>
                             </div>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   ) : (
