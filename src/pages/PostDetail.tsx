@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { MentionInput } from "@/components/ui/mention-input";
 import { SocialShare } from "@/components/ui/social-share";
 import { AcceptAnswer } from "@/components/ui/accept-answer";
-import { processMentions, renderMentionsAsLinks } from "@/lib/mentions";
+import { processMentions, renderMentionsAsLinks, renderMentionsAsReactElements } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
+import { UserProfilePopup } from "@/components/ui/user-profile-popup";
 import { 
   UserCircle, 
   Calendar, 
@@ -108,16 +109,18 @@ const CommentForm = ({
   onSuccess,
   addPointsForComment,
   postAuthorId,
+  initialMention = "",
 }: {
   postId: number;
   parentId?: number | null;
   onSuccess: () => void;
   addPointsForComment: (commentId: number) => void;
   postAuthorId?: string;
+  initialMention?: string;
 }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(initialMention);
 
   // 해당 게시물에 이미 댓글을 작성했는지 확인하는 쿼리
   const { data: existingComments } = useQuery({
@@ -211,7 +214,7 @@ const CommentForm = ({
           onChange={setContent}
           placeholder={parentId ? "답변을 작성하세요... (@사용자명으로 멘션 가능)" : "댓글을 작성하세요... (@사용자명으로 멘션 가능)"}
           disabled={addCommentMutation.isPending}
-          className="flex-1 w-full min-h-[60px] text-sm"
+          className="flex-1 w-full min-h-[40px] text-sm"
         />
         <Button type="submit" size="icon" disabled={addCommentMutation.isPending} className="self-start">
           <Send className="w-4 h-4" />
@@ -227,17 +230,33 @@ const Comment = ({
   postId, 
   post,
   addPointsForComment,
-  allComments
+  allComments,
+  isReply = false,
+  onReplyToReply,
+  replyState,
+  onReplyStateChange,
+  onProfileClick
 }: { 
   comment: CommentWithReplies; 
   postId: number;
   post?: { author_id: string; category_id: number };
   addPointsForComment: (commentId: number) => void;
   allComments: CommentWithReplies[];
+  isReply?: boolean;
+  onReplyToReply?: (parentCommentId: number, mentionText: string) => void;
+  replyState?: { isReplying: boolean; mentionText: string };
+  onReplyStateChange?: (isReplying: boolean, mentionText: string) => void;
+  onProfileClick?: (username: string, event: React.MouseEvent) => void;
 }) => {
-  const [isReplying, setIsReplying] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  
+  // 답글 상태 관리
+  const isReplying = replyState?.isReplying || false;
+  const mentionText = replyState?.mentionText || "";
 
   // 댓글 투표 뮤테이션
   const commentVoteMutation = useMutation({
@@ -303,6 +322,67 @@ const Comment = ({
     commentVoteMutation.mutate({ voteType });
   };
 
+  // 댓글 수정 뮤테이션
+  const editCommentMutation = useMutation({
+    mutationFn: async (newContent: string) => {
+      if (!user) throw new Error("로그인이 필요합니다.");
+      
+      const { error } = await supabase
+        .from('comments')
+        .update({ 
+          content: newContent,
+          is_edited: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', comment.id)
+        .eq('author_id', user.id);
+      
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', String(postId)] });
+      setIsEditing(false);
+      toast.success("댓글이 수정되었습니다!");
+    },
+    onError: (error) => {
+      toast.error(`수정 실패: ${error.message}`);
+    },
+  });
+
+  // 댓글 삭제 뮤테이션
+  const deleteCommentMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("로그인이 필요합니다.");
+      
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', comment.id)
+        .eq('author_id', user.id);
+      
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', String(postId)] });
+      toast.success("댓글이 삭제되었습니다!");
+    },
+    onError: (error) => {
+      toast.error(`삭제 실패: ${error.message}`);
+    },
+  });
+
+  const handleEditComment = () => {
+    if (editContent.trim()) {
+      editCommentMutation.mutate(editContent);
+    }
+  };
+
+  const handleDeleteComment = () => {
+    if (confirm("정말로 이 댓글을 삭제하시겠습니까?")) {
+      deleteCommentMutation.mutate();
+    }
+  };
+
   // 이미 채택된 답변이 있는지 확인
   const hasAcceptedAnswer = allComments.some(c => c.is_accepted);
 
@@ -310,12 +390,24 @@ const Comment = ({
     <div className="flex flex-col">
       <Card key={comment.id} className={cn(
         "transition-all duration-200",
-        comment.is_accepted && "border-2 border-green-200 bg-green-50/30 shadow-md"
+        comment.is_accepted && "border-2 border-green-200 bg-green-50/30 shadow-md",
+        isReply && "ml-8 scale-95"
       )}>
-        <CardHeader>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            <UserCircle className="w-4 h-4" />
-            <span>{comment.profiles?.username || '익명'}</span>
+        <CardHeader className={cn(
+          "pb-2 px-3 pt-3",
+          isReply && "pb-1 px-2 pt-2"
+        )}>
+          <div className={cn(
+            "flex items-center gap-2 text-muted-foreground mb-1",
+            isReply ? "text-xs" : "text-xs"
+          )}>
+            <UserCircle className={cn("w-3 h-3", isReply && "w-2 h-2")} />
+            <button
+              onClick={(e) => onProfileClick?.(comment.profiles?.username || 'anonymous', e)}
+              className="hover:text-primary hover:underline transition-colors cursor-pointer"
+            >
+              {comment.profiles?.username || '익명'}
+            </button>
             <span>·</span>
             <span>{new Date(comment.created_at).toLocaleString()}</span>
             {comment.is_edited && (
@@ -327,28 +419,75 @@ const Comment = ({
             {comment.is_accepted && (
               <>
                 <span>·</span>
-                <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 text-xs px-1 py-0">
+                  <CheckCircle2 className="w-2 h-2 mr-1" />
                   채택된 답변
                 </Badge>
               </>
             )}
           </div>
-          <p className={cn(
-            comment.is_accepted && "font-medium"
-          )}>{comment.content}</p>
+          {isEditing ? (
+            <div className="space-y-2">
+              <MentionInput
+                value={editContent}
+                onChange={setEditContent}
+                placeholder="댓글을 수정하세요..."
+                disabled={editCommentMutation.isPending}
+                className={cn(
+                  "w-full min-h-[40px] text-sm",
+                  isReply && "text-xs"
+                )}
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleEditComment}
+                  disabled={editCommentMutation.isPending || !editContent.trim()}
+                  className="h-7 px-3 text-xs"
+                >
+                  {editCommentMutation.isPending ? "수정 중..." : "수정 완료"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(comment.content);
+                  }}
+                  disabled={editCommentMutation.isPending}
+                  className="h-7 px-3 text-xs"
+                >
+                  취소
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className={cn(
+              "leading-relaxed",
+              isReply ? "text-xs" : "text-sm",
+              comment.is_accepted && "font-medium"
+            )}>
+              {renderMentionsAsReactElements(comment.content, onProfileClick)}
+            </p>
+          )}
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+        <CardContent className={cn(
+          "pt-0 px-3 pb-2",
+          isReply && "pt-0 px-2 pb-1"
+        )}>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => handleCommentVote(1)}
                 disabled={!user || commentVoteMutation.isPending}
-                className="hover:bg-blue-100 hover:text-blue-700"
+                className={cn(
+                  "hover:bg-blue-100 hover:text-blue-700 text-xs",
+                  isReply ? "h-6 px-1" : "h-7 px-2"
+                )}
               >
-                <ThumbsUp className="w-4 h-4 mr-1" />
+                <ThumbsUp className={cn("mr-1", isReply ? "w-2 h-2" : "w-3 h-3")} />
                 {comment.upvotes_count || 0}
               </Button>
               <Button
@@ -356,9 +495,12 @@ const Comment = ({
                 size="sm"
                 onClick={() => handleCommentVote(-1)}
                 disabled={!user || commentVoteMutation.isPending}
-                className="hover:bg-red-100 hover:text-red-700"
+                className={cn(
+                  "hover:bg-red-100 hover:text-red-700 text-xs",
+                  isReply ? "h-6 px-1" : "h-7 px-2"
+                )}
               >
-                <ThumbsDown className="w-4 h-4 mr-1" />
+                <ThumbsDown className={cn("mr-1", isReply ? "w-2 h-2" : "w-3 h-3")} />
                 {comment.downvotes_count || 0}
               </Button>
             </div>
@@ -375,40 +517,135 @@ const Comment = ({
               />
             )}
 
-            <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)}>
-              답변 달기
-            </Button>
+            {!isReply ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => {
+                  if (onReplyStateChange) {
+                    onReplyStateChange(!isReplying, "");
+                  }
+                }} 
+                className="h-7 px-2 text-xs"
+              >
+                답변 달기
+              </Button>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => {
+                  // 대댓글에서는 원래 댓글에 멘션으로 답변
+                  if (onReplyToReply && comment.parent_comment_id) {
+                    const mentionText = `@${comment.profiles?.username || '익명'} `;
+                    onReplyToReply(comment.parent_comment_id, mentionText);
+                  }
+                }}
+                className="h-6 px-1 text-xs"
+              >
+                답변 달기
+              </Button>
+            )}
+            {/* 댓글 작성자만 보이는 수정/삭제 버튼 */}
+            {user && comment.author_id === user.id && !isEditing && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className={cn(
+                    "hover:bg-blue-50 hover:text-blue-600",
+                    isReply ? "h-6 px-1" : "h-7 px-2"
+                  )}
+                >
+                  <Edit className={cn(isReply ? "w-2 h-2" : "w-3 h-3")} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDeleteComment}
+                  disabled={deleteCommentMutation.isPending}
+                  className={cn(
+                    "hover:bg-red-50 hover:text-red-600",
+                    isReply ? "h-6 px-1" : "h-7 px-2"
+                  )}
+                >
+                  <Trash2 className={cn(isReply ? "w-2 h-2" : "w-3 h-3")} />
+                </Button>
+              </>
+            )}
+            
             <Button
               variant="ghost"
               size="sm"
               onClick={() => toast.info("신고 기능은 곧 추가될 예정입니다!")}
-              className="hover:bg-red-50 hover:text-red-600"
+              className={cn(
+                "hover:bg-red-50 hover:text-red-600",
+                isReply ? "h-6 px-1" : "h-7 px-2"
+              )}
             >
-              <Flag className="w-4 h-4" />
+              <Flag className={cn(isReply ? "w-2 h-2" : "w-3 h-3")} />
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {isReplying && (
-        <div className="ml-8 mt-2">
+        <div className="ml-8 mt-3">
           <CommentForm 
             postId={postId} 
             parentId={comment.id} 
-            onSuccess={() => setIsReplying(false)} 
+            onSuccess={() => {
+              if (onReplyStateChange) {
+                onReplyStateChange(false, "");
+              }
+            }} 
             addPointsForComment={addPointsForComment}
             postAuthorId={post?.author_id}
+            initialMention={mentionText}
           />
         </div>
       )}
 
-                {comment.replies && comment.replies.length > 0 && (
-            <div className="ml-8 mt-4 space-y-4 border-l-2 pl-4">
+      {/* 답글 표시 버튼과 답글 목록 */}
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="ml-8 mt-2">
+          {!showReplies ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowReplies(true)}
+              className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-6 px-2"
+            >
+              답글 {comment.replies.length}개 보기
+            </Button>
+          ) : (
+            <div className="space-y-2 mt-2">
               {comment.replies.map(reply => (
-                <Comment key={reply.id} comment={reply} postId={postId} post={post} addPointsForComment={addPointsForComment} allComments={allComments} />
+                <Comment 
+                  key={reply.id} 
+                  comment={reply} 
+                  postId={postId} 
+                  post={post} 
+                  addPointsForComment={addPointsForComment} 
+                  allComments={allComments}
+                  isReply={true}
+                  onReplyToReply={onReplyToReply}
+                  onProfileClick={onProfileClick}
+                />
               ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowReplies(false)}
+                className="text-xs text-gray-500 hover:text-gray-700 h-6 px-2"
+              >
+                답글 숨기기
+              </Button>
             </div>
           )}
+        </div>
+      )}
     </div>
   );
 };
@@ -421,6 +658,73 @@ const PostDetail = () => {
   const navigate = useNavigate();
   
   const postId = id ? parseInt(id, 10) : 0;
+  
+  // 댓글 답글 상태 관리
+  const [commentReplyStates, setCommentReplyStates] = useState<{ [key: number]: { isReplying: boolean; mentionText: string } }>({});
+  
+  // 프로필 팝업 상태 관리
+  const [profilePopup, setProfilePopup] = useState<{
+    isOpen: boolean;
+    username: string;
+    position: { x: number; y: number };
+  }>({
+    isOpen: false,
+    username: '',
+    position: { x: 0, y: 0 }
+  });
+
+  // 대댓글에서 답변 달기 핸들러
+  const handleReplyToReply = (parentCommentId: number, mentionText: string) => {
+    setCommentReplyStates(prev => ({
+      ...prev,
+      [parentCommentId]: {
+        isReplying: true,
+        mentionText: mentionText
+      }
+    }));
+  };
+
+  // 프로필 팝업 핸들러
+  const handleProfileClick = (username: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const popupWidth = 320; // 팝업 너비 (w-80 = 320px)
+    const popupHeight = 250; // 예상 팝업 높이 (더 작게 조정)
+    
+    // 화면 경계 확인 및 위치 조정 - 오른쪽에 표시
+    let x = rect.right + 10; // 클릭한 요소 오른쪽에 표시
+    let y = rect.top + rect.height / 2 - popupHeight / 2; // 세로 중앙 정렬
+    
+    // 화면 왼쪽 경계 확인
+    if (x < 10) {
+      x = 10;
+    }
+    
+    // 화면 오른쪽 경계 확인 (오른쪽에 공간이 없으면 왼쪽에 표시)
+    if (x + popupWidth > window.innerWidth - 10) {
+      x = rect.left - popupWidth - 10; // 왼쪽에 표시
+    }
+    
+    // 화면 위쪽 경계 확인
+    if (y < 10) {
+      y = 10;
+    }
+    
+    // 화면 아래쪽 경계 확인
+    if (y + popupHeight > window.innerHeight - 50) {
+      y = window.innerHeight - popupHeight - 50;
+    }
+    
+    setProfilePopup({
+      isOpen: true,
+      username,
+      position: { x, y }
+    });
+  };
+
+  const closeProfilePopup = () => {
+    setProfilePopup(prev => ({ ...prev, isOpen: false }));
+  };
 
   const { data: post, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: ['post', id],
@@ -826,7 +1130,7 @@ const PostDetail = () => {
             <Card className="mb-8">
               <CardContent className="p-6">
                 <div className="prose dark:prose-invert max-w-none">
-                  <p>{post.content}</p>
+                  <p>{renderMentionsAsReactElements(post.content, handleProfileClick)}</p>
                 </div>
                 
                 {/* 게시글 이미지 표시 - 레딧 스타일 */}
@@ -892,21 +1196,21 @@ const PostDetail = () => {
           </article>
           
           <section>
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <MessageSquare className="w-6 h-6" />
+            <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
               댓글 ({comments?.length || 0})
             </h2>
             
             {/* 댓글 작성창 - 맨 위에 고정 */}
-            <Card className="sticky top-20 z-30 bg-background/95 backdrop-blur-sm border border-primary/20 shadow-md mb-4">
-              <CardHeader className="pb-2 px-4 pt-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
+            <Card className="sticky top-20 z-30 bg-background/95 backdrop-blur-sm border border-primary/20 shadow-md mb-3">
+              <CardHeader className="pb-1 px-3 pt-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <MessageSquare className="w-3 h-3 text-primary" />
                   댓글 작성
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-0 px-0 pb-3">
-                <div className="px-4">
+              <CardContent className="pt-0 px-0 pb-2">
+                <div className="px-3">
                   <CommentForm 
                     postId={postId} 
                     onSuccess={() => {}} 
@@ -918,7 +1222,7 @@ const PostDetail = () => {
             </Card>
             
             {/* 댓글 목록 */}
-            <div className="space-y-6">
+            <div className="space-y-3">
               {areCommentsLoading ? (
                 <Skeleton className="h-20 w-full" />
               ) : (
@@ -930,6 +1234,16 @@ const PostDetail = () => {
                     post={post ? { author_id: post.author_id, category_id: post.category_id } : undefined}
                     addPointsForComment={addPointsForComment}
                     allComments={nestedComments}
+                    isReply={false}
+                    onReplyToReply={handleReplyToReply}
+                    replyState={commentReplyStates[comment.id]}
+                    onReplyStateChange={(isReplying, mentionText) => {
+                      setCommentReplyStates(prev => ({
+                        ...prev,
+                        [comment.id]: { isReplying, mentionText }
+                      }));
+                    }}
+                    onProfileClick={handleProfileClick}
                   />
                 ))
               )}
@@ -938,6 +1252,14 @@ const PostDetail = () => {
         </div>
       </main>
       <Footer />
+      
+      {/* 프로필 팝업 */}
+      <UserProfilePopup
+        username={profilePopup.username}
+        isOpen={profilePopup.isOpen}
+        onClose={closeProfilePopup}
+        position={profilePopup.position}
+      />
     </div>
   );
 };

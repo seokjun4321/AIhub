@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 
 // 멘션 패턴 정규식 (@username 형태)
 const MENTION_REGEX = /@([a-zA-Z0-9_]+)/g;
@@ -77,6 +78,35 @@ export function renderMentionsAsLinks(text: string): string {
   });
 }
 
+// React 컴포넌트용 멘션 렌더링 함수
+export function renderMentionsAsReactElements(text: string, onProfileClick?: (username: string, event: React.MouseEvent) => void): (string | JSX.Element)[] {
+  const parts = text.split(MENTION_REGEX);
+  const elements: (string | JSX.Element)[] = [];
+  
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) {
+      // 일반 텍스트
+      if (parts[i]) {
+        elements.push(parts[i]);
+      }
+    } else {
+      // 멘션된 사용자명
+      const username = parts[i];
+      elements.push(
+        <button
+          key={`mention-${i}`}
+          onClick={(e) => onProfileClick?.(username, e)}
+          className="text-primary font-medium hover:underline cursor-pointer"
+        >
+          @{username}
+        </button>
+      );
+    }
+  }
+  
+  return elements;
+}
+
 // 멘션 처리 통합 함수
 export async function processMentions(
   text: string,
@@ -92,4 +122,3 @@ export async function processMentions(
 
   await saveMentions(mentionerUserId, mentionedUserIds, postId, commentId);
 }
-

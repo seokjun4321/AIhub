@@ -135,6 +135,41 @@ export const NotificationDropdown = () => {
     }
   };
 
+  // 유튜브/인스타그램 스타일의 간결한 알림 텍스트 생성
+  const getFormattedNotificationText = (notification: Notification) => {
+    switch (notification.type) {
+      case 'mention':
+        // "@username님이 회원님을 언급했습니다"
+        return `${extractUsernameFromMessage(notification.message)}님이 회원님을 언급했습니다`;
+      
+      case 'comment':
+        // "username님이 댓글을 남겼습니다"
+        return `${extractUsernameFromMessage(notification.message)}님이 댓글을 남겼습니다`;
+      
+      case 'vote':
+        // "username님이 회원님의 게시물을 좋아합니다"
+        return `${extractUsernameFromMessage(notification.message)}님이 회원님의 게시물을 좋아합니다`;
+      
+      case 'accepted_answer':
+        // "회원님의 답변이 채택되었습니다"
+        return "회원님의 답변이 채택되었습니다";
+      
+      default:
+        // 기본적으로 title 사용, 길면 축약
+        return notification.title.length > 30 
+          ? `${notification.title.substring(0, 30)}...`
+          : notification.title;
+    }
+  };
+
+  // 메시지에서 사용자명 추출 (임시 함수, 실제로는 알림 생성 시 사용자명을 별도로 저장하는 것이 좋음)
+  const extractUsernameFromMessage = (message: string): string => {
+    // 메시지에서 사용자명을 추출하는 로직
+    // 예: "mark0618님의 게시글 'AIhub 어떻게 생각?' 에 새로운 댓글이 달렸습니다. adadadadadsd"
+    const usernameMatch = message.match(/^([^님]+)님/);
+    return usernameMatch ? usernameMatch[1] : "알 수 없는 사용자";
+  };
+
   const handleNotificationClick = (notification: Notification) => {
     console.log('🔔 Notification clicked:', notification); // 디버깅용
     
@@ -227,13 +262,10 @@ export const NotificationDropdown = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={cn(
-                    "text-sm font-medium line-clamp-2",
-                    !notification.is_read && "font-semibold"
+                    "text-sm line-clamp-2",
+                    !notification.is_read ? "font-semibold text-foreground" : "font-medium text-muted-foreground"
                   )}>
-                    {notification.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                    {notification.message}
+                    {getFormattedNotificationText(notification)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {formatDistanceToNow(new Date(notification.created_at), { 

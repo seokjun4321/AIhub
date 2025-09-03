@@ -196,7 +196,112 @@ const Profile = () => {
   const [imgSrc, setImgSrc] = useState('');
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
+  const [imageDimensions, setImageDimensions] = useState<{width: number, height: number} | null>(null);
+  const [showCrop, setShowCrop] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+  
+  // 이미지 로드 후 크롭 영역 자동 설정
+  const setInitialCrop = () => {
+    if (!imgRef.current) return;
+    
+    const img = imgRef.current;
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+    
+    // 이미지 크기 저장
+    setImageDimensions({ width: imgWidth, height: imgHeight });
+    
+    const displayWidth = img.offsetWidth;
+    const displayHeight = img.offsetHeight;
+    
+    // 이미지 비율에 따라 최적의 크롭 영역 계산
+    const imageAspectRatio = imgWidth / imgHeight;
+    
+    let cropWidth, cropHeight, cropX, cropY;
+    
+    if (imageAspectRatio > 1) {
+      // 가로가 더 긴 이미지 - 세로 기준으로 정사각형 크롭
+      cropHeight = displayHeight;
+      cropWidth = displayHeight; // 정사각형
+      cropX = (displayWidth - cropWidth) / 2; // 가운데 정렬
+      cropY = 0;
+    } else if (imageAspectRatio < 1) {
+      // 세로가 더 긴 이미지 - 가로 기준으로 정사각형 크롭
+      cropWidth = displayWidth;
+      cropHeight = displayWidth; // 정사각형
+      cropX = 0;
+      cropY = (displayHeight - cropHeight) / 2; // 가운데 정렬
+    } else {
+      // 정사각형 이미지 - 전체 사용
+      cropWidth = displayWidth;
+      cropHeight = displayHeight;
+      cropX = 0;
+      cropY = 0;
+    }
+    
+    // 표시 크기에 대한 픽셀 단위로 설정
+    const pixelCrop = {
+      x: cropX,
+      y: cropY,
+      width: cropWidth,
+      height: cropHeight,
+      unit: 'px' as const
+    };
+    
+    setCrop(pixelCrop);
+  };
+
+  // 이미지 클릭 시 크롭 영역 표시
+  const handleImageClick = () => {
+    if (!showCrop) {
+      setShowCrop(true);
+      setInitialCrop();
+    }
+  };
+
+  // 이미지 비율에 따른 모달 크기 계산
+  const getModalSize = () => {
+    if (!imageDimensions) return { width: 'max-w-4xl', height: 'max-h-[95vh]' };
+    
+    const { width, height } = imageDimensions;
+    const aspectRatio = width / height;
+    
+    // 화면 크기 제한
+    const maxWidth = Math.min(width, 800);
+    const maxHeight = Math.min(height, 700);
+    
+    if (aspectRatio > 1.5) {
+      // 매우 가로가 긴 이미지
+      return { 
+        width: `max-w-[${maxWidth}px]`, 
+        height: `max-h-[${Math.min(maxHeight, 500)}px]` 
+      };
+    } else if (aspectRatio > 1) {
+      // 가로가 긴 이미지
+      return { 
+        width: `max-w-[${maxWidth}px]`, 
+        height: `max-h-[${Math.min(maxHeight, 600)}px]` 
+      };
+    } else if (aspectRatio < 0.7) {
+      // 매우 세로가 긴 이미지
+      return { 
+        width: `max-w-[${Math.min(maxWidth, 500)}px]`, 
+        height: `max-h-[${maxHeight}px]` 
+      };
+    } else if (aspectRatio < 1) {
+      // 세로가 긴 이미지
+      return { 
+        width: `max-w-[${Math.min(maxWidth, 600)}px]`, 
+        height: `max-h-[${maxHeight}px]` 
+      };
+    } else {
+      // 정사각형 이미지
+      return { 
+        width: `max-w-[${Math.min(maxWidth, 600)}px]`, 
+        height: `max-h-[${Math.min(maxHeight, 600)}px]` 
+      };
+    }
+  };
 
   // 프로필 데이터
   const { data: profile, isLoading: isProfileLoading, error } = useQuery({
@@ -253,8 +358,21 @@ const Profile = () => {
   const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setCrop(undefined); // Reset crop state
+      setImageDimensions(null); // Reset image dimensions
+      setShowCrop(false); // Reset crop visibility
+      
       const reader = new FileReader();
-      reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
+      reader.addEventListener('load', () => {
+        const result = reader.result?.toString() || '';
+        setImgSrc(result);
+        
+        // 이미지 크기를 미리 가져와서 모달 크기 조정
+        const img = new Image();
+        img.onload = () => {
+          setImageDimensions({ width: img.width, height: img.height });
+        };
+        img.src = result;
+      });
       reader.readAsDataURL(e.target.files[0]);
     }
   };
@@ -442,7 +560,7 @@ const Profile = () => {
                   <CardDescription>회원님의 정보를 관리하세요.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-4 mb-8">
+                  <div className="flex items-center gap-4 mb-12">
                     <div className="relative">
                       <Avatar className="h-24 w-24">
                         <AvatarImage src={profile.avatar_url || ''} alt={profile.username || ''} />
@@ -462,19 +580,22 @@ const Profile = () => {
                           disabled={uploading}
                         />
                       </Label>
+                      {/* 사진 제거 버튼 - 프로필 사진 바로 아래에 배치 */}
+                      {profile.avatar_url && (
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-muted-foreground hover:text-destructive"
+                            onClick={handleAvatarRemove}
+                            disabled={removing || uploading}
+                          >
+                            {removing ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Trash2 className="mr-2 h-3 w-3" />}
+                            사진 제거
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {profile.avatar_url && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-muted-foreground"
-                        onClick={handleAvatarRemove}
-                        disabled={removing || uploading}
-                      >
-                        {removing ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Trash2 className="mr-2 h-3 w-3" />}
-                        사진 제거
-                      </Button>
-                    )}
                     <div className="text-center">
                       <h2 className="text-2xl font-bold">{profile.full_name}</h2>
                       <p className="text-muted-foreground">@{profile.username}</p>
@@ -932,29 +1053,73 @@ const Profile = () => {
 
       {/* --- ▼▼▼ 이미지 크롭 모달 추가 ▼▼▼ --- */}
       <Dialog open={!!imgSrc} onOpenChange={(isOpen) => !isOpen && setImgSrc('')}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>프로필 사진 자르기</DialogTitle>
+        <DialogContent 
+          className="overflow-hidden p-4"
+          style={{
+            width: imageDimensions ? `${Math.min(imageDimensions.width + 120, 900)}px` : '600px',
+            height: imageDimensions ? `${Math.min(imageDimensions.height + 200, 800)}px` : '600px',
+            maxWidth: '90vw',
+            maxHeight: '90vh'
+          }}
+        >
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-lg font-semibold">프로필 사진 자르기</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {!showCrop ? "이미지를 클릭하여 크롭 영역을 설정하세요" : "크롭 영역을 조정하고 저장하세요"}
+            </p>
           </DialogHeader>
           {imgSrc && (
-            <ReactCrop
-              crop={crop}
-              onChange={(_, percentCrop) => setCrop(percentCrop)}
-              onComplete={(c) => setCompletedCrop(c)}
-              aspect={1}
-              circularCrop
-            >
-              <img
-                ref={imgRef}
-                alt="Crop me"
-                src={imgSrc}
-                style={{ maxHeight: '70vh' }}
-              />
-            </ReactCrop>
+            <div className="flex justify-center items-center overflow-hidden" style={{
+              minHeight: imageDimensions ? `${Math.min(imageDimensions.height, 400)}px` : '400px',
+              maxHeight: imageDimensions ? `${Math.min(imageDimensions.height + 100, 500)}px` : '500px'
+            }}>
+              {showCrop ? (
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  aspect={1}
+                  circularCrop
+                  className="w-full h-full"
+                >
+                  <img
+                    ref={imgRef}
+                    alt="Crop me"
+                    src={imgSrc}
+                    style={{ 
+                      maxHeight: imageDimensions ? `${Math.min(imageDimensions.height, 400)}px` : '400px',
+                      width: '100%',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      display: 'block',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </ReactCrop>
+              ) : (
+                <img
+                  ref={imgRef}
+                  alt="Click to crop"
+                  src={imgSrc}
+                  onClick={handleImageClick}
+                  style={{ 
+                    maxHeight: imageDimensions ? `${Math.min(imageDimensions.height, 400)}px` : '400px',
+                    width: '100%',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    display: 'block',
+                    cursor: 'pointer'
+                  }}
+                />
+              )}
+            </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setImgSrc('')}>취소</Button>
-            <Button onClick={handleCropAndUpload} disabled={uploading}>
+            <Button 
+              onClick={handleCropAndUpload} 
+              disabled={uploading || !showCrop || !completedCrop}
+            >
               {uploading ? '업로드 중...' : '저장하기'}
             </Button>
           </DialogFooter>
