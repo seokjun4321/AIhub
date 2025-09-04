@@ -38,6 +38,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePoints } from "@/hooks/usePoints";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 
 // Define a type for comments with nested replies
 type CommentWithReplies = Database['public']['Tables']['comments']['Row'] & {
@@ -651,6 +652,8 @@ const Comment = ({
 };
 
 const PostDetail = () => {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { addPointsForComment, addPointsForVote, addPointsForAcceptedAnswer } = usePoints();
@@ -1148,7 +1151,7 @@ const PostDetail = () => {
                               objectFit: 'contain',
                               backgroundColor: '#f8f9fa'
                             }}
-                            onClick={() => window.open(imageUrl, '_blank')}
+                            onClick={() => { setLightboxSrc(imageUrl); setLightboxOpen(true); }}
                             onError={(e) => {
                               e.currentTarget.src = '/placeholder.svg';
                             }}
@@ -1161,6 +1164,13 @@ const PostDetail = () => {
 
               </CardContent>
             </Card>
+
+            <ImageLightbox
+              open={lightboxOpen}
+              onOpenChange={setLightboxOpen}
+              src={lightboxSrc}
+              alt="게시글 이미지"
+            />
 
             {/* 투표 섹션 */}
             <div className="flex items-center justify-center gap-4 mb-8">

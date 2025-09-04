@@ -692,14 +692,15 @@ const Community = () => {
   return (
     <div className="min-h-screen bg-background community-page">
       <Navbar />
-      <main className="pt-24 pb-12">
+      <main className="pt-24 pb-12 relative">
+        {/* 헤더 섹션 - 고정 너비 */}
         <div className="mx-auto px-6 max-w-[1100px]">
-                     <div className="text-center md:text-left mb-8">
-             <h1 className="text-4xl md:text-5xl font-bold">커뮤니티</h1>
-             <p className="text-xl text-muted-foreground mt-4">
-               AI에 대해 궁금한 점을 질문하고 지식을 나눠보세요.
-             </p>
-           </div>
+          <div className="text-center md:text-left mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold">커뮤니티</h1>
+            <p className="text-xl text-muted-foreground mt-4">
+              AI에 대해 궁금한 점을 질문하고 지식을 나눠보세요.
+            </p>
+          </div>
 
           {/* 검색창 - 스크롤 시 숨김 */}
           <div className={`transition-all duration-300 ${isScrolled ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100 h-auto mb-6'}`}>
@@ -715,14 +716,20 @@ const Community = () => {
               </div>
             </form>
           </div>
+        </div>
 
-                     {/* 필터 및 정렬 - 스크롤 시 sticky */}
-           <div
-            className={`bg-background/95 backdrop-blur-sm border-b transition-all duration-300 ${
-              isScrolled ? 'sticky top-16 z-40 py-4 shadow-sm' : 'mb-8 py-6'
-            }`}
-            style={{ left: 0, right: 0 }}
-           >
+        {/* 필터 및 정렬 - 전체 너비 sticky */}
+        <div
+          className="bg-background/95 backdrop-blur-sm border-b transition-all duration-300 sticky py-4 shadow-sm"
+          style={{ 
+            left: 0, 
+            right: 0,
+            position: 'sticky',
+            top: '6rem',
+            zIndex: 40
+          }}
+        >
+          <div className="mx-auto px-6 max-w-[1100px]">
             {/* 모바일 필터 토글 버튼 */}
             {isMobile && (
               <div className="flex items-center justify-between mb-4">
@@ -788,11 +795,12 @@ const Community = () => {
              }`}>
                <div className="flex flex-col lg:flex-row gap-6">
                 {/* 커뮤니티 섹션 필터 */}
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-1 flex-wrap">
                   <Button
                     variant={selectedSection === undefined ? "default" : "outline"}
                     onClick={() => setSelectedSection(undefined)}
-                    className="text-sm"
+                    size="sm"
+                    className="h-9 px-3 text-sm leading-none"
                   >
                     전체
                   </Button>
@@ -801,7 +809,8 @@ const Community = () => {
                       key={section.id}
                       variant={selectedSection === section.id ? "default" : "outline"}
                       onClick={() => setSelectedSection(section.id)}
-                      className="text-sm"
+                      size="sm"
+                      className="h-9 px-3 text-sm leading-none"
                       style={{ 
                         backgroundColor: selectedSection === section.id ? section.color : undefined,
                         borderColor: section.color
@@ -821,7 +830,7 @@ const Community = () => {
                        setSelectedCategory(parseInt(value));
                      }
                    }}>
-                     <SelectTrigger className="w-[180px]">
+                     <SelectTrigger className="w-[180px] h-9 text-sm">
                        <SelectValue placeholder="카테고리 선택" />
                      </SelectTrigger>
                      <SelectContent>
@@ -849,7 +858,7 @@ const Community = () => {
                          variant={solutionFilter === 'all' ? "default" : "outline"}
                          onClick={() => setSolutionFilter('all')}
                          size="sm"
-                         className="text-sm"
+                         className="text-sm h-9 px-3 leading-none"
                        >
                          전체
                        </Button>
@@ -857,7 +866,7 @@ const Community = () => {
                          variant={solutionFilter === 'solved' ? "default" : "outline"}
                          onClick={() => setSolutionFilter('solved')}
                          size="sm"
-                         className="text-sm bg-green-100 text-green-800 hover:bg-green-200 border-green-200"
+                         className="text-sm h-9 px-3 leading-none bg-green-100 text-green-800 hover:bg-green-200 border-green-200"
                        >
                          <CheckCircle2 className="w-3 h-3 mr-1" />
                          해결됨
@@ -866,7 +875,7 @@ const Community = () => {
                          variant={solutionFilter === 'unsolved' ? "default" : "outline"}
                          onClick={() => setSolutionFilter('unsolved')}
                          size="sm"
-                         className="text-sm bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200"
+                         className="text-sm h-9 px-3 leading-none bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200"
                        >
                          미해결
                        </Button>
@@ -878,7 +887,7 @@ const Community = () => {
                 {!isMobile && (
                   <div className="flex gap-2 ml-auto">
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-[140px]">
+                      <SelectTrigger className="w-[140px] h-9 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -919,29 +928,31 @@ const Community = () => {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* 검색창이 숨겨진 상태에서 검색 결과 표시 */}
-          {isScrolled && searchQuery && (
-            <div className="mb-4 p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-2 text-sm">
-                <Search className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">검색어:</span>
-                <span className="font-medium">"{searchQuery}"</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchQuery('')}
-                  className="ml-auto h-6 w-6 p-0"
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
+        {/* 검색창이 숨겨진 상태에서 검색 결과 표시 */}
+        {isScrolled && searchQuery && (
+          <div className="mx-auto px-6 max-w-[1100px] mb-4 p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">검색어:</span>
+              <span className="font-medium">"{searchQuery}"</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                className="ml-auto h-6 w-6 p-0"
+              >
+                <X className="w-3 h-3" />
+              </Button>
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="flex gap-6">
-            {/* 메인 콘텐츠 */}
-            <div className="flex-1">
+        {/* 메인 콘텐츠 영역 - 전체 너비 */}
+        <div className="flex gap-6 items-start mx-auto px-6 max-w-[1100px] mt-6">
+          {/* 메인 콘텐츠 */}
+          <div className="flex-1 min-w-0">
               {/* Top 3 인기 게시물 - 메인 왼쪽 상단 */}
               <Card className="mb-6 border-2 border-primary/20 shadow-md overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-amber-100 to-rose-100 pb-2">
@@ -1048,27 +1059,22 @@ const Community = () => {
                               {post.content?.replace(/<[^>]*>/g, '').substring(0, 150)}...
                             </CardDescription>
                             
-                            {/* 이미지 미리보기 */}
+                            {/* 대표 이미지 미리보기 */}
                             {post.images && post.images.length > 0 && (
-                              <div className="mt-3 flex gap-2 overflow-x-auto">
-                                {post.images.slice(0, 3).map((imageUrl, index) => (
-                                  <img
-                                    key={index}
-                                    src={imageUrl}
-                                    alt={`게시글 이미지 ${index + 1}`}
-                                    className="w-16 h-16 object-cover rounded-md border flex-shrink-0"
-                                    onError={(e) => {
-                                      e.currentTarget.src = '/placeholder.svg';
-                                    }}
-                                  />
-                                ))}
-                                {post.images.length > 3 && (
-                                  <div className="w-16 h-16 bg-muted rounded-md border flex items-center justify-center flex-shrink-0">
-                                    <span className="text-xs text-muted-foreground">
-                                      +{post.images.length - 3}
-                                    </span>
+                              <div className="mt-3">
+                                <div className="relative rounded-lg border bg-muted">
+                                  <div className="w-full flex items-center justify-center">
+                                    <img
+                                      src={post.images[0]}
+                                      alt={`게시글 이미지 1`}
+                                      className="w-full rounded-lg cursor-pointer hover:opacity-95 transition-opacity"
+                                      style={{ maxHeight: '60vh', objectFit: 'contain', backgroundColor: '#f8f9fa' }}
+                                      loading="lazy"
+                                      // 이미지 클릭 시 카드의 onClick을 통해 상세로 이동
+                                      onError={(e) => { e.currentTarget.src = '/placeholder.svg' }}
+                                    />
                                   </div>
-                                )}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1238,7 +1244,16 @@ const Community = () => {
 
             {/* 오른쪽 사이드바 - 프로필 미리보기 (데스크톱에서만 표시) */}
             {!isMobile && user && (
-              <div className="w-80 flex-shrink-0 profile-card-container">
+              <div 
+                className="w-80 flex-shrink-0 sticky-sidebar"
+                style={{
+                  position: 'sticky',
+                  top: '6rem',
+                  zIndex: 30,
+                  maxHeight: 'calc(100vh - 6rem)',
+                  overflowY: 'auto'
+                }}
+              >
                 <Card className="profile-card">
                   <CardHeader>
                     <div className="flex items-center gap-4">
@@ -1253,19 +1268,12 @@ const Community = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    
-                    
                     {/* 레벨 진행률 */}
                     {userProfile && (() => {
                       const currentLevel = userProfile.level || 1;
                       const currentExp = userProfile.experience_points || 0;
-                      
-                      // levelConfig에서 다음 레벨 경험치 찾기
                       const nextLevelConfig = levelConfigQuery.data?.find(lc => lc.level === currentLevel + 1);
                       const nextLevelExp = nextLevelConfig?.min_experience || (currentLevel * 100);
-                      
-
-                      
                       return (
                         <SimpleLevelProgress
                           currentLevel={currentLevel}
@@ -1275,7 +1283,7 @@ const Community = () => {
                         />
                       );
                     })()}
-                    
+
                     {/* 포인트 정보 */}
                     <div className="space-y-2">
                       <PointDisplay 
@@ -1296,7 +1304,7 @@ const Community = () => {
                         />
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
                         <p className="text-2xl font-bold">{userStats?.postsCount || 0}</p>
@@ -1311,7 +1319,7 @@ const Community = () => {
                         <p className="text-xs text-muted-foreground">투표</p>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Button asChild variant="outline" className="w-full">
                         <Link to="/profile">
@@ -1328,13 +1336,21 @@ const Community = () => {
                     </div>
                   </CardContent>
                 </Card>
-
               </div>
             )}
 
             {/* 게스트용 CTA 사이드 카드 */}
             {!isMobile && !user && (
-              <div className="w-80 flex-shrink-0 profile-card-container">
+              <div 
+                className="w-80 flex-shrink-0 sticky-sidebar"
+                style={{
+                  position: 'sticky',
+                  top: '6rem',
+                  zIndex: 30,
+                  maxHeight: 'calc(100vh - 6rem)',
+                  overflowY: 'auto'
+                }}
+              >
                 <Card className="border-2 border-primary/20 shadow-md overflow-hidden profile-card">
                   <CardHeader className="bg-gradient-to-r from-indigo-50 to-pink-50">
                     <CardTitle className="text-xl">AIHub 커뮤니티에 참여하세요</CardTitle>
@@ -1371,9 +1387,12 @@ const Community = () => {
                 </Card>
               </div>
             )}
+
           </div>
-        </div>
       </main>
+
+
+      {/* 기존 main 밖 fixed 사이드바 제거됨 */}
       <Footer />
     </div>
   );

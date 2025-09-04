@@ -16,6 +16,11 @@ const ScrollToTop = () => {
       return;
     }
     
+    // 커뮤니티 페이지에서는 자동 스크롤을 하지 않음 (sticky 레이아웃 보호)
+    if (pathname === '/community') {
+      return;
+    }
+    
     window.scrollTo(0, 0);
   }, [pathname]);
 
