@@ -94,10 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (error) throw error;
       
-      if (data.user) {
-        window.location.href = '/';
-      }
-      
+      // 리다이렉트는 상위 컴포넌트(Auth 등)에서 처리
       return { error };
     } catch (error) {
       return { error };

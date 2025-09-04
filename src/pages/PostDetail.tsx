@@ -969,6 +969,19 @@ const PostDetail = () => {
     bookmarkMutation.mutate({ isBookmarked: !!isBookmarked });
   };
 
+  // --- 🔧 NEW: 정렬/표시 개수 상태 ---
+  const [commentSort, setCommentSort] = useState<'oldest' | 'newest' | 'top'>(
+    (() => {
+      const saved = localStorage.getItem('commentSort');
+      return saved === 'newest' || saved === 'top' ? saved : 'oldest';
+    })() as 'oldest' | 'newest' | 'top'
+  );
+  const [visibleCount, setVisibleCount] = useState<number>(20);
+  useEffect(() => {
+    localStorage.setItem('commentSort', commentSort);
+    setVisibleCount(20);
+  }, [commentSort]);
+
   // --- 🔧 NEW: Logic to structure comments into a tree ---
   const nestedComments = useMemo(() => {
     if (!comments) return [];
@@ -987,14 +1000,33 @@ const PostDetail = () => {
       }
     });
 
-    // 채택된 답변을 맨 위로 정렬
-    nested.sort((a, b) => {
-      if (a.is_accepted && !b.is_accepted) return -1;
-      if (!a.is_accepted && b.is_accepted) return 1;
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    });
+    // 상위 레벨에서 채택/비채택 분리 후 정렬
+    const accepted = nested.filter(c => c.is_accepted);
+    const others = nested.filter(c => !c.is_accepted);
 
-    return nested;
+    if (commentSort === 'newest') {
+      others.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } else if (commentSort === 'top') {
+      others.sort((a, b) => {
+        const aScore = (a.upvotes_count || 0) - (a.downvotes_count || 0);
+        const bScore = (b.upvotes_count || 0) - (b.downvotes_count || 0);
+        if (bScore !== aScore) return bScore - aScore;
+        // 동점일 때는 최신순 보조 정렬
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    } else {
+      others.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    }
+
+    // 표시 개수 적용(채택은 항상 상단 고정, others는 슬라이스)
+    const limitedOthers = others.slice(0, visibleCount);
+    return [...accepted, ...limitedOthers];
+  }, [comments, commentSort, visibleCount]);
+
+  // 표시 가능한 총 개수(채택 제외 others 기준)
+  const totalOthersCount = useMemo(() => {
+    if (!comments) return 0;
+    return comments.filter(c => !c.parent_comment_id && !c.is_accepted).length;
   }, [comments]);
 
   if (isPostLoading) return <div>Loading post...</div>;
@@ -1210,6 +1242,36 @@ const PostDetail = () => {
               <MessageSquare className="w-5 h-5" />
               댓글 ({comments?.length || 0})
             </h2>
+            {/* 🔧 NEW: 정렬 토글 */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-muted-foreground">정렬</div>
+              <div className="flex gap-2">
+                <Button
+                  variant={commentSort === 'oldest' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 px-3 text-xs"
+                  onClick={() => setCommentSort('oldest')}
+                >
+                  오래된순
+                </Button>
+                <Button
+                  variant={commentSort === 'newest' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 px-3 text-xs"
+                  onClick={() => setCommentSort('newest')}
+                >
+                  최신순
+                </Button>
+                <Button
+                  variant={commentSort === 'top' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 px-3 text-xs"
+                  onClick={() => setCommentSort('top')}
+                >
+                  추천순
+                </Button>
+              </div>
+            </div>
             
             {/* 댓글 작성창 - 맨 위에 고정 */}
             <Card className="sticky top-20 z-30 bg-background/95 backdrop-blur-sm border border-primary/20 shadow-md mb-3">
@@ -1258,6 +1320,18 @@ const PostDetail = () => {
                 ))
               )}
             </div>
+            {/* 🔧 NEW: 더보기 버튼 (채택 제외한 나머지 기준) */}
+            {!areCommentsLoading && totalOthersCount > visibleCount && (
+              <div className="mt-3 flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount(v => v + 20)}
+                  className="text-sm"
+                >
+                  이전 댓글 더 보기
+                </Button>
+              </div>
+            )}
           </section>
         </div>
       </main>

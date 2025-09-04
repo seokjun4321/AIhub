@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,12 +9,18 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   useEffect(() => {
     if (!loading && !user) {
-      window.location.href = '/auth';
+      const currentPath = location.pathname + (location.search || '');
+      const url = new URL(window.location.origin + '/auth');
+      url.searchParams.set('tab', 'signin');
+      url.searchParams.set('returnTo', currentPath);
+      // replace로 기록을 남기지 않음
+      window.location.replace(url.toString());
     }
-  }, [user, loading]);
+  }, [user, loading, location]);
 
   if (loading) {
     return (

@@ -28,9 +28,14 @@ const Auth = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      nagivate('/');
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo && returnTo.startsWith('/')) {
+        nagivate(returnTo, { replace: true });
+      } else {
+        nagivate('/', { replace: true });
+      }
     }
-  }, [user, nagivate]);
+  }, [user, nagivate, searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +47,8 @@ const Auth = () => {
     if (error) {
       setError(error.message);
       setLoading(false);
+    } else {
+      // 성공 시 이동은 상단 useEffect(user)에서 처리
     }
   };
 
@@ -69,10 +76,26 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+          <button
+            type="button"
+            onClick={() => {
+              const hasHistory = window.history.length > 2;
+              const sameOriginReferrer = document.referrer && (() => {
+                try {
+                  return new URL(document.referrer).origin === window.location.origin;
+                } catch { return false; }
+              })();
+              if (hasHistory && sameOriginReferrer) {
+                window.history.back();
+              } else {
+                nagivate('/', { replace: true });
+              }
+            }}
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            홈으로 돌아가기
-          </Link>
+            이전 페이지로
+          </button>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
             AIHub에 오신 것을 환영합니다
           </h1>
