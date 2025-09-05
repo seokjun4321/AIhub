@@ -9,6 +9,9 @@ import NewPost from './pages/NewPost';
 import EditPost from './pages/EditPost';
 import Bookmarks from './pages/Bookmarks';
 import Recommend from './pages/Recommend';
+import Tools from './pages/Tools';
+import ToolDetail from './pages/ToolDetail';
+import ToolCompare from './pages/ToolCompare';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import About from './pages/About';
@@ -32,6 +35,9 @@ function App() {
         <Route path="/community/edit/:id" element={<ProtectedRoute><EditPost /></ProtectedRoute>} />
         <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
         <Route path="/recommend" element={<Recommend />} />
+        <Route path="/tools" element={<Tools />} />
+        <Route path="/tools/:id" element={<ToolDetail />} />
+        <Route path="/tools/compare" element={<ToolCompare />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/about" element={<About />} />
