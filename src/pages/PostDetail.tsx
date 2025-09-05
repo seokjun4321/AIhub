@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/ui/navbar";
@@ -236,7 +236,8 @@ const Comment = ({
   onReplyToReply,
   replyState,
   onReplyStateChange,
-  onProfileClick
+  onProfileClick,
+  isNewComment
 }: { 
   comment: CommentWithReplies; 
   postId: number;
@@ -248,6 +249,7 @@ const Comment = ({
   replyState?: { isReplying: boolean; mentionText: string };
   onReplyStateChange?: (isReplying: boolean, mentionText: string) => void;
   onProfileClick?: (username: string, event: React.MouseEvent) => void;
+  isNewComment: (comment: CommentWithReplies) => boolean;
 }) => {
   const [showReplies, setShowReplies] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -389,11 +391,15 @@ const Comment = ({
 
   return (
     <div className="flex flex-col">
-      <Card key={comment.id} className={cn(
-        "transition-all duration-200",
+      <Card key={comment.id} data-comment-id={comment.id} className={cn(
+        "transition-all duration-200 relative",
         comment.is_accepted && "border-2 border-green-200 bg-green-50/30 shadow-md",
         isReply && "ml-8 scale-95"
       )}>
+        {/* 🔧 NEW: 새 댓글 파란 점 표시 */}
+        {!isReply && isNewComment(comment) && (
+          <div className="absolute -left-2 -top-2 w-3 h-3 bg-blue-500 rounded-full z-10 animate-pulse" />
+        )}
         <CardHeader className={cn(
           "pb-2 px-3 pt-3",
           isReply && "pb-1 px-2 pt-2"
@@ -633,6 +639,7 @@ const Comment = ({
                   isReply={true}
                   onReplyToReply={onReplyToReply}
                   onProfileClick={onProfileClick}
+                  isNewComment={isNewComment}
                 />
               ))}
               <Button
@@ -655,10 +662,39 @@ const PostDetail = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { addPointsForComment, addPointsForVote, addPointsForAcceptedAnswer } = usePoints();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  
+  // --- 🔧 NEW: 새 댓글 표시 상태 ---
+  const [lastViewTime, setLastViewTime] = useState<number>(() => {
+    const saved = localStorage.getItem(`lastViewTime_${id}_${user?.id}`);
+    return saved ? parseInt(saved) : 0; // 저장된 값이 없으면 0 (모든 댓글을 새 댓글로 표시)
+  });
+  
+  // --- 🔧 NEW: 댓글별 뷰 시간 추적 ---
+  const [commentViewTimes, setCommentViewTimes] = useState<{ [commentId: number]: number }>({});
+  
+  // --- 🔧 NEW: 3초 후 파란 점 제거를 위한 타이머 ---
+  useEffect(() => {
+    const timers: { [commentId: number]: NodeJS.Timeout } = {};
+    
+    Object.entries(commentViewTimes).forEach(([commentId, viewTime]) => {
+      const commentIdNum = parseInt(commentId);
+      if (viewTime && !timers[commentIdNum]) {
+        timers[commentIdNum] = setTimeout(() => {
+          // 3초 후에 상태를 강제로 업데이트하여 리렌더링 유발
+          setCommentViewTimes(prev => ({ ...prev }));
+        }, 3000);
+      }
+    });
+    
+    return () => {
+      Object.values(timers).forEach(timer => clearTimeout(timer));
+    };
+  }, [commentViewTimes]);
   
   const postId = id ? parseInt(id, 10) : 0;
   
@@ -1023,11 +1059,133 @@ const PostDetail = () => {
     return [...accepted, ...limitedOthers];
   }, [comments, commentSort, visibleCount]);
 
+  // --- 🔧 NEW: 특정 댓글 하이라이트 및 스크롤 ---
+  useEffect(() => {
+    const target = searchParams.get('highlightComment');
+    console.log('🎯 highlightComment param:', target);
+    if (!target) return;
+    const targetId = Number(target);
+    if (!targetId || isNaN(targetId)) return;
+
+    // DOM이 렌더된 다음 실행
+    const timer = setTimeout(() => {
+      console.log('🔍 Looking for comment with ID:', targetId);
+      const el = document.querySelector(`[data-comment-id="${targetId}"]`);
+      console.log('📍 Found element:', el);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-yellow-400', 'bg-yellow-50');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-yellow-400', 'bg-yellow-50');
+        }, 2000);
+        console.log('✅ Comment highlighted and scrolled to');
+      } else {
+        console.log('❌ Comment element not found');
+      }
+      // URL 정리
+      searchParams.delete('highlightComment');
+      setSearchParams(searchParams, { replace: true });
+    }, 500); // 시간을 조금 더 늘림
+
+    return () => clearTimeout(timer);
+  }, [searchParams, setSearchParams, nestedComments]);
+
   // 표시 가능한 총 개수(채택 제외 others 기준)
   const totalOthersCount = useMemo(() => {
     if (!comments) return 0;
     return comments.filter(c => !c.parent_comment_id && !c.is_accepted).length;
   }, [comments]);
+
+  // --- 🔧 NEW: 새 댓글 여부 확인 함수 ---
+  const isNewComment = (comment: CommentWithReplies) => {
+    if (!user) return false;
+    
+    // 댓글 작성자 본인은 파란 점 표시 안 함
+    if (comment.author_id === user.id) return false;
+    
+    // 알림 받은 사람만 체크
+    let shouldShow = false;
+    
+    // 1. 게시물 작성자인 경우
+    if (post?.author_id === user.id) {
+      shouldShow = true;
+    }
+    
+    // 2. 멘션된 사용자인지 확인
+    if (!shouldShow) {
+      const commentContent = comment.content.toLowerCase();
+      const username = user.email?.split('@')[0] || '';
+      if (username && commentContent.includes(`@${username}`)) {
+        shouldShow = true;
+      }
+    }
+    
+    if (!shouldShow) return false;
+    
+    // 🔧 NEW: 마지막 뷰 시간 이후의 댓글만 새 댓글로 표시
+    const commentTime = new Date(comment.created_at).getTime();
+    if (commentTime <= lastViewTime) return false; // 이전에 본 댓글은 표시 안 함
+    
+    // 댓글이 3초 이상 보였는지 확인
+    const viewTime = commentViewTimes[comment.id];
+    if (viewTime) {
+      const now = Date.now();
+      return (now - viewTime) < 3000; // 3초 미만이면 새 댓글
+    }
+    
+    // 처음 보는 댓글이면 새 댓글로 표시
+    return true;
+  };
+
+  // --- 🔧 NEW: 댓글 뷰 시간 추적 (Intersection Observer) ---
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const commentId = parseInt(entry.target.getAttribute('data-comment-id') || '0');
+            if (commentId) {
+              // 댓글이 화면에 보이기 시작한 시간 기록
+              setCommentViewTimes(prev => {
+                if (!prev[commentId]) {
+                  return {
+                    ...prev,
+                    [commentId]: Date.now()
+                  };
+                }
+                return prev;
+              });
+            }
+          }
+        });
+      },
+      { threshold: 0.5 } // 댓글의 50%가 보일 때
+    );
+
+    // 모든 댓글 요소 관찰
+    const commentElements = document.querySelectorAll('[data-comment-id]');
+    commentElements.forEach(el => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [nestedComments]); // commentViewTimes 의존성 제거
+
+  // --- 🔧 NEW: 페이지를 떠날 때 마지막 뷰 시간 저장 ---
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const now = Date.now();
+      localStorage.setItem(`lastViewTime_${id}_${user?.id}`, now.toString());
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // 컴포넌트 언마운트 시에도 저장
+      const now = Date.now();
+      localStorage.setItem(`lastViewTime_${id}_${user?.id}`, now.toString());
+    };
+  }, [id, user?.id]);
 
   if (isPostLoading) return <div>Loading post...</div>;
   if (postError) return <div>Error: {postError.message}</div>;
@@ -1316,6 +1474,7 @@ const PostDetail = () => {
                       }));
                     }}
                     onProfileClick={handleProfileClick}
+                    isNewComment={isNewComment}
                   />
                 ))
               )}

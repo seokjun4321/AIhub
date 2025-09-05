@@ -170,28 +170,55 @@ export const NotificationDropdown = () => {
     return usernameMatch ? usernameMatch[1] : "알 수 없는 사용자";
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = async (notification: Notification) => {
     console.log('🔔 Notification clicked:', notification); // 디버깅용
+    console.log('🔔 Notification type:', notification.type);
+    console.log('🔔 Target ID:', notification.target_id);
+    console.log('🔔 Mention ID:', notification.mention_id);
     
     if (!notification.is_read) {
       markAsReadMutation.mutate(notification.id);
     }
     setIsOpen(false);
     
-    // 더 관대한 조건으로 이동 시도
-    const targetId = notification.target_id;
-    console.log('🎯 Target ID:', targetId, 'Type:', typeof targetId); // 디버깅용
-    
-    if (targetId) {
-      const postId = Number(targetId);
-      if (!isNaN(postId) && postId > 0) {
-        console.log('✅ Navigating to post:', postId); // 디버깅용
-        navigate(`/community/${postId}`);
-      } else {
-        console.log('❌ Invalid post ID:', targetId); // 디버깅용
+    try {
+      // 멘션 알림의 경우 mention_id로 댓글/게시글을 찾아 정확히 이동
+      if (notification.mention_id) {
+        console.log('🔍 Processing mention notification...');
+        const { data: mention, error } = await supabase
+          .from('mentions')
+          .select('comment_id, post_id')
+          .eq('id', notification.mention_id)
+          .single();
+        console.log('🔍 Mention data:', mention, 'Error:', error);
+        if (!error && mention?.post_id) {
+          const postId = Number(mention.post_id);
+          const commentId = mention.comment_id ? Number(mention.comment_id) : undefined;
+          console.log('🔍 Navigating to post:', postId, 'comment:', commentId);
+          if (commentId) {
+            navigate(`/community/${postId}?highlightComment=${commentId}`);
+            return;
+          }
+          navigate(`/community/${postId}`);
+          return;
+        }
       }
-    } else {
-      console.log('❌ No target_id found in notification'); // 디버깅용
+
+      // 일반 댓글 알림: target_id가 게시글 ID라고 가정하고 이동
+      const targetId = notification.target_id;
+      console.log('🔍 Processing regular notification, target_id:', targetId);
+      if (targetId) {
+        const postId = Number(targetId);
+        console.log('🔍 Parsed post ID:', postId);
+        if (!isNaN(postId) && postId > 0) {
+          console.log('✅ Navigating to post:', postId);
+          navigate(`/community/${postId}`);
+          return;
+        }
+      }
+      console.log('❌ No valid navigation target found');
+    } catch (err) {
+      console.error('Notification navigation error:', err);
     }
   };
 
