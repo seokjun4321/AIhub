@@ -71,9 +71,6 @@ const Tools = () => {
         query = query.or(`name.ilike.%${searchQuery}%, description.ilike.%${searchQuery}%`);
       }
 
-      // 카테고리 필터 (ai_models 테이블에 category_id가 없으므로 일단 전체 조회)
-      // TODO: 나중에 ai_models 테이블에 category_id 추가 필요
-
       // 정렬
       switch (sortBy) {
         case 'rating':
@@ -111,6 +108,14 @@ const Tools = () => {
   });
 
   const filteredModels = aiModels?.filter(model => {
+    // 카테고리 필터 (model_type 기반)
+    if (selectedCategory !== 'all') {
+      const category = categories?.find(cat => cat.id.toString() === selectedCategory);
+      if (category && model.model_type !== category.name) {
+        return false;
+      }
+    }
+
     // 가격 필터 (간단한 텍스트 매칭)
     if (priceFilter !== 'all') {
       const pricing = model.pricing_info?.toLowerCase() || '';
@@ -400,11 +405,11 @@ const Tools = () => {
 
           {/* 추천 섹션 */}
           <div className="bg-muted/50 rounded-lg p-8">
-            <h2 className="text-2xl font-bold mb-4">추천 AI 도구</h2>
+            <h2 className="text-2xl font-bold mb-4">대학생 추천 AI 도구</h2>
             <p className="text-muted-foreground mb-6">
-              커뮤니티에서 가장 인기 있는 AI 도구들을 확인해보세요
+              대학생들이 가장 많이 사용하는 AI 도구들을 카테고리별로 확인해보세요
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-background rounded-lg p-4 border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
@@ -418,9 +423,27 @@ const Tools = () => {
                 <div className="flex items-center gap-1 mb-2">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   <span className="text-sm font-medium">4.8</span>
-                  <span className="text-xs text-muted-foreground">(1,234)</span>
+                  <span className="text-xs text-muted-foreground">(1,250)</span>
                 </div>
-                <p className="text-sm text-muted-foreground">범용 대화형 AI</p>
+                <p className="text-sm text-muted-foreground">과제/리포트 작성</p>
+              </div>
+              
+              <div className="bg-background rounded-lg p-4 border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
+                    W
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Wrtn (뤼튼)</h3>
+                    <p className="text-sm text-muted-foreground">Wrtn Technologies</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mb-2">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-medium">4.6</span>
+                  <span className="text-xs text-muted-foreground">(890)</span>
+                </div>
+                <p className="text-sm text-muted-foreground">자소서/취업 준비</p>
               </div>
               
               <div className="bg-background rounded-lg p-4 border">
@@ -436,9 +459,9 @@ const Tools = () => {
                 <div className="flex items-center gap-1 mb-2">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   <span className="text-sm font-medium">4.9</span>
-                  <span className="text-xs text-muted-foreground">(856)</span>
+                  <span className="text-xs text-muted-foreground">(1,200)</span>
                 </div>
-                <p className="text-sm text-muted-foreground">AI 이미지 생성</p>
+                <p className="text-sm text-muted-foreground">PPT/디자인 이미지</p>
               </div>
               
               <div className="bg-background rounded-lg p-4 border">
@@ -454,9 +477,83 @@ const Tools = () => {
                 <div className="flex items-center gap-1 mb-2">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   <span className="text-sm font-medium">4.7</span>
-                  <span className="text-xs text-muted-foreground">(2,156)</span>
+                  <span className="text-xs text-muted-foreground">(2,000)</span>
                 </div>
-                <p className="text-sm text-muted-foreground">AI 코드 어시스턴트</p>
+                <p className="text-sm text-muted-foreground">코딩 과제/프로젝트</p>
+              </div>
+            </div>
+            
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-background rounded-lg p-4 border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
+                    G
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Grammarly</h3>
+                    <p className="text-sm text-muted-foreground">Grammarly, Inc.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mb-2">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-medium">4.5</span>
+                  <span className="text-xs text-muted-foreground">(1,200)</span>
+                </div>
+                <p className="text-sm text-muted-foreground">영문 에세이 교정</p>
+              </div>
+              
+              <div className="bg-background rounded-lg p-4 border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg flex items-center justify-center text-white font-bold">
+                    C
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Canva</h3>
+                    <p className="text-sm text-muted-foreground">Canva</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mb-2">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-medium">4.6</span>
+                  <span className="text-xs text-muted-foreground">(1,500)</span>
+                </div>
+                <p className="text-sm text-muted-foreground">디자인/포스터 제작</p>
+              </div>
+              
+              <div className="bg-background rounded-lg p-4 border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center text-white font-bold">
+                    D
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">DeepL</h3>
+                    <p className="text-sm text-muted-foreground">DeepL SE</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mb-2">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-medium">4.7</span>
+                  <span className="text-xs text-muted-foreground">(1,000)</span>
+                </div>
+                <p className="text-sm text-muted-foreground">해외 자료 번역</p>
+              </div>
+              
+              <div className="bg-background rounded-lg p-4 border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold">
+                    N
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Notion AI</h3>
+                    <p className="text-sm text-muted-foreground">Notion Labs</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mb-2">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-medium">4.4</span>
+                  <span className="text-xs text-muted-foreground">(900)</span>
+                </div>
+                <p className="text-sm text-muted-foreground">팀플/협업 관리</p>
               </div>
             </div>
           </div>

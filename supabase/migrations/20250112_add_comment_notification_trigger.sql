@@ -49,3 +49,11 @@ CREATE TRIGGER comment_notification_trigger
     WHEN (NEW.parent_comment_id IS NULL) -- 최상위 댓글만 알림 생성
     EXECUTE FUNCTION public.create_comment_notification();
 
+
+
+
+
+
+
+
+
