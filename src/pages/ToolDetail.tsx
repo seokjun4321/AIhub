@@ -207,30 +207,485 @@ const ToolDetail = () => {
     submitReviewMutation.mutate({ rating: userRating, review: userReview });
   };
 
-  const defaultPlans: PricingPlan[] = [
+  // AI 도구별 실제 요금 정보
+  const getPricingPlans = (modelName: string): PricingPlan[] => {
+    switch (modelName) {
+      case 'ChatGPT':
+        return [
     {
       id: 'free',
-      name: 'Free',
-      price: '$0 /month',
-      features: ['100 requests/day', 'Email support'],
+            name: '무료',
+            price: '$0 /월',
+            features: ['GPT-3.5 (기본 챗)', '제한된 사용량'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'plus',
+            name: 'Plus',
+            price: '$20 /월',
+            features: ['GPT-4o', '이미지 생성', '고속 응답'],
+            isPopular: true,
       ctaUrl: aiModel?.website_url || undefined,
     },
     {
       id: 'pro',
       name: 'Pro',
-      price: '$29 /month',
-      features: ['10,000 requests/day', 'Priority support', 'API access'],
+            price: '$200 /월',
+            features: ['고급 기능', '우선 지원'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'team',
+            name: '팀 플랜',
+            price: '$25-30 /월/인',
+            features: ['팀 협업', '관리자 도구'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+      
+      case 'Gemini':
+        return [
+          {
+            id: 'free',
+            name: '무료',
+            price: '$0 /월',
+            features: ['Gemini 1.5 Flash (기본형)'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'starter',
+            name: '스타터',
+            price: '$8.4 /월',
+            features: ['고급 기능', '더 많은 사용량'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'advanced',
+            name: '고급',
+            price: '₩29,000 /월',
+            features: ['한국 특화', '최고 성능'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Midjourney':
+        return [
+          {
+            id: 'basic',
+            name: '기본',
+            price: '$10 /월',
+            features: ['기본 이미지 생성'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'standard',
+            name: '표준',
+            price: '$30 /월',
+            features: ['더 많은 생성량', '고급 기능'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$60 /월',
+            features: ['무제한 생성', '우선 처리'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'mega',
+            name: '메가',
+            price: '$120 /월',
+            features: ['최고 성능', '연간 구독 시 20% 할인'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'DALL-E':
+        return [
+          {
+            id: 'plus',
+            name: 'ChatGPT Plus',
+            price: '$20 /월',
+            features: ['DALL-E 포함', 'GPT-4o', '이미지 생성'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'api',
+            name: 'API',
+            price: '$0.04-0.08 /이미지',
+            features: ['개발자용', 'API 접근'],
+            ctaUrl: aiModel?.api_documentation_url || undefined,
+          },
+        ];
+
+      case 'Adobe Firefly':
+        return [
+          {
+            id: 'standard',
+            name: '스탠다드',
+            price: '$9.99 /월',
+            features: ['기본 이미지 생성'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$29.99 /월',
+            features: ['고급 기능', '상업적 사용'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'enterprise',
+            name: '엔터프라이즈',
+            price: '$199.99 /월',
+            features: ['팀 라이선스', '전용 지원'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Stable Diffusion':
+        return [
+          {
+            id: 'opensource',
+            name: '오픈소스',
+            price: '무료',
+            features: ['로컬 실행', '커스터마이징'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'dreamstudio',
+            name: 'DreamStudio',
+            price: '$8.33 /월',
+            features: ['클라우드 서비스', '이미지당 $0.02'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Notion AI':
+        return [
+          {
+            id: 'free',
+            name: '무료 시작',
+            price: '$0 /월',
+            features: ['기본 기능'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'personal',
+            name: '개인',
+            price: '$10 /월',
+            features: ['AI 기능', '연간 구독'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'team',
+            name: '팀',
+            price: '$20-24 /월',
+            features: ['팀 협업', '고급 기능'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Grammarly':
+        return [
+          {
+            id: 'free',
+            name: '무료',
+            price: '$0 /월',
+            features: ['기본 문법 검사'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'premium',
+            name: '프리미엄',
+            price: '$12 /월',
+            features: ['고급 문법', '스타일 개선', '연간 구독'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'monthly',
+            name: '월간',
+            price: '$30 /월',
+            features: ['월간 구독'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Jasper':
+        return [
+          {
+            id: 'creator',
+            name: '크리에이터',
+            price: '$39-49 /월',
+            features: ['마케팅 콘텐츠', '개인 사용'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'team',
+            name: '팀',
+            price: '$125 /월',
+            features: ['팀 협업', '고급 기능'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Copy.ai':
+        return [
+          {
+            id: 'free',
+            name: '무료 체험',
+            price: '$0 /월',
+            features: ['제한된 사용량'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$35 /월',
+            features: ['무제한 생성', '연간 구독'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'monthly',
+            name: '월간',
+            price: '$49 /월',
+            features: ['월간 구독'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'GitHub Copilot':
+        return [
+          {
+            id: 'individual',
+            name: '개인',
+            price: '$10 /월',
+            features: ['개인 사용', 'AI 코드 완성'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'business',
+            name: '비즈니스',
+            price: '$19 /월',
+            features: ['팀 사용', '관리자 도구'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Replit':
+        return [
+          {
+            id: 'free',
+            name: '무료 시작',
+            price: '$0 /월',
+            features: ['기본 기능'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'core',
+            name: '코어',
+            price: '$20 /월',
+            features: ['고급 기능', '연간 구독'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'team',
+            name: '팀',
+            price: '$40 /월',
+            features: ['팀 협업', '관리자 도구'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Tabnine':
+        return [
+          {
+            id: 'free',
+            name: '무료 플랜',
+            price: '$0 /월',
+            features: ['기본 코드 완성'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$9 /월',
+            features: ['고급 기능', '연간 구독'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'enterprise',
+            name: '엔터프라이즈',
+            price: '$39 /월',
+            features: ['팀 사용', '관리자 도구'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Synthesia':
+        return [
+          {
+            id: 'starter',
+            name: '스타터',
+            price: '$22 /월',
+            features: ['기본 동영상 생성'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'creator',
+            name: '크리에이터',
+            price: '$67 /월',
+            features: ['고급 기능', '더 많은 생성량'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'ElevenLabs':
+        return [
+          {
+            id: 'starter',
+            name: '스타터',
+            price: '$4.17 /월',
+            features: ['기본 음성 생성', '연간 구독'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'creator',
+            name: '크리에이터',
+            price: '$11 /월',
+            features: ['고급 기능', '더 많은 사용량'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$82.5 /월',
+            features: ['무제한 생성', '우선 처리'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'scale',
+            name: '스케일',
+            price: '$275-330 /월',
+            features: ['대용량 처리', '전용 지원'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Suno':
+        return [
+          {
+            id: 'free',
+            name: '무료 플랜',
+            price: '$0 /월',
+            features: ['기본 음악 생성'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$10 /월',
+            features: ['고급 기능', '더 많은 생성량'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'premium',
+            name: '프리미엄',
+            price: '$30 /월',
+            features: ['무제한 생성', '우선 처리'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Zapier':
+        return [
+          {
+            id: 'free',
+            name: '무료 플랜',
+            price: '$0 /월',
+            features: ['기본 자동화'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'starter',
+            name: '스타터',
+            price: '$29.99 /월',
+            features: ['고급 자동화', '더 많은 앱'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$79 /월',
+            features: ['무제한 자동화', '우선 지원'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+
+      case 'Canva':
+        return [
+          {
+            id: 'free',
+            name: '무료 플랜',
+            price: '$0 /월',
+            features: ['기본 디자인 도구'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$12.99 /월',
+            features: ['AI 디자인', '고급 기능'],
       isPopular: true,
       ctaUrl: aiModel?.website_url || undefined,
     },
     {
       id: 'enterprise',
-      name: 'Enterprise',
-      price: 'Custom',
-      features: ['Unlimited requests', 'Dedicated support', 'On-premise options'],
+            name: '엔터프라이즈',
+            price: '별도 문의',
+            features: ['팀 라이선스', '전용 지원'],
       ctaUrl: aiModel?.website_url || undefined,
     },
   ];
+
+      default:
+        return [
+          {
+            id: 'free',
+            name: '무료',
+            price: '$0 /월',
+            features: ['기본 기능'],
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+          {
+            id: 'pro',
+            name: '프로',
+            price: '$29 /월',
+            features: ['고급 기능', '우선 지원'],
+            isPopular: true,
+            ctaUrl: aiModel?.website_url || undefined,
+          },
+        ];
+    }
+  };
+
+  const defaultPlans = getPricingPlans(aiModel?.name || '');
 
   const renderSkeleton = () => (
     <div className="space-y-8">
@@ -322,11 +777,13 @@ const ToolDetail = () => {
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl">
+                <div className="w-16 h-16 flex items-center justify-center">
                   {aiModel.logo_url ? (
-                    <img src={aiModel.logo_url} alt={aiModel.name} className="w-12 h-12 rounded" />
+                    <img src={aiModel.logo_url} alt={aiModel.name} className="w-16 h-16 object-contain" />
                   ) : (
-                    aiModel.name.charAt(0).toUpperCase()
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl">
+                      {aiModel.name.charAt(0).toUpperCase()}
+                    </div>
                   )}
                 </div>
                 <div className="flex-1">

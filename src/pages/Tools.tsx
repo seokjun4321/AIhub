@@ -30,6 +30,7 @@ interface AIModel {
   description: string | null;
   provider: string | null;
   model_type: string | null;
+  category_id: number | null;
   pricing_info: string | null;
   features: string[] | null;
   use_cases: string[] | null;
@@ -108,10 +109,10 @@ const Tools = () => {
   });
 
   const filteredModels = aiModels?.filter(model => {
-    // 카테고리 필터 (model_type 기반)
+    // 카테고리 필터 (category_id 기반)
     if (selectedCategory !== 'all') {
-      const category = categories?.find(cat => cat.id.toString() === selectedCategory);
-      if (category && model.model_type !== category.name) {
+      const selectedCategoryId = parseInt(selectedCategory);
+      if (model.category_id !== selectedCategoryId) {
         return false;
       }
     }
@@ -171,83 +172,91 @@ const Tools = () => {
   );
 
   const renderModelCard = (model: AIModel) => (
-    <Card key={model.id} className={`hover:shadow-lg transition-shadow ${compareTools.includes(model.id) ? 'ring-2 ring-primary' : ''}`}>
-      <CardHeader>
-        <div className="flex items-start gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-            {model.logo_url ? (
-              <img src={model.logo_url} alt={model.name} className="w-8 h-8 rounded" />
-            ) : (
-              model.name.charAt(0).toUpperCase()
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg mb-1 truncate">{model.name}</CardTitle>
-            <p className="text-sm text-muted-foreground truncate">
-              {model.provider || 'Unknown Provider'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-medium">
-                {model.average_rating.toFixed(1)}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                ({model.rating_count})
-              </span>
+    <Link key={model.id} to={`/tools/${model.id}`} className="block">
+      <Card className={`hover:shadow-lg transition-shadow cursor-pointer ${compareTools.includes(model.id) ? 'ring-2 ring-primary' : ''}`}>
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 flex items-center justify-center">
+              {model.logo_url ? (
+                <img src={model.logo_url} alt={model.name} className="w-12 h-12 object-contain" />
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                  {model.name.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
-            <Button
-              variant={compareTools.includes(model.id) ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleCompare(model.id)}
-              className="h-8 w-8 p-0"
-            >
-              <GitCompare className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-          {model.description || '설명이 없습니다.'}
-        </p>
-        
-        <div className="flex flex-wrap gap-2 mb-4">
-          {model.features?.slice(0, 3).map((feature, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {feature}
-            </Badge>
-          ))}
-          {model.features && model.features.length > 3 && (
-            <Badge variant="outline" className="text-xs">
-              +{model.features.length - 3}
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>{model.pricing_info || '가격 정보 없음'}</span>
-          </div>
-          <div className="flex gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link to={`/tools/${model.id}`}>
-                자세히 보기
-              </Link>
-            </Button>
-            {model.website_url && (
-              <Button asChild size="sm">
-                <a href={model.website_url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg mb-1 truncate">{model.name}</CardTitle>
+              <p className="text-sm text-muted-foreground truncate">
+                {model.provider || 'Unknown Provider'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <span className="text-sm font-medium">
+                  {model.average_rating.toFixed(1)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  ({model.rating_count})
+                </span>
+              </div>
+              <Button
+                variant={compareTools.includes(model.id) ? "default" : "outline"}
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleCompare(model.id);
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <GitCompare className="w-4 h-4" />
               </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+            {model.description || '설명이 없습니다.'}
+          </p>
+          
+          <div className="flex flex-wrap gap-2 mb-4">
+            {model.features?.slice(0, 3).map((feature, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {feature}
+              </Badge>
+            ))}
+            {model.features && model.features.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{model.features.length - 3}
+              </Badge>
             )}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              <span>{model.pricing_info || '가격 정보 없음'}</span>
+            </div>
+            <div className="flex gap-2">
+              {model.website_url && (
+                <Button 
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open(model.website_url, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 
   return (

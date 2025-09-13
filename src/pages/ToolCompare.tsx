@@ -86,7 +86,13 @@ const ToolCompare = () => {
         .in('id', selectedTools);
       
       if (error) throw error;
-      return data as AIModel[];
+      
+      // selectedTools 배열의 순서에 맞게 정렬
+      const sortedData = selectedTools.map(id => 
+        data.find(tool => tool.id === id)
+      ).filter(Boolean) as AIModel[];
+      
+      return sortedData;
     },
     enabled: selectedTools.length > 0,
   });
@@ -101,6 +107,7 @@ const ToolCompare = () => {
       return;
     }
     
+    // 새 도구를 맨 뒤에 추가
     const newTools = [...selectedTools, toolId];
     setSelectedTools(newTools);
     setSearchParams({ tools: newTools.join(',') });
@@ -143,12 +150,12 @@ const ToolCompare = () => {
 
     return (
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse table-fixed">
           <thead>
             <tr className="border-b">
-              <th className="text-left p-4 font-semibold">항목</th>
+              <th className="text-left p-4 font-semibold w-32">항목</th>
               {selectedToolsData.map((tool) => (
-                <th key={tool.id} className="text-center p-4 min-w-[200px]">
+                <th key={tool.id} className="text-center p-4" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
                       {tool.logo_url ? (
@@ -175,27 +182,27 @@ const ToolCompare = () => {
           <tbody>
             {/* 기본 정보 */}
             <tr className="border-b">
-              <td className="p-4 font-medium">설명</td>
+              <td className="p-4 font-medium w-32">설명</td>
               {selectedToolsData.map((tool) => (
-                <td key={tool.id} className="p-4 text-sm text-muted-foreground">
+                <td key={tool.id} className="p-4 text-sm text-muted-foreground" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   {tool.description || '설명 없음'}
                 </td>
               ))}
             </tr>
             
             <tr className="border-b">
-              <td className="p-4 font-medium">타입</td>
+              <td className="p-4 font-medium w-32">타입</td>
               {selectedToolsData.map((tool) => (
-                <td key={tool.id} className="p-4">
+                <td key={tool.id} className="p-4" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   <Badge variant="secondary">{tool.model_type || 'AI Tool'}</Badge>
                 </td>
               ))}
             </tr>
             
             <tr className="border-b">
-              <td className="p-4 font-medium">평점</td>
+              <td className="p-4 font-medium w-32">평점</td>
               {selectedToolsData.map((tool) => (
-                <td key={tool.id} className="p-4">
+                <td key={tool.id} className="p-4" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   <div className="flex items-center gap-1">
                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     <span className="font-semibold">{tool.average_rating.toFixed(1)}</span>
@@ -206,9 +213,9 @@ const ToolCompare = () => {
             </tr>
             
             <tr className="border-b">
-              <td className="p-4 font-medium">가격</td>
+              <td className="p-4 font-medium w-32">가격</td>
               {selectedToolsData.map((tool) => (
-                <td key={tool.id} className="p-4 text-sm">
+                <td key={tool.id} className="p-4 text-sm" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   {tool.pricing_info || '정보 없음'}
                 </td>
               ))}
@@ -216,9 +223,9 @@ const ToolCompare = () => {
             
             {/* 주요 기능 */}
             <tr className="border-b">
-              <td className="p-4 font-medium">주요 기능</td>
+              <td className="p-4 font-medium w-32">주요 기능</td>
               {selectedToolsData.map((tool) => (
-                <td key={tool.id} className="p-4">
+                <td key={tool.id} className="p-4" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   {tool.features && tool.features.length > 0 ? (
                     <div className="space-y-1">
                       {tool.features.slice(0, 3).map((feature, index) => (
@@ -242,9 +249,9 @@ const ToolCompare = () => {
             
             {/* 사용 사례 */}
             <tr className="border-b">
-              <td className="p-4 font-medium">사용 사례</td>
+              <td className="p-4 font-medium w-32">사용 사례</td>
               {selectedToolsData.map((tool) => (
-                <td key={tool.id} className="p-4">
+                <td key={tool.id} className="p-4" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   {tool.use_cases && tool.use_cases.length > 0 ? (
                     <div className="space-y-1">
                       {tool.use_cases.slice(0, 2).map((useCase, index) => (
@@ -267,9 +274,9 @@ const ToolCompare = () => {
             
             {/* 제한사항 */}
             <tr className="border-b">
-              <td className="p-4 font-medium">제한사항</td>
+              <td className="p-4 font-medium w-32">제한사항</td>
               {selectedToolsData.map((tool) => (
-                <td key={tool.id} className="p-4">
+                <td key={tool.id} className="p-4" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   {tool.limitations && tool.limitations.length > 0 ? (
                     <div className="space-y-1">
                       {tool.limitations.slice(0, 2).map((limitation, index) => (
@@ -293,9 +300,9 @@ const ToolCompare = () => {
             
             {/* 액션 버튼 */}
             <tr>
-              <td className="p-4 font-medium">액션</td>
+              <td className="p-4 font-medium w-32">액션</td>
               {selectedToolsData.map((tool) => (
-                <td key={tool.id} className="p-4">
+                <td key={tool.id} className="p-4" style={{ width: `calc((100% - 8rem) / ${selectedToolsData.length})` }}>
                   <div className="flex flex-col gap-2">
                     <Button asChild size="sm" className="w-full">
                       <Link to={`/tools/${tool.id}`}>
