@@ -7,7 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import StarRating from '@/components/ui/StarRating';
 import { 
   Star, 
   ExternalLink, 
@@ -20,35 +23,37 @@ import {
   XCircle,
   DollarSign,
   Zap,
-  Shield
+  Shield,
+  Target,
+  Lightbulb,
+  Users,
+  UserCircle,
+  Search,
+  FileText,
+  Presentation,
+  Globe
 } from 'lucide-react';
 import Navbar from '@/components/ui/navbar';
 import { toast } from '@/hooks/use-toast';
-import Rating from '@/components/ui/tool/Rating';
-import { PricingPlans, PricingPlan } from '@/components/ui/tool/PricingPlans';
-import { QuickActions } from '@/components/ui/tool/QuickActions';
-import { MetaChips } from '@/components/ui/tool/MetaChips';
-import { RelatedResources } from '@/components/ui/tool/RelatedResources';
-import { SimilarTools } from '@/components/ui/tool/SimilarTools';
-import { ComparisonTable } from '@/components/ui/tool/ComparisonTable';
 
 interface AIModel {
   id: number;
   name: string;
   description: string | null;
   provider: string | null;
-  model_type: string | null;
-  pricing_info: string | null;
-  features: string[] | null;
-  use_cases: string[] | null;
-  limitations: string[] | null;
-  website_url: string | null;
-  api_documentation_url: string | null;
+  model_type?: string | null;
+  pricing_info?: string | null;
+  features?: string[] | null;
+  use_cases?: string[] | null;
+  limitations?: string[] | null;
+  website_url?: string | null;
+  api_documentation_url?: string | null;
   average_rating: number;
   rating_count: number;
-  logo_url: string | null;
+  logo_url?: string | null;
   created_at: string;
   updated_at: string;
+  version?: string;
 }
 
 interface Rating {
@@ -71,6 +76,11 @@ const ToolDetail = () => {
   const [userRating, setUserRating] = useState(0);
   const [userReview, setUserReview] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentRating, setCurrentRating] = useState(0);
+  const [uiAverage, setUiAverage] = useState<number | null>(null);
+  const [uiCount, setUiCount] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // AI 모델 상세 정보 가져오기
   const { data: aiModel, isLoading: modelLoading } = useQuery({
@@ -79,11 +89,11 @@ const ToolDetail = () => {
       const { data, error } = await supabase
         .from('ai_models')
         .select('*')
-        .eq('id', id)
+        .eq('id', parseInt(id!))
         .single();
       
       if (error) throw error;
-      return data as AIModel;
+      return data as any;
     },
     enabled: !!id,
   });
@@ -101,11 +111,11 @@ const ToolDetail = () => {
             avatar_url
           )
         `)
-        .eq('ai_model_id', id)
+        .eq('ai_model_id', parseInt(id!))
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Rating[];
+      return data as any;
     },
     enabled: !!id,
   });
@@ -118,12 +128,12 @@ const ToolDetail = () => {
       const { data, error } = await supabase
         .from('ratings')
         .select('*')
-        .eq('ai_model_id', id)
+        .eq('ai_model_id', parseInt(id!))
         .eq('user_id', user.id)
         .single();
       
       if (error && error.code !== 'PGRST116') throw error;
-      return data as Rating | null;
+      return data as any;
     },
     enabled: !!id && !!user,
   });
@@ -167,11 +177,20 @@ const ToolDetail = () => {
     },
   });
 
+  // 서버 데이터 변경 시 표시값 동기화
+  useEffect(() => {
+    if (aiModel) {
+      setUiAverage(Number(aiModel.average_rating) || 0);
+      setUiCount(Number(aiModel.rating_count) || 0);
+    }
+  }, [aiModel?.average_rating, aiModel?.rating_count]);
+
   // 사용자 리뷰 데이터가 로드되면 상태 업데이트
   useEffect(() => {
     if (userRatingData) {
       setUserRating(userRatingData.rating);
       setUserReview(userRatingData.review || '');
+      setCurrentRating(userRatingData.rating);
     }
   }, [userRatingData]);
 
@@ -207,485 +226,155 @@ const ToolDetail = () => {
     submitReviewMutation.mutate({ rating: userRating, review: userReview });
   };
 
+  // 평점 제출 뮤테이션
+  const rateMutation = useMutation({
+    mutationFn: async ({ rating }: { rating: number }) => {
+      if (!user || !aiModel) throw new Error("로그인이 필요합니다.");
+      const { error } = await supabase.from('ratings').upsert({
+        user_id: user.id,
+        ai_model_id: aiModel.id,
+        rating,
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aiModel', id] });
+      queryClient.invalidateQueries({ queryKey: ['ratings', id] });
+      queryClient.invalidateQueries({ queryKey: ['userRating', id, user?.id] });
+      toast({
+        title: "평점이 등록되었습니다!",
+        description: "소중한 의견 감사합니다.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "오류가 발생했습니다",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRate = (rating: number) => {
+    setCurrentRating(rating);
+    rateMutation.mutate({ rating });
+  };
+
   // AI 도구별 실제 요금 정보
-  const getPricingPlans = (modelName: string): PricingPlan[] => {
+  const getPricingPlans = (modelName: string) => {
     switch (modelName) {
       case 'ChatGPT':
         return [
-    {
-      id: 'free',
-            name: '무료',
-            price: '$0 /월',
-            features: ['GPT-3.5 (기본 챗)', '제한된 사용량'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'plus',
-            name: 'Plus',
-            price: '$20 /월',
-            features: ['GPT-4o', '이미지 생성', '고속 응답'],
-            isPopular: true,
-      ctaUrl: aiModel?.website_url || undefined,
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-            price: '$200 /월',
-            features: ['고급 기능', '우선 지원'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'team',
-            name: '팀 플랜',
-            price: '$25-30 /월/인',
-            features: ['팀 협업', '관리자 도구'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료', price: '$0/월' },
+          { name: 'Plus', price: '$20/월' },
+          { name: 'Team', price: '$25/월' }
         ];
-      
       case 'Gemini':
         return [
-          {
-            id: 'free',
-            name: '무료',
-            price: '$0 /월',
-            features: ['Gemini 1.5 Flash (기본형)'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'starter',
-            name: '스타터',
-            price: '$8.4 /월',
-            features: ['고급 기능', '더 많은 사용량'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'advanced',
-            name: '고급',
-            price: '₩29,000 /월',
-            features: ['한국 특화', '최고 성능'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료', price: '$0/월' },
+          { name: '스타터', price: '$8.4/월' },
+          { name: '고급', price: '₩29,000/월' }
         ];
-
       case 'Midjourney':
         return [
-          {
-            id: 'basic',
-            name: '기본',
-            price: '$10 /월',
-            features: ['기본 이미지 생성'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'standard',
-            name: '표준',
-            price: '$30 /월',
-            features: ['더 많은 생성량', '고급 기능'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$60 /월',
-            features: ['무제한 생성', '우선 처리'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'mega',
-            name: '메가',
-            price: '$120 /월',
-            features: ['최고 성능', '연간 구독 시 20% 할인'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '기본', price: '$10/월' },
+          { name: '표준', price: '$30/월' },
+          { name: '프로', price: '$60/월' }
         ];
-
       case 'DALL-E':
         return [
-          {
-            id: 'plus',
-            name: 'ChatGPT Plus',
-            price: '$20 /월',
-            features: ['DALL-E 포함', 'GPT-4o', '이미지 생성'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'api',
-            name: 'API',
-            price: '$0.04-0.08 /이미지',
-            features: ['개발자용', 'API 접근'],
-            ctaUrl: aiModel?.api_documentation_url || undefined,
-          },
+          { name: 'ChatGPT Plus', price: '$20/월' },
+          { name: 'API', price: '$0.04-0.08/이미지' }
         ];
-
       case 'Adobe Firefly':
         return [
-          {
-            id: 'standard',
-            name: '스탠다드',
-            price: '$9.99 /월',
-            features: ['기본 이미지 생성'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$29.99 /월',
-            features: ['고급 기능', '상업적 사용'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'enterprise',
-            name: '엔터프라이즈',
-            price: '$199.99 /월',
-            features: ['팀 라이선스', '전용 지원'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '스탠다드', price: '$9.99/월' },
+          { name: '프로', price: '$29.99/월' },
+          { name: '엔터프라이즈', price: '$199.99/월' }
         ];
-
       case 'Stable Diffusion':
         return [
-          {
-            id: 'opensource',
-            name: '오픈소스',
-            price: '무료',
-            features: ['로컬 실행', '커스터마이징'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'dreamstudio',
-            name: 'DreamStudio',
-            price: '$8.33 /월',
-            features: ['클라우드 서비스', '이미지당 $0.02'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '오픈소스', price: '무료' },
+          { name: 'DreamStudio', price: '$8.33/월' }
         ];
-
       case 'Notion AI':
         return [
-          {
-            id: 'free',
-            name: '무료 시작',
-            price: '$0 /월',
-            features: ['기본 기능'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'personal',
-            name: '개인',
-            price: '$10 /월',
-            features: ['AI 기능', '연간 구독'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'team',
-            name: '팀',
-            price: '$20-24 /월',
-            features: ['팀 협업', '고급 기능'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료 시작', price: '$0/월' },
+          { name: '개인', price: '$10/월' },
+          { name: '팀', price: '$20-24/월' }
         ];
-
       case 'Grammarly':
         return [
-          {
-            id: 'free',
-            name: '무료',
-            price: '$0 /월',
-            features: ['기본 문법 검사'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'premium',
-            name: '프리미엄',
-            price: '$12 /월',
-            features: ['고급 문법', '스타일 개선', '연간 구독'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'monthly',
-            name: '월간',
-            price: '$30 /월',
-            features: ['월간 구독'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료', price: '$0/월' },
+          { name: '프리미엄', price: '$12/월' },
+          { name: '월간', price: '$30/월' }
         ];
-
       case 'Jasper':
         return [
-          {
-            id: 'creator',
-            name: '크리에이터',
-            price: '$39-49 /월',
-            features: ['마케팅 콘텐츠', '개인 사용'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'team',
-            name: '팀',
-            price: '$125 /월',
-            features: ['팀 협업', '고급 기능'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '크리에이터', price: '$39-49/월' },
+          { name: '팀', price: '$125/월' }
         ];
-
       case 'Copy.ai':
         return [
-          {
-            id: 'free',
-            name: '무료 체험',
-            price: '$0 /월',
-            features: ['제한된 사용량'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$35 /월',
-            features: ['무제한 생성', '연간 구독'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'monthly',
-            name: '월간',
-            price: '$49 /월',
-            features: ['월간 구독'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료 체험', price: '$0/월' },
+          { name: '프로', price: '$35/월' },
+          { name: '월간', price: '$49/월' }
         ];
-
       case 'GitHub Copilot':
         return [
-          {
-            id: 'individual',
-            name: '개인',
-            price: '$10 /월',
-            features: ['개인 사용', 'AI 코드 완성'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'business',
-            name: '비즈니스',
-            price: '$19 /월',
-            features: ['팀 사용', '관리자 도구'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '개인', price: '$10/월' },
+          { name: '비즈니스', price: '$19/월' }
         ];
-
       case 'Replit':
         return [
-          {
-            id: 'free',
-            name: '무료 시작',
-            price: '$0 /월',
-            features: ['기본 기능'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'core',
-            name: '코어',
-            price: '$20 /월',
-            features: ['고급 기능', '연간 구독'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'team',
-            name: '팀',
-            price: '$40 /월',
-            features: ['팀 협업', '관리자 도구'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료 시작', price: '$0/월' },
+          { name: '코어', price: '$20/월' },
+          { name: '팀', price: '$40/월' }
         ];
-
       case 'Tabnine':
         return [
-          {
-            id: 'free',
-            name: '무료 플랜',
-            price: '$0 /월',
-            features: ['기본 코드 완성'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$9 /월',
-            features: ['고급 기능', '연간 구독'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'enterprise',
-            name: '엔터프라이즈',
-            price: '$39 /월',
-            features: ['팀 사용', '관리자 도구'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료 플랜', price: '$0/월' },
+          { name: '프로', price: '$9/월' },
+          { name: '엔터프라이즈', price: '$39/월' }
         ];
-
       case 'Synthesia':
         return [
-          {
-            id: 'starter',
-            name: '스타터',
-            price: '$22 /월',
-            features: ['기본 동영상 생성'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'creator',
-            name: '크리에이터',
-            price: '$67 /월',
-            features: ['고급 기능', '더 많은 생성량'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '스타터', price: '$22/월' },
+          { name: '크리에이터', price: '$67/월' }
         ];
-
       case 'ElevenLabs':
         return [
-          {
-            id: 'starter',
-            name: '스타터',
-            price: '$4.17 /월',
-            features: ['기본 음성 생성', '연간 구독'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'creator',
-            name: '크리에이터',
-            price: '$11 /월',
-            features: ['고급 기능', '더 많은 사용량'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$82.5 /월',
-            features: ['무제한 생성', '우선 처리'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'scale',
-            name: '스케일',
-            price: '$275-330 /월',
-            features: ['대용량 처리', '전용 지원'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '스타터', price: '$4.17/월' },
+          { name: '크리에이터', price: '$11/월' },
+          { name: '프로', price: '$82.5/월' }
         ];
-
       case 'Suno':
         return [
-          {
-            id: 'free',
-            name: '무료 플랜',
-            price: '$0 /월',
-            features: ['기본 음악 생성'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$10 /월',
-            features: ['고급 기능', '더 많은 생성량'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'premium',
-            name: '프리미엄',
-            price: '$30 /월',
-            features: ['무제한 생성', '우선 처리'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료 플랜', price: '$0/월' },
+          { name: '프로', price: '$10/월' },
+          { name: '프리미엄', price: '$30/월' }
         ];
-
       case 'Zapier':
         return [
-          {
-            id: 'free',
-            name: '무료 플랜',
-            price: '$0 /월',
-            features: ['기본 자동화'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'starter',
-            name: '스타터',
-            price: '$29.99 /월',
-            features: ['고급 자동화', '더 많은 앱'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$79 /월',
-            features: ['무제한 자동화', '우선 지원'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료 플랜', price: '$0/월' },
+          { name: '스타터', price: '$29.99/월' },
+          { name: '프로', price: '$79/월' }
         ];
-
       case 'Canva':
         return [
-          {
-            id: 'free',
-            name: '무료 플랜',
-            price: '$0 /월',
-            features: ['기본 디자인 도구'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$12.99 /월',
-            features: ['AI 디자인', '고급 기능'],
-      isPopular: true,
-      ctaUrl: aiModel?.website_url || undefined,
-    },
-    {
-      id: 'enterprise',
-            name: '엔터프라이즈',
-            price: '별도 문의',
-            features: ['팀 라이선스', '전용 지원'],
-      ctaUrl: aiModel?.website_url || undefined,
-    },
-  ];
-
+          { name: '무료 플랜', price: '$0/월' },
+          { name: '프로', price: '$12.99/월' },
+          { name: '엔터프라이즈', price: '별도 문의' }
+        ];
       default:
         return [
-          {
-            id: 'free',
-            name: '무료',
-            price: '$0 /월',
-            features: ['기본 기능'],
-            ctaUrl: aiModel?.website_url || undefined,
-          },
-          {
-            id: 'pro',
-            name: '프로',
-            price: '$29 /월',
-            features: ['고급 기능', '우선 지원'],
-            isPopular: true,
-            ctaUrl: aiModel?.website_url || undefined,
-          },
+          { name: '무료', price: '$0/월' },
+          { name: '프로', price: '$29/월' }
         ];
     }
   };
 
-  const defaultPlans = getPricingPlans(aiModel?.name || '');
+  const pricingPlans = getPricingPlans(aiModel?.name || '');
 
   const renderSkeleton = () => (
     <div className="space-y-8">
@@ -761,64 +450,107 @@ const ToolDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="pt-24 pb-12">
-        <div className="container mx-auto px-6">
-          <div className="flex items-center gap-4 mb-8">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/tools">
-                <ArrowLeft className="w-4 h-4 mr-2" />뒤로가기
-              </Link>
-            </Button>
-          </div>
-
-          {/* 헤더 영역 */}
-          <Card className="mb-6">
-            <CardHeader>
-              <div className="flex items-start gap-4">
+        <div className="container mx-auto px-6 max-w-7xl">
+          {/* 상단 섹션 - 로고, 제목, 액션 버튼 */}
+          <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-6">
                 <div className="w-16 h-16 flex items-center justify-center">
                   {aiModel.logo_url ? (
                     <img src={aiModel.logo_url} alt={aiModel.name} className="w-16 h-16 object-contain" />
                   ) : (
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl">
-                      {aiModel.name.charAt(0).toUpperCase()}
-                    </div>
+                    <Globe className="w-16 h-16 text-gray-600" />
                   )}
                 </div>
-                <div className="flex-1">
-                  <CardTitle className="text-3xl mb-2">{aiModel.name}</CardTitle>
-                  <div className="text-muted-foreground mb-3">{aiModel.provider || 'Unknown Provider'}</div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{aiModel.name}</h1>
+                  <p className="text-lg text-gray-600 mb-4">{aiModel.description || '설명이 없습니다.'}</p>
                   <div className="flex items-center gap-4">
-                    <Rating score={aiModel.average_rating} count={aiModel.rating_count} />
-                    <Badge variant="secondary" className="text-sm">{aiModel.model_type || 'AI Tool'}</Badge>
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                      바로 사용해보기
+                    </Button>
+                    <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                      공식 사이트 가기
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm"><Heart className="w-4 h-4 mr-2" />북마크</Button>
-                  <Button variant="outline" size="sm"><Share2 className="w-4 h-4 mr-2" />공유</Button>
-                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-lg leading-relaxed">{aiModel.description || '설명이 없습니다.'}</p>
-            </CardContent>
-          </Card>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <StarRating key={`avg-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`} rating={Number(uiAverage ?? aiModel.average_rating) || 0} size={20} readOnly />
+                    <span className="font-bold text-lg text-gray-900">
+                      {(Number(uiAverage ?? aiModel.average_rating) || 0).toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <div className="font-medium">{(uiCount ?? aiModel.rating_count) || 0}개의 평가</div>
+                    <div className="text-xs">사용자 평점</div>
+                  </div>
+                </div>
+                <Button 
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white border-0" 
+                  size="sm" 
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  <Star className="w-4 h-4 mr-2" />평점 남기기
+                </Button>
+              </div>
+            </div>
+          </div>
 
-          {/* 본문: 탭 + 사이드바 레이아웃 */}
+          {/* 탭 섹션 */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 space-y-6">
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 md:grid-cols-5 overflow-x-auto no-scrollbar gap-1">
+                <TabsList className="grid w-full grid-cols-4 md:grid-cols-4 overflow-x-auto no-scrollbar gap-1">
                   <TabsTrigger value="overview">개요</TabsTrigger>
-                  <TabsTrigger value="usecases">사용 사례</TabsTrigger>
-                  <TabsTrigger value="comparison">비교</TabsTrigger>
+                  <TabsTrigger value="usecases">가이드북</TabsTrigger>
                   <TabsTrigger value="reviews">리뷰·Q&A</TabsTrigger>
                   <TabsTrigger value="stats">통계</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="mt-6">
                   <div className="space-y-6">
+                    {/* 가격 및 출시사 정보 */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Target className="w-5 h-5" />
+                          가격 및 정보
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className={`grid gap-4 mb-4 ${pricingPlans.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                          {pricingPlans.map((plan, index) => (
+                            <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
+                              <div className={`font-bold text-lg ${
+                                plan.name.includes('무료') || plan.name.includes('Free') ? 'text-green-600' :
+                                plan.name.includes('Pro') || plan.name.includes('프로') ? 'text-blue-600' :
+                                plan.name.includes('Team') || plan.name.includes('팀') ? 'text-purple-600' :
+                                'text-gray-600'
+                              }`}>
+                                {plan.name}
+                              </div>
+                              <div className="text-sm text-gray-600">{plan.price}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">출시사:</span> {aiModel.provider || 'Unknown'}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">특징:</span> 한국어 지원, 앱 제공
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* 주요 기능 */}
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Zap className="w-5 h-5" />주요 기능</CardTitle>
@@ -839,12 +571,57 @@ const ToolDetail = () => {
                       </CardContent>
                     </Card>
 
+                    {/* 실용적 예시 */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><DollarSign className="w-5 h-5" />요금제</CardTitle>
+                        <CardTitle className="flex items-center gap-2">
+                          <Lightbulb className="w-5 h-5" />
+                          실용적 예시
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <PricingPlans plans={defaultPlans} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                            <FileText className="w-8 h-8 text-blue-600" />
+                            <div>
+                              <p className="font-medium">번역 및 문서 작성</p>
+                              <p className="text-sm text-gray-600">DeepL과 함께 활용하여 고품질 번역</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                            <Presentation className="w-8 h-8 text-green-600" />
+                            <div>
+                              <p className="font-medium">PPT 및 프레젠테이션</p>
+                              <p className="text-sm text-gray-600">Canva와 연동하여 멋진 슬라이드 제작</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* 추천 대체 도구 */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="w-5 h-5" />
+                          추천 대체 도구
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <Input
+                              placeholder="AI 도구를 검색해보세요..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="pl-10"
+                            />
+                          </div>
+                          <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                            바로 사용해보기
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -853,7 +630,7 @@ const ToolDetail = () => {
                 <TabsContent value="usecases" className="mt-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><BookOpen className="w-5 h-5" />사용 사례</CardTitle>
+                      <CardTitle className="flex items-center gap-2"><BookOpen className="w-5 h-5" />가이드북</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {aiModel.use_cases && aiModel.use_cases.length > 0 ? (
@@ -866,15 +643,12 @@ const ToolDetail = () => {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-muted-foreground">사용 사례 정보가 없습니다.</p>
+                        <p className="text-muted-foreground">가이드북 정보가 없습니다.</p>
                       )}
                     </CardContent>
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="comparison" className="mt-6">
-                  <ComparisonTable currentModel={aiModel} />
-                </TabsContent>
 
                 <TabsContent value="reviews" className="mt-6 space-y-6">
                   {user && (
@@ -998,24 +772,250 @@ const ToolDetail = () => {
               </Tabs>
             </div>
 
-            {/* 사이드바 */}
+            {/* 오른쪽 사이드바 */}
             <aside className="lg:col-span-4 space-y-6">
-              <QuickActions websiteUrl={aiModel.website_url} apiDocsUrl={aiModel.api_documentation_url} />
-              <MetaChips platforms={['Web', 'Mobile', 'API']} languages={['English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese']} tags={[aiModel.model_type || 'AI', 'Automation']} />
-              <RelatedResources items={[
-                { id: 'getting-started', title: '시작하기 가이드', subtitle: '기본을 익혀보세요', href: aiModel.website_url || '#' },
-                { id: 'best-practices', title: '모범 사례', subtitle: '전문가 팁과 노하우', href: aiModel.api_documentation_url || '#' }
-              ]} />
-              <SimilarTools items={[{ id: 1, name: 'ContentAI', rating: 4.3, category: 'Content Generation' }, { id: 2, name: 'DataSmart', rating: 4.1, category: 'Analytics' }, { id: 3, name: 'AutoFlow', rating: 4.5, category: 'Automation' }]} />
-              <Button asChild variant="outline">
-                <Link to={`/tools/compare?tools=${aiModel.id}`}>
-                  자세히 비교
-                </Link>
-              </Button>
+              {/* 장단점 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="w-5 h-5" />
+                    장단점 분석
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-green-600 mb-2 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        장점
+                      </h4>
+                      <ul className="space-y-1 text-sm text-gray-600">
+                        <li>• 빠른 응답 속도</li>
+                        <li>• 깊이 있는 분석</li>
+                        <li>• 다양한 언어 지원</li>
+                        <li>• 사용자 친화적 인터페이스</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-red-600 mb-2 flex items-center gap-2">
+                        <XCircle className="w-4 h-4" />
+                        단점
+                      </h4>
+                      <ul className="space-y-1 text-sm text-gray-600">
+                        <li>• 최신 정보 부족</li>
+                        <li>• 무료 버전 제한</li>
+                        <li>• 인터넷 연결 필요</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 별점 및 평가 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    별점 및 평가
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="flex justify-center mb-2">
+                        <StarRating 
+                          key={`sidebar-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`} 
+                          rating={Number(uiAverage ?? aiModel.average_rating) || 0} 
+                          size={24} 
+                          readOnly 
+                        />
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">
+                        {(Number(uiAverage ?? aiModel.average_rating) || 0).toFixed(1)}
+                      </div>
+                      <div className="text-sm text-gray-600 mb-3">
+                        {(uiCount ?? aiModel.rating_count) || 0}개의 평가
+                      </div>
+                      <Button 
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white" 
+                        onClick={() => setIsModalOpen(true)}
+                      >
+                        <Star className="w-4 h-4 mr-2" />
+                        내 평점 남기기
+                      </Button>
+                    </div>
+                    
+                    {/* 별점 분포 */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">5점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '70%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">70%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">4점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '20%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">20%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">3점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '7%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">7%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">2점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '2%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">2%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">1점</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '1%'}}></div>
+                        </div>
+                        <span className="text-xs text-gray-600 w-8">1%</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 사용자 피드백 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCircle className="w-5 h-5" />
+                    사용자 피드백
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <UserCircle className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 mb-1">
+                          <StarRating rating={5} size={12} readOnly />
+                        </div>
+                        <p className="text-sm font-medium">알바생</p>
+                        <p className="text-xs text-gray-600">근무 중에도 유용하게 사용하고 있습니다!</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <UserCircle className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 mb-1">
+                          <StarRating rating={4} size={12} readOnly />
+                        </div>
+                        <p className="text-sm font-medium">개발자</p>
+                        <p className="text-xs text-gray-600">코드 작성에 매우 도움이 됩니다.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <UserCircle className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 mb-1">
+                          <StarRating rating={5} size={12} readOnly />
+                        </div>
+                        <p className="text-sm font-medium">학생</p>
+                        <p className="text-xs text-gray-600">과제 작성할 때 정말 유용해요!</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 프리미엄 업그레이드 */}
+              <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <h3 className="font-bold text-lg mb-2">프리미엄으로 업그레이드</h3>
+                    <p className="text-sm text-blue-100 mb-4">더 많은 기능과 고급 AI 모델을 사용해보세요</p>
+                    <Button className="w-full bg-white text-blue-600 hover:bg-gray-100">
+                      프리미엄 업그레이드하기
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </aside>
           </div>
         </div>
       </main>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-500" />
+              {aiModel?.name} 평점 남기기
+            </DialogTitle>
+            <DialogDescription>이 AI 도구에 대한 솔직한 평점을 남겨주세요!</DialogDescription>
+          </DialogHeader>
+          <div className="py-6">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <StarRating 
+                  rating={currentRating} 
+                  size={40} 
+                  onRate={handleRate} 
+                  readOnly={!user || rateMutation.isPending} 
+                />
+              </div>
+              <div className="text-lg font-medium text-gray-900">
+                {currentRating > 0 ? `${currentRating}점을 선택하셨습니다` : '별점을 선택해주세요'}
+              </div>
+              {currentRating > 0 && (
+                <div className="text-sm text-gray-600">
+                  {currentRating === 5 && '매우 만족스러워요! 😍'}
+                  {currentRating === 4 && '좋아요! 👍'}
+                  {currentRating === 3 && '보통이에요 😊'}
+                  {currentRating === 2 && '아쉬워요 😕'}
+                  {currentRating === 1 && '별로예요 😞'}
+                </div>
+              )}
+              {rateMutation.isPending && (
+                <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  평점을 등록하는 중...
+                </div>
+              )}
+              {!user && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800">
+                    평점을 남기려면 <Link to="/auth" className="text-blue-600 underline font-medium">로그인</Link>이 필요합니다.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+              취소
+            </Button>
+            {user && (
+              <Button 
+                onClick={() => setIsModalOpen(false)}
+                disabled={currentRating === 0 || rateMutation.isPending}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              >
+                평점 등록하기
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
