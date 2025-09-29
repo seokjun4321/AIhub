@@ -456,7 +456,8 @@ const ToolDetail = () => {
         <div className="container mx-auto px-6 max-w-7xl">
           {/* 상단 섹션 - 로고, 제목, 액션 버튼 */}
           <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
-            <div className="flex items-start justify-between">
+            {/* 긴 텍스트에서도 레이아웃이 무너지지 않도록 반응형/비축소 처리 */}
+            <div className="flex flex-col md:flex-row items-start justify-between gap-6">
               <div className="flex items-center gap-6">
                 <div className="w-16 h-16 flex items-center justify-center">
                   {aiModel.logo_url ? (
@@ -465,7 +466,7 @@ const ToolDetail = () => {
                     <Globe className="w-16 h-16 text-gray-600" />
                   )}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{aiModel.name}</h1>
                   <p className="text-lg text-gray-600 mb-4">{aiModel.description || '설명이 없습니다.'}</p>
                   <div className="flex items-center gap-4">
@@ -478,8 +479,8 @@ const ToolDetail = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-lg">
+              <div className="flex items-center gap-4 md:self-start shrink-0 w-full md:w-auto justify-between md:justify-end">
+                <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-lg min-w-[200px] shrink-0">
                   <div className="flex items-center gap-2">
                     <StarRating key={`avg-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`} rating={Number(uiAverage ?? aiModel.average_rating) || 0} size={20} readOnly />
                     <span className="font-bold text-lg text-gray-900">
