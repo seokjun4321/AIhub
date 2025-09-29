@@ -62,10 +62,10 @@ const Tools = () => {
   const { data: aiModels, isLoading: modelsLoading } = useQuery({
     queryKey: ['aiModels', searchQuery, selectedCategory, sortBy, priceFilter],
     queryFn: async () => {
+      // 기본 정렬을 먼저 걸지 않습니다. 사용자가 선택한 정렬 기준만 적용합니다.
       let query = supabase
         .from('ai_models')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
       // 검색 필터
       if (searchQuery) {
@@ -75,16 +75,26 @@ const Tools = () => {
       // 정렬
       switch (sortBy) {
         case 'rating':
-          query = query.order('average_rating', { ascending: false });
+          // 평점 내림차순, 동점일 때 최신순
+          query = query
+            .order('average_rating', { ascending: false, nullsFirst: false })
+            .order('created_at', { ascending: false });
           break;
         case 'name':
-          query = query.order('name', { ascending: true });
+          // 이름 오름차순, 동률일 때 최신순
+          query = query
+            .order('name', { ascending: true })
+            .order('created_at', { ascending: false });
           break;
         case 'newest':
+          // 최신순
           query = query.order('created_at', { ascending: false });
           break;
         case 'popular':
-          query = query.order('rating_count', { ascending: false });
+          // 리뷰 수 내림차순, 동률일 때 최신순
+          query = query
+            .order('rating_count', { ascending: false, nullsFirst: false })
+            .order('created_at', { ascending: false });
           break;
       }
 
