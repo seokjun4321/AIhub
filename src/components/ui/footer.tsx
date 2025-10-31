@@ -8,9 +8,8 @@ const Footer = () => {
   const footerLinks = {
     product: [
       { name: "AI 추천", href: "/recommend" },
-      { name: "가이드북", href: "/guides" },
+      { name: "AI 도구", href: "/guidebook" },
       { name: "커뮤니티", href: "/community" },
-      { name: "AI 도구", href: "/tools" },
     ],
     company: [
       { name: "소개", href: "/about" },

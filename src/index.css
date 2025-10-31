@@ -9,7 +9,7 @@ All colors MUST be HSL.
 html {
   overflow-y: scroll !important;
   /* Prevent layout shift when vertical scrollbar appears/disappears */
-  scrollbar-gutter: stable both-edges;
+  scrollbar-gutter: stable; /* reserve gutter on the scrollbar side only */
 }
 
 @layer base {
@@ -118,7 +118,7 @@ html {
     @apply bg-background text-foreground;
     /* Also reserve scrollbar space at body level for some browsers */
     overflow-y: scroll !important;
-    scrollbar-gutter: stable both-edges;
+    scrollbar-gutter: stable; /* avoid left-side gutter */
     /* Prevent horizontal shift on dropdowns locking scroll */
     width: 100%;
   }

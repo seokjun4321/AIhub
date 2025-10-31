@@ -46,9 +46,9 @@ const HeroSection = () => {
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
             </Link>
-            <Link to="/guides">
+            <Link to="/guidebook">
               <Button variant="outline" size="lg" className="border-2 hover:bg-accent/10">
-                가이드북 둘러보기 
+                AI 도구 둘러보기 
               </Button>
             </Link>
           </div>

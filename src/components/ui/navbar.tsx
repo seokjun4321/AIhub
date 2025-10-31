@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, Menu, X, Search, BookOpen, Users, Zap, LogOut, User, UserCog, Bookmark } from "lucide-react";
+import { Brain, Menu, X, Search, Users, Zap, LogOut, User, UserCog, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "@/components/ui/notifications";
@@ -37,9 +37,8 @@ const Navbar = () => {
 
   const navItems = [
     { name: "AI 추천", href: "/recommend", icon: Zap },
-    { name: "가이드북", href: "/guides", icon: BookOpen },
-    { name: "커뮤니티", href: "/community", icon: Users },
-    { name: "AI 도구", href: "/tools", icon: Search }
+    { name: "AI 도구", href: "/guidebook", icon: Search },
+    { name: "커뮤니티", href: "/community", icon: Users }
   ];
   
   return (

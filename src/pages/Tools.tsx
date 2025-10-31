@@ -182,8 +182,8 @@ const Tools = () => {
   );
 
   const renderModelCard = (model: AIModel) => (
-    <Link key={model.id} to={`/tools/${model.id}`} className="block">
-      <Card className={`hover:shadow-lg transition-shadow cursor-pointer ${compareTools.includes(model.id) ? 'ring-2 ring-primary' : ''}`}>
+    <Link key={model.id} to={`/tools/${model.id}`} className="block h-full">
+      <Card className={`h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer ${compareTools.includes(model.id) ? 'ring-2 ring-primary' : ''}`}>
         <CardHeader>
           <div className="flex items-start gap-3">
             <div className="w-12 h-12 flex items-center justify-center">
@@ -226,12 +226,12 @@ const Tools = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+        <CardContent className="flex-1 flex flex-col">
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2 min-h-[40px]">
             {model.description || '설명이 없습니다.'}
           </p>
           
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4 max-h-[48px] overflow-hidden">
             {model.features?.slice(0, 3).map((feature, index) => (
               <Badge key={index} variant="secondary" className="text-xs">
                 {feature}
@@ -244,7 +244,7 @@ const Tools = () => {
             )}
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="mt-auto flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="w-4 h-4" />
               <span>{model.pricing_info || '가격 정보 없음'}</span>

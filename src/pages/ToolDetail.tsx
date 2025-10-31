@@ -69,6 +69,13 @@ interface Rating {
   };
 }
 
+interface GuideSummary {
+  id: number;
+  title: string;
+  description: string | null;
+  image_url?: string | null;
+}
+
 const ToolDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -94,6 +101,23 @@ const ToolDetail = () => {
       
       if (error) throw error;
       return data as any;
+    },
+    enabled: !!id,
+  });
+
+  // 이 도구에 연결된 가이드 목록 가져오기
+  const { data: guides, isLoading: guidesLoading, error: guidesError } = useQuery({
+    queryKey: ['guidesByTool', id],
+    queryFn: async () => {
+      const toolId = parseInt(id!);
+      if (isNaN(toolId)) throw new Error('Invalid tool id');
+      const { data, error } = await supabase
+        .from('guides')
+        .select('id, title, description, image_url')
+        .eq('ai_model_id', toolId)
+        .order('id', { ascending: true });
+      if (error) throw error;
+      return data as GuideSummary[];
     },
     enabled: !!id,
   });
@@ -634,7 +658,33 @@ const ToolDetail = () => {
                       <CardTitle className="flex items-center gap-2"><BookOpen className="w-5 h-5" />가이드북</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {aiModel.use_cases && aiModel.use_cases.length > 0 ? (
+                      {guidesLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="p-4 border rounded-lg bg-muted/30">
+                              <Skeleton className="h-24 w-full mb-3" />
+                              <Skeleton className="h-4 w-2/3 mb-2" />
+                              <Skeleton className="h-4 w-1/2" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : guides && guides.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {guides.map((g) => (
+                            <Link key={g.id} to={`/guidebook/${id}/${g.id}`} className="group block">
+                              <div className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow">
+                                {g.image_url && (
+                                  <img src={g.image_url} alt={g.title} className="h-32 w-full object-cover rounded mb-3" />
+                                )}
+                                <div className="font-semibold group-hover:text-blue-600">{g.title}</div>
+                                {g.description && (
+                                  <div className="text-sm text-gray-600 mt-1 line-clamp-2">{g.description}</div>
+                                )}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      ) : aiModel.use_cases && aiModel.use_cases.length > 0 ? (
                         <div className="space-y-3">
                           {aiModel.use_cases.map((useCase, index) => (
                             <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
@@ -644,7 +694,7 @@ const ToolDetail = () => {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-muted-foreground">가이드북 정보가 없습니다.</p>
+                        <p className="text-muted-foreground">등록된 가이드가 없습니다.</p>
                       )}
                     </CardContent>
                   </Card>

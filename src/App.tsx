@@ -29,6 +29,10 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/guides" element={<Guides />} />
         <Route path="/guides/:id" element={<GuideDetail />} />
+        {/* Guidebook 라우팅 (Tools/ToolDetail/GuideDetail 재사용) */}
+        <Route path="/guidebook" element={<Tools />} />
+        <Route path="/guidebook/:id" element={<ToolDetail />} />
+        <Route path="/guidebook/:toolId/:id" element={<GuideDetail />} />
         <Route path="/community" element={<Community />} />
         <Route path="/community/:id" element={<PostDetail />} />
         <Route path="/community/new" element={<ProtectedRoute><NewPost /></ProtectedRoute>} />
