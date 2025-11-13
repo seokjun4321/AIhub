@@ -134,8 +134,9 @@ html {
   position: relative;
 }
 
-/* 사이드바 sticky 보정 */
+/* 사이드바 sticky 보정 - 모든 부모 요소에 overflow가 없어야 작동함 */
 .sticky-sidebar {
+  position: -webkit-sticky !important;
   position: sticky !important;
   top: 6rem !important;
   align-self: flex-start !important;
@@ -143,6 +144,20 @@ html {
   max-height: calc(100vh - 6rem) !important;
   overflow-y: auto !important;
   flex-shrink: 0 !important;
+  height: fit-content !important;
+  will-change: transform !important;
+}
+
+/* 부모 요소에 overflow가 없도록 보장 */
+.community-page main,
+.community-page main > div,
+.community-page main > div > div {
+  overflow: visible !important;
+}
+
+/* GuideDetail 페이지도 동일하게 */
+main > div.flex {
+  overflow: visible !important;
 }
 
 /* 필터 섹션 sticky 강제 적용 */
@@ -157,4 +172,26 @@ html {
   position: sticky !important;
   top: 6rem !important;
   z-index: 40 !important;
+}
+
+/* 가이드 페이지 목차 sticky 강제 적용 */
+.guide-toc-aside {
+  position: sticky !important;
+  top: 6rem !important;
+  z-index: 10 !important;
+  align-self: flex-start !important;
+  height: fit-content !important;
+  max-height: calc(100vh - 8rem) !important;
+  overflow-y: auto !important;
+}
+
+@media (min-width: 1024px) {
+  .guide-toc-aside {
+    position: sticky !important;
+  }
+}
+
+/* 가이드 페이지 flex 컨테이너 높이 확보 */
+main .flex.flex-col.lg\:flex-row {
+  align-items: flex-start !important;
 }

@@ -42,7 +42,7 @@ const Navbar = () => {
   ];
   
   return (
-    <header className="fixed top-0 w-full z-50 bg-card/90 backdrop-blur-lg border-b border-border/50">
+    <header className="fixed top-0 w-full z-50 bg-card border-b border-border/50">
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}

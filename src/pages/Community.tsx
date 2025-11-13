@@ -1246,13 +1246,6 @@ const Community = () => {
             {!isMobile && user && (
               <div 
                 className="w-80 flex-shrink-0 sticky-sidebar"
-                style={{
-                  position: 'sticky',
-                  top: '6rem',
-                  zIndex: 30,
-                  maxHeight: 'calc(100vh - 6rem)',
-                  overflowY: 'auto'
-                }}
               >
                 <Card className="profile-card">
                   <CardHeader>
@@ -1343,13 +1336,6 @@ const Community = () => {
             {!isMobile && !user && (
               <div 
                 className="w-80 flex-shrink-0 sticky-sidebar"
-                style={{
-                  position: 'sticky',
-                  top: '6rem',
-                  zIndex: 30,
-                  maxHeight: 'calc(100vh - 6rem)',
-                  overflowY: 'auto'
-                }}
               >
                 <Card className="border-2 border-primary/20 shadow-md overflow-hidden profile-card">
                   <CardHeader className="bg-gradient-to-r from-indigo-50 to-pink-50">
