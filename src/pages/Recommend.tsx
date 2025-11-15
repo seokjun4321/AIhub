@@ -189,13 +189,6 @@ const Recommend = () => {
                         </div>
                         <Card className="h-full hover:shadow-lg transition-shadow flex flex-col">
                           <CardHeader>
-                            <div className="aspect-video w-full bg-muted rounded-md mb-4 overflow-hidden">
-                              <img 
-                                src={guide.image_url || "/placeholder.svg"} 
-                                alt={guide.title} 
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
                             <div className="flex items-center gap-2 mb-2">
                               {guide.categories?.name && (
                                 <Badge variant="secondary">{guide.categories.name}</Badge>

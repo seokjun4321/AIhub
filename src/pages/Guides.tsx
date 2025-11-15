@@ -121,10 +121,6 @@ const Guides = () => {
               <Link to={`/guides/${guide.id}`} key={guide.id}>
                 <Card className="group h-full flex flex-col hover:border-primary/50 hover:shadow-lg transition-all duration-300">
                   <CardHeader>
-                    <div className="aspect-video w-full bg-muted rounded-md mb-4 overflow-hidden">
-                      {/* --- 🔧 FIX 3: Corrected property names in JSX --- */}
-                      <img src={guide.image_url || "/placeholder.svg"} alt={guide.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    </div>
                     <Badge variant="outline">{guide.categories?.name || 'Uncategorized'}</Badge>
                     <CardTitle className="mt-2 group-hover:text-primary transition-colors">{guide.title}</CardTitle>
                     <CardDescription>{guide.description}</CardDescription>
