@@ -7,12 +7,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import StarRating from "@/components/ui/StarRating";
-import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Search, Sparkles, Crown, RefreshCw } from "lucide-react";
 
-// --- 🔧 FIX 1: Fetch queries updated for the new schema ---
+// --- 가이드북 추천으로 변경 ---
 const fetchUseCases = async () => {
   // Now also fetches the category name for display
   const { data, error } = await supabase.from('use_cases').select('*, categories(name)');
@@ -20,16 +18,53 @@ const fetchUseCases = async () => {
   return data;
 };
 
-const fetchRecommendations = async (useCaseId: number) => {
-  const { data, error } = await supabase
-    .from('recommendations')
+const fetchRecommendedGuides = async (useCaseId: number | null) => {
+  if (!useCaseId) return [];
+  
+  // use_case_guides 테이블을 통해 연결된 가이드북 가져오기
+  // 타입 정의가 없으므로 any로 타입 단언
+  const { data, error } = await (supabase as any)
+    .from('use_case_guides')
     .select(`
-      reason,
-      ai_models ( *, guides ( id ) )
+      priority,
+      guides (
+        id,
+        title,
+        description,
+        image_url,
+        created_at,
+        categories(name),
+        profiles(username),
+        ai_models(name, logo_url, provider)
+      )
     `)
-    .eq('use_case_id', useCaseId);
-  if (error) throw new Error(error.message);
-  return data;
+    .eq('use_case_id', useCaseId)
+    .order('priority', { ascending: true })
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error('❌ fetchRecommendedGuides 에러:', error);
+    throw new Error(error.message);
+  }
+  
+  console.log('📊 use_case_guides 쿼리 결과:', data);
+  
+  // guides 데이터 추출 및 평탄화
+  const guides = data
+    ?.map((item: any) => {
+      // Supabase 관계형 쿼리 결과 구조 확인
+      const guide = item.guides;
+      if (guide && Array.isArray(guide)) {
+        return guide[0]; // 배열인 경우 첫 번째 요소
+      }
+      return guide; // 객체인 경우 그대로 반환
+    })
+    .filter((guide: any) => guide !== null && guide !== undefined) || [];
+  
+  console.log('📚 추출된 가이드북:', guides);
+  
+  // 연결된 가이드북이 없으면 빈 배열 반환
+  return guides;
 };
 
 
@@ -43,28 +78,33 @@ const Recommend = () => {
     queryFn: fetchUseCases
   });
 
-  const { data: recommendations, isLoading: recommendationsLoading } = useQuery({
-    queryKey: ['recommendations', selectedUseCase?.id],
+  const { data: recommendedGuides, isLoading: guidesLoading } = useQuery({
+    queryKey: ['recommendedGuides', selectedUseCase?.id],
     queryFn: () => {
       if (!selectedUseCase?.id) return [];
-      return fetchRecommendations(selectedUseCase.id);
+      // use_case_id를 통해 연결된 가이드북 가져오기
+      return fetchRecommendedGuides(selectedUseCase.id);
     },
-    enabled: !!selectedUseCase,
+    enabled: !!selectedUseCase?.id,
+    staleTime: 0, // 캐시를 즉시 무효화하여 최신 데이터 가져오기
+    refetchOnMount: 'always', // 컴포넌트 마운트 시 항상 다시 가져오기
   });
 
-  const sortedRecommendations = useMemo(() => {
-    if (!recommendations) return [] as any[];
-    // 간단 정렬: highlight 기준 가중치
-    return [...recommendations].sort((a: any, b: any) => {
-      const ar = Number(a?.ai_models?.average_rating || 0);
-      const br = Number(b?.ai_models?.average_rating || 0);
-      const ac = Number(a?.ai_models?.rating_count || 0);
-      const bc = Number(b?.ai_models?.rating_count || 0);
-      if (highlight === 'top') return br - ar; // 평점순
-      if (highlight === 'popular') return bc - ac; // 참여자수 순
+  const sortedGuides = useMemo(() => {
+    if (!recommendedGuides) return [] as any[];
+    // 정렬: highlight 기준
+    return [...recommendedGuides].sort((a: any, b: any) => {
+      if (highlight === 'top') {
+        // 최신순 (created_at 기준)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (highlight === 'popular') {
+        // 제목 길이로 간단히 인기도 측정 (실제로는 조회수나 좋아요 수가 필요)
+        return (b.title?.length || 0) - (a.title?.length || 0);
+      }
       return 0;
     });
-  }, [recommendations, highlight]);
+  }, [recommendedGuides, highlight]);
 
   const renderSkeleton = () => (
     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -83,9 +123,9 @@ const Recommend = () => {
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold">맞춤 AI 추천</h1>
+            <h1 className="text-4xl md:text-5xl font-bold">맞춤 가이드북 추천</h1>
             <p className="text-xl text-muted-foreground mt-4 max-w-2xl mx-auto">
-              어떤 AI를 써야 할지 막막하신가요? 지금 나의 상황에 꼭 맞는 AI를 추천해 드립니다.
+              어떤 가이드북을 봐야 할지 막막하신가요? 지금 나의 상황에 꼭 맞는 가이드북을 추천해 드립니다.
             </p>
           </div>
 
@@ -127,83 +167,85 @@ const Recommend = () => {
           {selectedUseCase && (
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold">2. 이 AI는 어떠세요?</h2>
+                <h2 className="text-2xl font-semibold">2. 이 가이드북은 어떠세요?</h2>
                 <div className="flex items-center gap-2">
-                  <Button variant={highlight === 'top' ? 'default' : 'outline'} size="sm" onClick={() => setHighlight('top')}>평점순</Button>
+                  <Button variant={highlight === 'top' ? 'default' : 'outline'} size="sm" onClick={() => setHighlight('top')}>최신순</Button>
                   <Button variant={highlight === 'popular' ? 'default' : 'outline'} size="sm" onClick={() => setHighlight('popular')}>인기순</Button>
                   <Button variant="ghost" size="sm" onClick={() => setSelectedUseCase(null)}>
                     <RefreshCw className="w-4 h-4 mr-1" /> 다시 선택
                   </Button>
                 </div>
               </div>
-              {recommendationsLoading ? renderSkeleton() : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sortedRecommendations?.map((rec, index) => {
-                    // 가이드가 없으면 도구 상세 페이지로 폴백
-                    if (!rec.ai_models) return null;
-                    const firstGuide = rec.ai_models?.guides?.[0];
-                    const linkTarget = firstGuide ? `/guides/${firstGuide.id}` : `/tools/${rec.ai_models.id}`;
-
-                    return (
-                      <Link to={linkTarget} key={index} className="relative h-full block">
+              {guidesLoading ? renderSkeleton() : (
+                sortedGuides && sortedGuides.length > 0 ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sortedGuides.map((guide: any, index: number) => (
+                      <Link to={`/guides/${guide.id}`} key={guide.id} className="relative h-full block">
                         {/* 랭킹 배지 */}
                         <div className="absolute -top-3 -left-3 z-10">
                           <span className="inline-flex items-center gap-1 rounded-full bg-yellow-400 text-black text-xs font-bold px-2 py-1 shadow">
                             <Crown className="w-3.5 h-3.5" /> {index + 1}위
                           </span>
                         </div>
-                        <Card className="h-full hover:shadow-lg transition-shadow flex flex-col justify-between">
+                        <Card className="h-full hover:shadow-lg transition-shadow flex flex-col">
                           <CardHeader>
-                            <div className="flex justify-between items-start gap-3">
-                              <div className="flex items-start gap-3">
-                                <div className="w-12 h-12 flex items-center justify-center bg-muted rounded-lg overflow-hidden">
-                                  {rec.ai_models.logo_url ? (
-                                    <img src={rec.ai_models.logo_url} alt={rec.ai_models.name} className="w-12 h-12 object-contain" />
-                                  ) : (
-                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                                      {String(rec.ai_models.name || '?').charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                </div>
-                                <div>
-                                  <Badge variant="secondary" className="mb-2">{rec.ai_models.provider}</Badge>
-                                  <CardTitle className="text-xl">{rec.ai_models.name}</CardTitle>
-                                </div>
-                              </div>
-                              <div className="text-right flex-shrink-0 pl-2">
-                                <StarRating rating={rec.ai_models.average_rating || 0} readOnly />
-                                <p className="text-xs text-muted-foreground mt-1">({rec.ai_models.rating_count || 0}명 참여)</p>
-                              </div>
+                            <div className="aspect-video w-full bg-muted rounded-md mb-4 overflow-hidden">
+                              <img 
+                                src={guide.image_url || "/placeholder.svg"} 
+                                alt={guide.title} 
+                                className="w-full h-full object-cover"
+                              />
                             </div>
-                            <CardDescription>{rec.ai_models.description}</CardDescription>
+                            <div className="flex items-center gap-2 mb-2">
+                              {guide.categories?.name && (
+                                <Badge variant="secondary">{guide.categories.name}</Badge>
+                              )}
+                            </div>
+                            <CardTitle className="text-xl mb-2">{guide.title}</CardTitle>
+                            <CardDescription className="line-clamp-2">
+                              {guide.description || '설명이 없습니다.'}
+                            </CardDescription>
                           </CardHeader>
-                          <CardContent>
-                            <div className="space-y-4">
-                              <p className="text-sm bg-muted p-3 rounded-md flex items-start gap-2">
-                                <ThumbsUp className="w-5 h-5 mt-0.5 flex-shrink-0 text-primary" />
-                                <span>{rec.reason}</span>
-                              </p>
-                              <div className="flex items-center justify-between gap-2">
-                                <Button className="flex-1">
-                                  {firstGuide ? '가이드 보기' : '도구 상세 보기'}
-                                </Button>
-                                {rec.ai_models.website_url && (
-                                  <Button
-                                    variant="outline"
-                                    className="flex-1"
-                                    onClick={(e) => { e.preventDefault(); window.open(rec.ai_models.website_url, '_blank', 'noopener,noreferrer'); }}
-                                  >
-                                    공식 사이트
-                                  </Button>
-                                )}
-                              </div>
+                          <CardContent className="flex-1 flex flex-col justify-between">
+                            <div className="space-y-3">
+                              {guide.ai_models && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <div className="w-6 h-6 flex items-center justify-center bg-muted rounded overflow-hidden">
+                                    {guide.ai_models.logo_url ? (
+                                      <img src={guide.ai_models.logo_url} alt={guide.ai_models.name} className="w-6 h-6 object-contain" />
+                                    ) : (
+                                      <span className="text-xs font-bold">
+                                        {String(guide.ai_models.name || '?').charAt(0).toUpperCase()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span>{guide.ai_models.name}</span>
+                                </div>
+                              )}
+                              {guide.profiles?.username && (
+                                <p className="text-xs text-muted-foreground">
+                                  작성자: {guide.profiles.username}
+                                </p>
+                              )}
                             </div>
+                            <Button className="w-full mt-4">
+                              가이드북 보기
+                            </Button>
                           </CardContent>
                         </Card>
                       </Link>
-                    )
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-8 h-8" />
+                    </div>
+                    <p className="text-lg text-muted-foreground">
+                      이 상황에 맞는 가이드북이 아직 없습니다.
+                    </p>
+                  </div>
+                )
               )}
             </div>
           )}
@@ -213,7 +255,7 @@ const Recommend = () => {
               <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="w-8 h-8" />
               </div>
-              <p className="text-lg">상황을 선택하면, 맞춤형 AI 추천을 보여드려요.</p>
+              <p className="text-lg">상황을 선택하면, 맞춤형 가이드북 추천을 보여드려요.</p>
             </div>
           )}
         </div>
