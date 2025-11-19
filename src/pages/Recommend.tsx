@@ -125,9 +125,10 @@ const getFormatText = (time: number | null) => {
 };
 
 // 카테고리별 섹션 정보 (한국어)
+// 주의: 이 이름들은 DB의 categories 테이블의 name과 정확히 일치해야 합니다!
 const categorySections = [
   {
-    name: '글쓰기 & 리포트',
+    name: '글쓰기 & 교정',  // DB의 실제 카테고리 이름으로 변경
     description: '에세이, 리포트, 성찰문, 발표 스크립트를 AI로 작성하기',
     searchName: '글쓰기'
   },
@@ -137,22 +138,12 @@ const categorySections = [
     searchName: '취업'
   },
   {
-    name: '콘텐츠 제작 (유튜브 / 블로그 / 소셜)',
-    description: '영상 아이디어, 스크립트, 썸네일, 블로그 포스트, 소셜 캡션',
-    searchName: '콘텐츠'
-  },
-  {
-    name: '학습 & 시험 준비',
+    name: '연구 & 학습',  // DB의 실제 카테고리 이름으로 변경
     description: '개념 이해, 노트 정리, 연습 문제 생성 등',
     searchName: '학습'
   },
   {
-    name: '비즈니스 & 스타트업',
-    description: '시장 조사, 비즈니스 모델, 피치덱, 제품 아이디어',
-    searchName: '비즈니스'
-  },
-  {
-    name: '코딩 & 테크',
+    name: '개발 & 코딩',  // DB의 실제 카테고리 이름으로 변경
     description: '코드 작성, 디버깅, 기술 개념 설명',
     searchName: '코딩'
   }
@@ -170,17 +161,18 @@ const Recommend = () => {
     queryFn: fetchCategories
   });
 
+  // 고정된 카테고리 목록 사용 (항상 같은 개수의 쿼리 실행)
   // 각 카테고리별 가이드북 가져오기
-  const categoryQueries = categorySections.map(section => ({
-    queryKey: ['guidesByCategory', section.name],
-    queryFn: () => fetchGuidesByCategory(section.name),
-    enabled: true
-  }));
-
-  // 모든 카테고리 쿼리 실행
-  const categoryGuidesQueries = categoryQueries.map(({ queryKey, queryFn }) => 
-    useQuery({ queryKey, queryFn })
+  const categoryGuidesQueries = categorySections.map((section) => 
+    useQuery({
+      queryKey: ['guidesByCategory', section.name],
+      queryFn: () => fetchGuidesByCategory(section.name),
+      enabled: !!section.name
+    })
   );
+
+  // 표시할 카테고리: 모든 카테고리 표시 (가이드북이 없어도 섹션은 보여줌)
+  const displayCategories = categorySections;
 
   // 검색용 가이드북 가져오기
   const { data: allGuides, isLoading: allGuidesLoading } = useQuery({
@@ -389,7 +381,7 @@ const Recommend = () => {
               </div>
 
               {/* 카테고리별 가이드북 섹션들 */}
-          {categorySections.map((section, sectionIndex) => {
+          {displayCategories.map((section: any, sectionIndex: number) => {
             const { data: guides, isLoading } = categoryGuidesQueries[sectionIndex];
             
             return (
