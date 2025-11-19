@@ -168,7 +168,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCard
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
                   <h3 className="font-semibold text-base text-foreground truncate">
-                    {step.title.replace(/\*\*(.+?)\*\*/g, '$1')}
+                    {step.title.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^Step\s+/i, '').replace(/^\d+\.\s*/, '')}
                   </h3>
                   {step.summary && !open && (
                     <p className="text-sm text-muted-foreground mt-1 truncate">{step.summary}</p>
@@ -212,7 +212,8 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCard
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />
+                      strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />,
+                      a: ({node, ...props}) => <a className="text-foreground font-medium underline hover:opacity-80" {...props} />
                     }}
                   >
                     {step.content}

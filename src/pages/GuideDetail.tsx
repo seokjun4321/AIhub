@@ -9,7 +9,7 @@ import { GuideSidebar } from "@/components/guide/GuideSidebar";
 import { StepCard } from "@/components/guide/StepCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ThumbsUp, ThumbsDown, ArrowRight } from "lucide-react";
+import { ThumbsUp, ThumbsDown, ArrowRight, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from 'react-markdown';
@@ -17,6 +17,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // 단일 가이드를 불러오는 함수 (관련 데이터 포함)
 const fetchGuideById = async (id: string) => {
@@ -68,6 +69,25 @@ const fetchGuideSteps = async (guideId: number) => {
       label: string;
       placeholder: string | null;
     }>;
+  }>;
+};
+
+// 가이드의 섹션들을 불러오는 함수
+const fetchGuideSections = async (guideId: number) => {
+  const { data, error } = await (supabase as any)
+    .from('guide_sections')
+    .select('*')
+    .eq('guide_id', guideId)
+    .order('section_order', { ascending: true });
+  
+  if (error) throw new Error(error.message);
+  return (data || []) as Array<{
+    id: number;
+    section_type: string;
+    section_order: number;
+    title: string | null;
+    content: string | null;
+    data: any;
   }>;
 };
 
@@ -237,6 +257,7 @@ function buildTOC(steps: any[], content: string | null): Array<{ title: string; 
 const GuideDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [feedbackGiven, setFeedbackGiven] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<number, boolean>>({});
   const { toast } = useToast();
 
   const { data: guide, isLoading, error } = useQuery({
@@ -248,6 +269,12 @@ const GuideDetail = () => {
   const { data: steps } = useQuery({
     queryKey: ['guideSteps', guide?.id],
     queryFn: () => fetchGuideSteps(guide.id),
+    enabled: !!guide,
+  });
+
+  const { data: sections } = useQuery({
+    queryKey: ['guideSections', guide?.id],
+    queryFn: () => fetchGuideSections(guide.id),
     enabled: !!guide,
   });
 
@@ -344,6 +371,142 @@ const GuideDetail = () => {
         <div className="flex flex-col lg:flex-row gap-6 items-start mx-auto px-4 md:px-6 max-w-7xl">
           {/* Main Content */}
           <div className="flex-1 space-y-8 min-w-0">
+            {/* Sections (한 줄 요약, Persona, 핵심 기능 등) */}
+            {sections && sections.length > 0 && (
+              <section className="space-y-4">
+                {sections.map((section, index) => {
+                  // 섹션의 요약 텍스트 생성 (content의 첫 100자)
+                  const summary = section.content 
+                    ? section.content.replace(/[#*`\[\]]/g, '').substring(0, 100) + (section.content.length > 100 ? '...' : '')
+                    : null;
+                  
+                  const isOpen = openSections[section.id] ?? (index === 0);
+                  
+                  return (
+                    <Collapsible 
+                      key={section.id} 
+                      open={isOpen} 
+                      onOpenChange={(open) => setOpenSections(prev => ({ ...prev, [section.id]: open }))} 
+                      className="group"
+                    >
+                      <div className="rounded-xl border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden">
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-between p-5 h-auto hover:bg-muted/30 rounded-xl"
+                          >
+                            <div className="flex items-center gap-4 text-left flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <h3 className="font-semibold text-base text-foreground">
+                                  {section.title || `섹션 ${index + 1}`}
+                                </h3>
+                                {summary && !section.title && (
+                                  <p className="text-sm text-muted-foreground mt-1 truncate">{summary}</p>
+                                )}
+                              </div>
+                            </div>
+                            <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ml-4 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />
+                          </Button>
+                        </CollapsibleTrigger>
+
+                        <CollapsibleContent className="px-5 pb-6 space-y-6 animate-accordion-down">
+                          <div className="border-t border-border/50 pt-6">
+                            {section.content && (
+                              <div className="prose prose-sm max-w-none prose-headings:scroll-mt-24 
+                                prose-p:text-foreground/90 prose-p:leading-relaxed prose-p:mb-4
+                                prose-headings:text-foreground prose-headings:font-bold prose-headings:mb-4 prose-headings:mt-6
+                                prose-strong:text-foreground prose-strong:font-bold
+                                prose-ul:space-y-2 prose-ul:my-4 
+                                prose-ol:space-y-2 prose-ol:my-4 
+                                prose-li:text-foreground/90 prose-li:leading-relaxed
+                                prose-code:text-accent prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                                prose-blockquote:border-l-accent prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic
+                                prose-a:text-foreground prose-a:font-medium prose-a:underline hover:prose-a:opacity-80 mb-6">
+                                <ReactMarkdown 
+                                  remarkPlugins={[remarkGfm]}
+                                  rehypePlugins={[rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'wrap' }]]}
+                                  components={{
+                                    strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />,
+                                    a: ({node, ...props}) => <a className="text-foreground font-medium underline hover:opacity-80" {...props} />
+                                  }}
+                                >
+                                  {section.content}
+                                </ReactMarkdown>
+                              </div>
+                            )}
+                            {section.data && (
+                              <div className="mt-6">
+                                {section.section_type === 'persona' && (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse">
+                                      <thead>
+                                        <tr className="border-b">
+                                          <th className="text-left p-3 font-semibold">Persona</th>
+                                          <th className="text-left p-3 font-semibold">상황 / 문제</th>
+                                          <th className="text-left p-3 font-semibold">목표</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Array.isArray(section.data) && section.data.map((item: any, idx: number) => (
+                                          <tr key={idx} className="border-b">
+                                            <td className="p-3">{item.persona}</td>
+                                            <td className="p-3">{item.situation}</td>
+                                            <td className="p-3">{item.goal}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                                {section.section_type === 'features' && (
+                                  <div className="space-y-4">
+                                    {Array.isArray(section.data) && section.data.map((item: any, idx: number) => (
+                                      <div key={idx} className="border-l-4 border-accent pl-4 py-2">
+                                        <h4 className="font-semibold mb-1">{item.name}</h4>
+                                        <p className="text-sm text-muted-foreground mb-1">{item.description}</p>
+                                        {item.example && (
+                                          <p className="text-xs text-muted-foreground italic">{item.example}</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {section.section_type === 'pros_cons' && section.data && Array.isArray(section.data) && (
+                                  <div className="overflow-x-auto mt-4">
+                                    <table className="w-full border-collapse border">
+                                      <thead>
+                                        <tr className="border-b bg-muted/50">
+                                          <th className="text-left p-3 font-semibold border-r">비교 항목</th>
+                                          <th className="text-left p-3 font-semibold border-r">주요 역할</th>
+                                          <th className="text-left p-3 font-semibold border-r">강점</th>
+                                          <th className="text-left p-3 font-semibold border-r">약점</th>
+                                          <th className="text-left p-3 font-semibold">추천 사용자</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {section.data.map((item: any, idx: number) => (
+                                          <tr key={idx} className="border-b">
+                                            <td className="p-3 font-medium border-r">{item.tool}</td>
+                                            <td className="p-3 border-r">{item.role}</td>
+                                            <td className="p-3 border-r">{item.strength}</td>
+                                            <td className="p-3 border-r">{item.weakness}</td>
+                                            <td className="p-3">{item.recommended_for}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  );
+                })}
+              </section>
+            )}
             {/* Steps 또는 Content */}
             {hasSteps ? (
               <section className="space-y-4">
@@ -375,12 +538,13 @@ const GuideDetail = () => {
                     prose-li:text-foreground/90 prose-li:leading-relaxed
                     prose-code:text-accent prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
                     prose-blockquote:border-l-accent prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic
-                    prose-a:text-accent prose-a:no-underline hover:prose-a:underline">
+                    prose-a:text-blue-600 prose-a:dark:text-blue-400 prose-a:font-medium prose-a:underline hover:prose-a:text-blue-800 dark:hover:prose-a:text-blue-300">
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'wrap' }]]}
                       components={{
-                        strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />
+                        strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />,
+                        a: ({node, ...props}) => <a className="text-blue-600 dark:text-blue-400 font-medium underline hover:text-blue-800 dark:hover:text-blue-300" {...props} />
                       }}
                     >
                       {guide.content || ''}

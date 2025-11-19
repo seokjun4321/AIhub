@@ -8,221 +8,457 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Sparkles, Crown, RefreshCw } from "lucide-react";
+import { Search, Clock, Video, FileText, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
-// --- 가이드북 추천으로 변경 ---
-const fetchUseCases = async () => {
-  // Now also fetches the category name for display
-  const { data, error } = await supabase.from('use_cases').select('*, categories(name)');
-  if (error) throw new Error(error.message);
-  return data;
+// 카테고리별 가이드북 가져오기
+const fetchGuidesByCategory = async (categoryName: string) => {
+  // 먼저 카테고리 ID 가져오기
+  const { data: categoryData, error: categoryError } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('name', categoryName)
+    .single();
+  
+  if (categoryError || !categoryData) {
+    console.error(`❌ ${categoryName} 카테고리 찾기 에러:`, categoryError);
+    return [];
+  }
+  
+  // 카테고리 ID로 가이드북 가져오기
+  const { data, error } = await supabase
+    .from('guides')
+    .select(`
+      id,
+      title,
+      description,
+      image_url,
+      difficulty_level,
+      estimated_time,
+      created_at,
+      categories(name),
+      ai_models(name, logo_url),
+      profiles(username)
+    `)
+    .eq('category_id', categoryData.id)
+    .order('created_at', { ascending: false })
+    .limit(4);
+  
+  if (error) {
+    console.error(`❌ ${categoryName} 카테고리 가이드북 가져오기 에러:`, error);
+    return [];
+  }
+  
+  return data || [];
 };
 
-const fetchRecommendedGuides = async (useCaseId: number | null) => {
-  if (!useCaseId) return [];
+// 모든 카테고리 가져오기
+const fetchCategories = async () => {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, name, description')
+    .order('name');
   
-  // use_case_guides 테이블을 통해 연결된 가이드북 가져오기
-  // 타입 정의가 없으므로 any로 타입 단언
-  const { data, error } = await (supabase as any)
-    .from('use_case_guides')
+  if (error) {
+    console.error('❌ 카테고리 가져오기 에러:', error);
+    return [];
+  }
+  
+  return data || [];
+};
+
+// 모든 가이드북 가져오기 (검색용)
+const fetchAllGuides = async () => {
+  const { data, error } = await supabase
+    .from('guides')
     .select(`
-      priority,
-      guides (
-        id,
-        title,
-        description,
-        image_url,
-        created_at,
-        categories(name),
-        profiles(username),
-        ai_models(name, logo_url, provider)
-      )
+      id,
+      title,
+      description,
+      difficulty_level,
+      estimated_time,
+      categories(name),
+      ai_models(name, logo_url)
     `)
-    .eq('use_case_id', useCaseId)
-    .order('priority', { ascending: true })
     .order('created_at', { ascending: false });
   
   if (error) {
-    console.error('❌ fetchRecommendedGuides 에러:', error);
-    throw new Error(error.message);
+    console.error('❌ 가이드북 가져오기 에러:', error);
+    return [] as any[];
   }
   
-  console.log('📊 use_case_guides 쿼리 결과:', data);
-  
-  // guides 데이터 추출 및 평탄화
-  const guides = data
-    ?.map((item: any) => {
-      // Supabase 관계형 쿼리 결과 구조 확인
-      const guide = item.guides;
-      if (guide && Array.isArray(guide)) {
-        return guide[0]; // 배열인 경우 첫 번째 요소
-      }
-      return guide; // 객체인 경우 그대로 반환
-    })
-    .filter((guide: any) => guide !== null && guide !== undefined) || [];
-  
-  console.log('📚 추출된 가이드북:', guides);
-  
-  // 연결된 가이드북이 없으면 빈 배열 반환
-  return guides;
+  return (data || []) as any[];
 };
 
+// 레벨 표시 함수
+const getLevelBadge = (level: string | null) => {
+  if (!level) return null;
+  
+  const levelMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    'beginner': { label: 'Lv.1 초급', variant: 'default' },
+    'intermediate': { label: 'Lv.2 중급', variant: 'secondary' },
+    'advanced': { label: 'Lv.3 고급', variant: 'destructive' },
+  };
+  
+  const levelInfo = levelMap[level.toLowerCase()] || { label: level, variant: 'outline' as const };
+  
+  return (
+    <Badge variant={levelInfo.variant} className="text-xs">
+      {levelInfo.label}
+    </Badge>
+  );
+};
+
+// 포맷 표시 함수 (임시로 estimated_time 기반으로 결정)
+const getFormatIcon = (time: number | null) => {
+  // 실제로는 DB에 format 필드가 있어야 하지만, 임시로 시간 기반으로 결정
+  if (!time) return <FileText className="w-4 h-4" />;
+  if (time > 25) return <Video className="w-4 h-4" />;
+  return <FileText className="w-4 h-4" />;
+};
+
+const getFormatText = (time: number | null) => {
+  if (!time) return '텍스트 가이드';
+  if (time > 25) return '비디오 + PDF';
+  if (time > 15) return '실습형';
+  return '텍스트 가이드';
+};
+
+// 카테고리별 섹션 정보 (한국어)
+const categorySections = [
+  {
+    name: '글쓰기 & 리포트',
+    description: '에세이, 리포트, 성찰문, 발표 스크립트를 AI로 작성하기',
+    searchName: '글쓰기'
+  },
+  {
+    name: '취업 준비',
+    description: '이력서, 자기소개서, 포트폴리오, 면접 준비',
+    searchName: '취업'
+  },
+  {
+    name: '콘텐츠 제작 (유튜브 / 블로그 / 소셜)',
+    description: '영상 아이디어, 스크립트, 썸네일, 블로그 포스트, 소셜 캡션',
+    searchName: '콘텐츠'
+  },
+  {
+    name: '학습 & 시험 준비',
+    description: '개념 이해, 노트 정리, 연습 문제 생성 등',
+    searchName: '학습'
+  },
+  {
+    name: '비즈니스 & 스타트업',
+    description: '시장 조사, 비즈니스 모델, 피치덱, 제품 아이디어',
+    searchName: '비즈니스'
+  },
+  {
+    name: '코딩 & 테크',
+    description: '코드 작성, 디버깅, 기술 개념 설명',
+    searchName: '코딩'
+  }
+];
 
 const Recommend = () => {
-  // Type inference will handle the data types, so we remove the outdated explicit types.
-  const [selectedUseCase, setSelectedUseCase] = useState<any | null>(null);
-  const [highlight, setHighlight] = useState<string>("top");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("전체");
+  const [selectedTool, setSelectedTool] = useState("전체");
+  const [selectedLevel, setSelectedLevel] = useState("전체");
 
-  const { data: useCases, isLoading: useCasesLoading } = useQuery({
-    queryKey: ['use_cases'],
-    queryFn: fetchUseCases
+  // 카테고리 가져오기
+  const { data: categories, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories
   });
 
-  const { data: recommendedGuides, isLoading: guidesLoading } = useQuery({
-    queryKey: ['recommendedGuides', selectedUseCase?.id],
-    queryFn: () => {
-      if (!selectedUseCase?.id) return [];
-      // use_case_id를 통해 연결된 가이드북 가져오기
-      return fetchRecommendedGuides(selectedUseCase.id);
-    },
-    enabled: !!selectedUseCase?.id,
-    staleTime: 0, // 캐시를 즉시 무효화하여 최신 데이터 가져오기
-    refetchOnMount: 'always', // 컴포넌트 마운트 시 항상 다시 가져오기
-  });
+  // 각 카테고리별 가이드북 가져오기
+  const categoryQueries = categorySections.map(section => ({
+    queryKey: ['guidesByCategory', section.name],
+    queryFn: () => fetchGuidesByCategory(section.name),
+    enabled: true
+  }));
 
-  const sortedGuides = useMemo(() => {
-    if (!recommendedGuides) return [] as any[];
-    // 정렬: highlight 기준
-    return [...recommendedGuides].sort((a: any, b: any) => {
-      if (highlight === 'top') {
-        // 최신순 (created_at 기준)
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-      if (highlight === 'popular') {
-        // 제목 길이로 간단히 인기도 측정 (실제로는 조회수나 좋아요 수가 필요)
-        return (b.title?.length || 0) - (a.title?.length || 0);
-      }
-      return 0;
-    });
-  }, [recommendedGuides, highlight]);
-
-  const renderSkeleton = () => (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[...Array(3)].map((_, i) => (
-        <Card key={i}>
-          <CardHeader><Skeleton className="h-6 w-3/4" /><Skeleton className="h-4 w-1/2 mt-2" /></CardHeader>
-          <CardContent><Skeleton className="h-10 w-full" /><Skeleton className="h-8 w-1/2 mt-4" /></CardContent>
-        </Card>
-      ))}
-    </div>
+  // 모든 카테고리 쿼리 실행
+  const categoryGuidesQueries = categoryQueries.map(({ queryKey, queryFn }) => 
+    useQuery({ queryKey, queryFn })
   );
+
+  // 검색용 가이드북 가져오기
+  const { data: allGuides, isLoading: allGuidesLoading } = useQuery({
+    queryKey: ['allGuides'],
+    queryFn: fetchAllGuides
+  });
+
+  // 검색 필터링
+  const filteredGuides = useMemo(() => {
+    if (!allGuides) return [];
+    
+    let filtered = [...allGuides] as any[];
+    
+    // 검색어 필터
+    if (searchQuery) {
+      filtered = filtered.filter((guide: any) => 
+        guide.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        guide.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    // 카테고리 필터
+    if (selectedCategory !== "전체") {
+      filtered = filtered.filter((guide: any) => 
+        (guide.categories as any)?.name === selectedCategory
+      );
+    }
+    
+    // 레벨 필터
+    if (selectedLevel !== "전체") {
+      const levelMap: Record<string, string> = {
+        '초급': 'beginner',
+        '중급': 'intermediate',
+        '고급': 'advanced'
+      };
+      filtered = filtered.filter((guide: any) => 
+        guide.difficulty_level === levelMap[selectedLevel]
+      );
+    }
+    
+    return filtered;
+  }, [allGuides, searchQuery, selectedCategory, selectedLevel]);
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold">맞춤 가이드북 추천</h1>
-            <p className="text-xl text-muted-foreground mt-4 max-w-2xl mx-auto">
-              어떤 가이드북을 봐야 할지 막막하신가요? 지금 나의 상황에 꼭 맞는 가이드북을 추천해 드립니다.
+          {/* 메인 히어로 섹션 */}
+          <div className="text-center mb-16">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6">AI 가이드북 라이브러리</h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
+              AI를 진짜로 활용하는 방법을 배우세요 — 프롬프트 엔지니어링 기초부터 에세이 작성, 학습, 취업 준비, 스타트업 워크플로우까지.
             </p>
+            <div className="relative max-w-2xl mx-auto">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input
+                type="text"
+                placeholder="예: 리포트 작성, 장학금 에세이, n8n 자동화..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 h-14 text-lg"
+              />
+            </div>
           </div>
 
-          <div className="mb-12">
-            <h2 className="text-2xl font-semibold mb-4 text-center">1. 지금 어떤 상황이신가요?</h2>
-            {useCasesLoading ? (
-              <div className="flex justify-center gap-4"><Skeleton className="h-24 w-64" /><Skeleton className="h-24 w-64" /><Skeleton className="h-24 w-64" /></div>
-            ) : (
-              <>
-                {/* 선택 칩 가로 스크롤 */}
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-4">
-                  {useCases?.map((useCase) => (
-                    <button
-                      key={`chip-${useCase.id}`}
-                      onClick={() => setSelectedUseCase(useCase)}
-                      className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm transition-colors ${selectedUseCase?.id === useCase.id ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted'}`}
-                    >
-                      {useCase.situation}
-                    </button>
-                  ))}
+          {/* 검색 결과 또는 사용 목적별 가이드북 섹션 */}
+          {searchQuery || selectedCategory !== "전체" || selectedLevel !== "전체" ? (
+            /* 검색/필터 결과 섹션 */
+            <div className="mb-16">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-3xl font-bold mb-2">
+                    {searchQuery ? `"${searchQuery}" 검색 결과` : "필터링된 가이드북"}
+                  </h2>
+                  <p className="text-muted-foreground">
+                    {filteredGuides.length}개의 가이드북을 찾았습니다
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {useCases?.map((useCase) => (
-                    <Card key={useCase.id} onClick={() => setSelectedUseCase(useCase)} className={`cursor-pointer transition-all ${selectedUseCase?.id === useCase.id ? 'border-primary ring-2 ring-primary' : 'hover:border-primary/50'}`}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("전체");
+                    setSelectedLevel("전체");
+                  }}
+                >
+                  필터 초기화
+                </Button>
+              </div>
+
+              {allGuidesLoading ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[...Array(8)].map((_, i) => (
+                    <Card key={i}>
                       <CardHeader>
-                        {useCase.categories?.name && <Badge variant="secondary" className="mb-2 w-fit">{useCase.categories.name}</Badge>}
-                        <CardTitle className="text-xl flex items-center gap-2">
-                          <Sparkles className="w-5 h-5 text-primary" />{useCase.situation}
-                        </CardTitle>
-                        <CardDescription>{useCase.summary}</CardDescription>
+                        <Skeleton className="h-4 w-20 mb-2" />
+                        <Skeleton className="h-6 w-full mb-2" />
+                        <Skeleton className="h-4 w-3/4" />
                       </CardHeader>
+                      <CardContent>
+                        <Skeleton className="h-10 w-full" />
+                      </CardContent>
                     </Card>
                   ))}
                 </div>
-              </>
-            )}
-          </div>
-
-          {selectedUseCase && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold">2. 이 가이드북은 어떠세요?</h2>
-                <div className="flex items-center gap-2">
-                  <Button variant={highlight === 'top' ? 'default' : 'outline'} size="sm" onClick={() => setHighlight('top')}>최신순</Button>
-                  <Button variant={highlight === 'popular' ? 'default' : 'outline'} size="sm" onClick={() => setHighlight('popular')}>인기순</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedUseCase(null)}>
-                    <RefreshCw className="w-4 h-4 mr-1" /> 다시 선택
-                  </Button>
+              ) : filteredGuides.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {filteredGuides.map((guide: any) => (
+                    <Link to={`/guides/${guide.id}`} key={guide.id}>
+                      <Card className="h-full hover:shadow-lg transition-shadow flex flex-col">
+                        <CardHeader>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            {guide.ai_models && (
+                              <Badge variant="outline" className="text-xs">
+                                {(guide.ai_models as any)?.name || 'AI 도구'}
+                              </Badge>
+                            )}
+                            {getLevelBadge(guide.difficulty_level)}
+                          </div>
+                          <CardTitle className="text-lg mb-2 line-clamp-2">
+                            {guide.title}
+                          </CardTitle>
+                          <CardDescription className="line-clamp-2 text-sm">
+                            {guide.description || '설명이 없습니다.'}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 flex flex-col justify-between">
+                          <div className="space-y-2 mb-4">
+                            {guide.estimated_time && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Clock className="w-4 h-4" />
+                                <span>~{guide.estimated_time}분</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              {getFormatIcon(guide.estimated_time)}
+                              <span>{getFormatText(guide.estimated_time)}</span>
+                            </div>
+                          </div>
+                          <Button className="w-full" variant="default">
+                            가이드 열기
+                            <ExternalLink className="w-4 h-4 ml-2" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg text-muted-foreground mb-2">
+                    검색 결과가 없습니다
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    다른 검색어나 필터를 시도해보세요
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* 사용 목적별 가이드북 섹션 */}
+              <div className="mb-16">
+                <h2 className="text-3xl font-bold mb-4">사용 목적별 가이드북</h2>
+                <p className="text-muted-foreground mb-6">
+                  달성하고 싶은 목표를 선택하세요 (글쓰기, 학습, 취업 준비, 콘텐츠, 스타트업, 코딩) 그리고 AI가 어떻게 도와줄 수 있는지 확인하세요.
+                </p>
+                
+                {/* 필터 */}
+                <div className="flex flex-wrap gap-4 mb-8">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-4 py-2 border rounded-md bg-background"
+                  >
+                    <option value="전체">전체 카테고리</option>
+                    {categories?.map((cat) => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                  
+                  <select
+                    value={selectedTool}
+                    onChange={(e) => setSelectedTool(e.target.value)}
+                    className="px-4 py-2 border rounded-md bg-background"
+                  >
+                    <option value="전체">전체 도구</option>
+                    {/* TODO: AI 모델 목록 추가 */}
+                  </select>
+                  
+                  <select
+                    value={selectedLevel}
+                    onChange={(e) => setSelectedLevel(e.target.value)}
+                    className="px-4 py-2 border rounded-md bg-background"
+                  >
+                    <option value="전체">전체 레벨</option>
+                    <option value="초급">초급</option>
+                    <option value="중급">중급</option>
+                    <option value="고급">고급</option>
+                  </select>
                 </div>
               </div>
-              {guidesLoading ? renderSkeleton() : (
-                sortedGuides && sortedGuides.length > 0 ? (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {sortedGuides.map((guide: any, index: number) => (
-                      <Link to={`/guides/${guide.id}`} key={guide.id} className="relative h-full block">
-                        {/* 랭킹 배지 */}
-                        <div className="absolute -top-3 -left-3 z-10">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-yellow-400 text-black text-xs font-bold px-2 py-1 shadow">
-                            <Crown className="w-3.5 h-3.5" /> {index + 1}위
-                          </span>
-                        </div>
+
+              {/* 카테고리별 가이드북 섹션들 */}
+          {categorySections.map((section, sectionIndex) => {
+            const { data: guides, isLoading } = categoryGuidesQueries[sectionIndex];
+            
+            return (
+              <div key={section.name} className="mb-16">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2">{section.name}</h3>
+                    <p className="text-muted-foreground">{section.description}</p>
+                  </div>
+                  <Link 
+                    to={`/guides?category=${encodeURIComponent(section.name)}`}
+                    className="text-primary hover:underline"
+                  >
+                    전체 보기 &gt;
+                  </Link>
+                </div>
+                
+                {isLoading ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (
+                      <Card key={i}>
+                        <CardHeader>
+                          <Skeleton className="h-4 w-20 mb-2" />
+                          <Skeleton className="h-6 w-full mb-2" />
+                          <Skeleton className="h-4 w-3/4" />
+                        </CardHeader>
+                        <CardContent>
+                          <Skeleton className="h-10 w-full" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : guides && guides.length > 0 ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {guides.map((guide: any) => (
+                      <Link to={`/guides/${guide.id}`} key={guide.id}>
                         <Card className="h-full hover:shadow-lg transition-shadow flex flex-col">
                           <CardHeader>
-                            <div className="flex items-center gap-2 mb-2">
-                              {guide.categories?.name && (
-                                <Badge variant="secondary">{guide.categories.name}</Badge>
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              {guide.ai_models && (
+                                <Badge variant="outline" className="text-xs">
+                                  {(guide.ai_models as any)?.name || 'AI 도구'}
+                                </Badge>
                               )}
+                              {getLevelBadge(guide.difficulty_level)}
                             </div>
-                            <CardTitle className="text-xl mb-2">{guide.title}</CardTitle>
-                            <CardDescription className="line-clamp-2">
+                            <CardTitle className="text-lg mb-2 line-clamp-2">
+                              {guide.title}
+                            </CardTitle>
+                            <CardDescription className="line-clamp-2 text-sm">
                               {guide.description || '설명이 없습니다.'}
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="flex-1 flex flex-col justify-between">
-                            <div className="space-y-3">
-                              {guide.ai_models && (
+                            <div className="space-y-2 mb-4">
+                              {guide.estimated_time && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <div className="w-6 h-6 flex items-center justify-center bg-muted rounded overflow-hidden">
-                                    {guide.ai_models.logo_url ? (
-                                      <img src={guide.ai_models.logo_url} alt={guide.ai_models.name} className="w-6 h-6 object-contain" />
-                                    ) : (
-                                      <span className="text-xs font-bold">
-                                        {String(guide.ai_models.name || '?').charAt(0).toUpperCase()}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span>{guide.ai_models.name}</span>
+                                  <Clock className="w-4 h-4" />
+                                  <span>~{guide.estimated_time}분</span>
                                 </div>
                               )}
-                              {guide.profiles?.username && (
-                                <p className="text-xs text-muted-foreground">
-                                  작성자: {guide.profiles.username}
-                                </p>
-                              )}
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {getFormatIcon(guide.estimated_time)}
+                                <span>{getFormatText(guide.estimated_time)}</span>
+                              </div>
                             </div>
-                            <Button className="w-full mt-4">
-                              가이드북 보기
+                            <Button className="w-full" variant="default">
+                              가이드 열기
+                              <ExternalLink className="w-4 h-4 ml-2" />
                             </Button>
                           </CardContent>
                         </Card>
@@ -230,26 +466,14 @@ const Recommend = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Search className="w-8 h-8" />
-                    </div>
-                    <p className="text-lg text-muted-foreground">
-                      이 상황에 맞는 가이드북이 아직 없습니다.
-                    </p>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>이 카테고리의 가이드북이 아직 없습니다.</p>
                   </div>
-                )
-              )}
-            </div>
-          )}
-
-          {!selectedUseCase && !useCasesLoading && (
-            <div className="mt-16 text-center text-muted-foreground">
-              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8" />
+                )}
               </div>
-              <p className="text-lg">상황을 선택하면, 맞춤형 가이드북 추천을 보여드려요.</p>
-            </div>
+            );
+          })}
+            </>
           )}
         </div>
       </main>

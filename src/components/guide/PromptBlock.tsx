@@ -48,7 +48,7 @@ export function PromptBlock({ prompt }: PromptBlockProps) {
   };
 
   return (
-    <div className="group relative rounded-2xl border bg-muted/30 p-6 transition-all hover:shadow-md">
+    <div className="group relative rounded-2xl border bg-muted/50 p-6 transition-all hover:shadow-md">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="space-y-1">
           <h4 className="font-semibold text-sm text-accent">{prompt.label}</h4>
@@ -78,7 +78,7 @@ export function PromptBlock({ prompt }: PromptBlockProps) {
         </div>
       </div>
 
-      <pre className="font-mono text-sm whitespace-pre-wrap break-words leading-relaxed text-foreground/90">
+      <pre className="font-mono text-sm whitespace-pre-wrap break-words leading-relaxed text-foreground">
         {prompt.text}
       </pre>
 
