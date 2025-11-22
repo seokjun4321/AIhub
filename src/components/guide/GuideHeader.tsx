@@ -36,7 +36,7 @@ export function GuideHeader({ breadcrumbs, toolName }: GuideHeaderProps) {
   };
 
   return (
-    <header className="sticky top-[64px] z-40 w-full border-b bg-background">
+    <header className="sticky top-16 z-40 w-full border-b bg-background">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6 max-w-7xl">
         {/* Breadcrumbs */}
         <nav className="flex items-center space-x-2 text-sm text-muted-foreground">

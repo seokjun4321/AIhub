@@ -415,7 +415,7 @@ Steps:
                       variant="before"
                     />
                     <p className="text-sm text-muted-foreground mt-2">결과: "부정적" (근거 없음)</p>
-                  </div>
+                    </div>
                   <div>
                     <h4 className="font-semibold text-foreground mb-3">Few-shot + CoT 프롬프트</h4>
                     <ExamplePromptBlock
@@ -472,7 +472,7 @@ Steps:
                   <p className="text-foreground leading-relaxed">
                     <strong className="text-primary">핵심은?</strong> 출력 형식을 명확히 지정하면, 결과물을 다른 시스템에 바로 연동하거나 후처리 없이 사용할 수 있습니다.
                   </p>
-                </div>
+          </div>
 
                 <ExamplePromptBlock
                   title="JSON 형식 지정 예시"
@@ -543,13 +543,13 @@ Steps:
                         onClick={() => setSelectedPersona(index)}
                       />
                     ))}
-                  </div>
+                      </div>
 
                   <div className="bg-card rounded-xl p-6 shadow-lg">
                     <h4 className="font-semibold text-foreground mb-3">선택된 페르소나 프롬프트:</h4>
                     <ExamplePromptBlock prompt={personas[selectedPersona].prompt} />
-                  </div>
-                </div>
+              </div>
+            </div>
 
                 <TipsCard
                   tips={[
@@ -572,7 +572,7 @@ Steps:
                     매번 긴 프롬프트를 처음부터 작성하는 건 비효율적입니다. 
                     자주 쓰는 요소들을 모듈로 만들어 조합하면 빠르고 일관성 있게 작업할 수 있습니다.
                   </p>
-                </div>
+                    </div>
 
                 <div className="grid md:grid-cols-2 gap-4 my-6">
                   <div className="bg-accent rounded-lg p-4">
@@ -704,7 +704,7 @@ Steps:
                     <strong className="text-primary">핵심은?</strong> 좋은 프롬프트는 한 번 만들어두면 계속 재사용할 수 있습니다.
                     시간을 들여 정교하게 만드세요.
                   </p>
-                </div>
+            </div>
               </ChapterSection>
 
               {/* Master Prompt Builder */}

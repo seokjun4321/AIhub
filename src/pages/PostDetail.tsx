@@ -1432,7 +1432,7 @@ const PostDetail = () => {
             </div>
             
             {/* 댓글 작성창 - 맨 위에 고정 */}
-            <Card className="sticky top-20 z-30 bg-background/95 backdrop-blur-sm border border-primary/20 shadow-md mb-3">
+            <Card className="sticky top-24 z-30 bg-background/95 backdrop-blur-sm border border-primary/20 shadow-md mb-3">
               <CardHeader className="pb-1 px-3 pt-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <MessageSquare className="w-3 h-3 text-primary" />

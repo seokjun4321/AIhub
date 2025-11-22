@@ -7,9 +7,20 @@ All colors MUST be HSL.
 */
 
 html {
-  overflow-y: scroll !important;
+  /* 스크롤은 html 레벨에서 발생해야 sticky가 작동함 */
+  height: 100% !important;
   /* Prevent layout shift when vertical scrollbar appears/disappears */
   scrollbar-gutter: stable; /* reserve gutter on the scrollbar side only */
+  /* overflow는 명시하지 않아도 기본적으로 스크롤 가능 */
+  /* Pretendard 폰트 적용 */
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+}
+
+#root {
+  overflow: visible !important;
+  min-height: 100vh !important;
+  /* sticky가 작동하려면 root도 스크롤 컨테이너가 아니어야 함 */
+  height: auto !important;
 }
 
 @layer base {
@@ -116,11 +127,16 @@ html {
 
   body {
     @apply bg-background text-foreground;
-    /* Also reserve scrollbar space at body level for some browsers */
-    overflow-y: scroll !important;
-    scrollbar-gutter: stable; /* avoid left-side gutter */
+    /* overflow-y: scroll !important; 제거 - sticky 포지셔닝을 위해 html 레벨에서만 스크롤 */
+    /* scrollbar-gutter는 html에 이미 설정되어 있음 */
     /* Prevent horizontal shift on dropdowns locking scroll */
     width: 100%;
+    /* sticky가 작동하려면 body는 스크롤 컨테이너가 아니어야 함 */
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+    /* Pretendard 폰트 적용 */
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   }
 
   /* If libraries set inline overflow:hidden on body, keep layout width stable */
@@ -194,4 +210,103 @@ main > div.flex {
 /* 가이드 페이지 flex 컨테이너 높이 확보 */
 main .flex.flex-col.lg\:flex-row {
   align-items: flex-start !important;
+}
+
+/* PromptEngineering 페이지 sticky 보정 */
+.prompt-engineering-page,
+.prompt-engineering-page > * {
+  overflow: visible !important;
+}
+
+.prompt-engineering-page main,
+.prompt-engineering-page main > div,
+.prompt-engineering-page main > div > div,
+.prompt-engineering-page main > div > div.grid {
+  overflow: visible !important;
+  position: relative !important;
+  /* Grid 컨테이너가 충분한 높이를 가져야 sticky가 작동함 */
+  min-height: 100vh !important;
+}
+
+/* PromptEngineering 페이지 ChapterNav sticky 강제 적용 */
+.prompt-engineering-page aside {
+  align-self: start !important;
+  position: relative !important;
+  overflow: visible !important;
+  height: auto !important;
+  /* Grid 아이템이 stretch되지 않도록 */
+  align-self: start !important;
+}
+
+.prompt-engineering-page aside nav {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 6rem !important;
+  z-index: 30 !important;
+  max-height: calc(100vh - 6rem) !important;
+  overflow-y: auto !important;
+  height: fit-content !important;
+  width: 100% !important;
+  align-self: start !important;
+  /* 브라우저 호환성을 위한 추가 속성 */
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
+}
+
+/* 모든 페이지의 sticky 요소를 위한 전역 보정 */
+/* 부모 요소에 overflow가 없어야 sticky가 작동함 */
+main,
+main > div,
+main > div.container,
+main > div.max-w-7xl,
+main > div.max-w-\[1100px\],
+main > div > div.grid,
+main > div > div.flex {
+  overflow: visible !important;
+}
+
+/* Grid와 Flex의 자식 요소들 */
+main > div > div.grid > aside,
+main > div > div.flex > aside,
+aside {
+  overflow: visible !important;
+  align-self: start !important;
+}
+
+/* Grid 컨테이너 자체도 확인 */
+div.grid {
+  overflow: visible !important;
+  align-items: start !important;
+  /* Grid에서 sticky가 작동하려면 height가 auto여야 함 */
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* 모든 부모 요소 체크 - sticky를 막는 속성 제거 */
+* {
+  /* transform, filter, perspective 등이 sticky를 막을 수 있음 */
+  /* 하지만 이미 적용된 것들은 유지해야 하므로 주석 처리 */
+}
+
+/* 가장 중요한 것: 모든 페이지의 최상위 컨테이너 */
+.min-h-screen {
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* Navbar가 fixed이므로 sticky 요소는 navbar 높이만큼 아래에 위치 */
+/* Navbar 높이: 약 64px (4rem), 여백: 32px (2rem) = 총 6rem */
+nav.sticky,
+.sticky-sidebar,
+.guide-toc-aside,
+aside.sticky {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 6rem !important;
+}
+
+/* 특정 sticky 요소들에 대한 추가 보정 */
+.sticky {
+  position: -webkit-sticky !important;
+  position: sticky !important;
 }
