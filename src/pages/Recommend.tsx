@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,27 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search, Clock, Video, FileText, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
+
+const TOTAL_CHAPTERS = 10;
+
+// Supabase에서 프롬프트 엔지니어링 진행도 가져오기
+const fetchPromptEngineeringProgressCount = async (userId: string | undefined): Promise<number> => {
+  if (!userId) return 0;
+  
+  const { data, error } = await (supabase as any)
+    .from('prompt_engineering_progress')
+    .select('chapter_id')
+    .eq('user_id', userId)
+    .eq('completed', true);
+  
+  if (error) {
+    console.error('Failed to load prompt engineering progress', error);
+    return 0;
+  }
+  
+  return data?.length || 0;
+};
 
 // 카테고리별 가이드북 가져오기
 const fetchGuidesByCategory = async (categoryName: string) => {
@@ -150,10 +171,34 @@ const categorySections = [
 ];
 
 const Recommend = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [selectedTool, setSelectedTool] = useState("전체");
   const [selectedLevel, setSelectedLevel] = useState("전체");
+
+  // 프롬프트 엔지니어링 진행도 가져오기
+  const { data: promptEngineeringProgress = 0 } = useQuery({
+    queryKey: ['promptEngineeringProgressCount', user?.id],
+    queryFn: () => fetchPromptEngineeringProgressCount(user?.id),
+    enabled: !!user,
+  });
+
+  // 프롬프트 엔지니어링 진행도 업데이트 리스너
+  useEffect(() => {
+    const handleProgressChange = () => {
+      // React Query가 자동으로 refetch하도록 invalidate
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ['promptEngineeringProgressCount', user.id] });
+      }
+    };
+    
+    window.addEventListener('promptEngineeringProgressChanged', handleProgressChange);
+    return () => {
+      window.removeEventListener('promptEngineeringProgressChanged', handleProgressChange);
+    };
+  }, [user, queryClient]);
 
   // 카테고리 가져오기
   const { data: categories, isLoading: categoriesLoading } = useQuery({
@@ -237,6 +282,48 @@ const Recommend = () => {
                 className="pl-12 h-14 text-lg"
               />
             </div>
+          </div>
+
+          {/* 프롬프트 엔지니어링 필수 섹션 */}
+          <div className="mb-16">
+            <Card className="bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 border-0 shadow-2xl overflow-hidden">
+              <CardContent className="p-6 md:p-8 text-white">
+                <div className="max-w-4xl mx-auto">
+                  <h2 className="text-3xl md:text-4xl font-bold mb-3">
+                    프롬프트 엔지니어링 입문
+                  </h2>
+                  <p className="text-base md:text-lg text-blue-50 mb-6 leading-relaxed">
+                    AI를 잘 쓰는 사람과 못 쓰는 사람의 차이는 결국 프롬프트 설계 능력입니다. 
+                    이 코스는 AIHub의 모든 가이드북을 보기 전에 먼저 완주하는 0번 트랙입니다.
+                  </p>
+                  
+                  <div className="mb-6">
+                    <Button
+                      asChild
+                      size="lg"
+                      className="bg-white text-blue-600 hover:bg-blue-50 font-semibold text-base px-6 py-4 h-auto"
+                    >
+                      <Link to="/prompt-engineering">
+                        학습 시작하기
+                      </Link>
+                    </Button>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-blue-50">진행도</span>
+                      <span className="text-sm font-medium text-blue-50">{promptEngineeringProgress}/{TOTAL_CHAPTERS} 챕터 완료</span>
+                    </div>
+                    <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="bg-white h-full rounded-full transition-all duration-500"
+                        style={{ width: `${(promptEngineeringProgress / TOTAL_CHAPTERS) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* 검색 결과 또는 사용 목적별 가이드북 섹션 */}
