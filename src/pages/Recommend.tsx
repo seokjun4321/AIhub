@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Clock, Video, FileText, ExternalLink } from "lucide-react";
+import { Search, Clock, Video, FileText, ExternalLink, Sparkles, BookOpen, Lightbulb } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -290,30 +290,62 @@ const Recommend = () => {
 
           {/* 프롬프트 엔지니어링 필수 섹션 */}
           <div className="mb-12">
-            <Card className="bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 border-0 shadow-lg overflow-hidden">
-              <CardContent className="p-5 md:p-6 text-white">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
+            <Card className="bg-white border shadow-lg overflow-hidden">
+              <CardContent className="p-6 md:p-8">
+                <div>
+                  {/* 메인 콘텐츠 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100 text-xs px-3 py-1">
+                        <Sparkles className="w-3 h-3 mr-1" />
                         AIHub 필수 입문
                       </Badge>
                     </div>
-                    <h2 className="text-xl md:text-2xl font-bold mb-2">
+                    <h2 className="text-2xl md:text-3xl font-bold mb-3 text-foreground">
                       프롬프트 엔지니어링 가이드북
                     </h2>
-                    <p className="text-sm md:text-base text-blue-50 mb-4 leading-relaxed">
+                    <p className="text-base text-muted-foreground mb-6 leading-relaxed">
                       다른 AI 가이드북을 보기 전에, 프롬프트를 어떻게 설계해야 하는지 먼저 배울 수 있는 입문 가이드입니다.
                     </p>
-                    <Button
-                      asChild
-                      size="sm"
-                      className="bg-white text-blue-600 hover:bg-blue-50 font-semibold"
-                    >
-                      <Link to="/prompt-engineering">
-                        학습 시작하기
-                      </Link>
-                    </Button>
+                    
+                    {/* 토픽 태그들 */}
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs px-3 py-1">
+                        <BookOpen className="w-3 h-3 mr-1" />
+                        프롬프트 구조 RCTFP
+                      </Badge>
+                      <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs px-3 py-1">
+                        <Lightbulb className="w-3 h-3 mr-1" />
+                        Few-shot & Chain-of-Thought
+                      </Badge>
+                      <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs px-3 py-1">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        나만의 마스터 프롬프트 만들기
+                      </Badge>
+                    </div>
+                    
+                    {/* 버튼들 */}
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        asChild
+                        size="default"
+                        className="bg-blue-600 text-white hover:bg-blue-700 font-semibold"
+                      >
+                        <Link to="/prompt-engineering">
+                          가이드북 시작하기
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="default"
+                        className="border-gray-300"
+                      >
+                        <Link to="/prompt-engineering">
+                          자세히 보기
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
