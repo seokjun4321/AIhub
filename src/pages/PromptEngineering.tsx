@@ -10,6 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // 프롬프트 엔지니어링 챕터 목록
 const chapters = [
@@ -24,6 +26,423 @@ const chapters = [
   { id: 8, title: "AIHub 프레임워크" },
   { id: 9, title: "마스터 프롬프트 워크숍" },
 ];
+
+// 각 챕터의 콘텐츠
+const chapterContents: Record<number, string> = {
+  0: `## 0. 왜 프롬프트 엔지니어링이 먼저인가?
+
+**핵심은?** → AI를 잘 쓰는 능력 = 프롬프트를 설계하는 능력이다.
+
+- 같은 ChatGPT, 같은 모델을 쓰는데 결과물 퀄리티는 사람마다 극단적으로 갈림.
+
+- 대부분의 차이는
+  - "운영비를 많이 쓰느냐?"도 아니고
+  - "모델을 직접 만들었느냐?"도 아니라
+  - **프롬프트를 얼마나 체계적으로 설계했느냐**에서 나온다.
+
+- 그래서 AIHub에서는
+  👉 "어떤 툴을 쓸까?" 보다 먼저
+  👉 **"어떻게 프롬프트를 짤까?"**를 배워야 한다.
+
+이 가이드는:
+- 대학생·초보 창업자 기준으로,
+- ChatGPT(또는 Claude, Perplexity 등)를
+ "검색창"이 아닌 **"생각을 시키는 엔진"**으로 쓰는 법을 알려준다.`,
+
+  1: `## 1. 프롬프트 엔지니어의 마인드셋
+
+### 1-1. 검색엔진 vs 추론 엔진
+
+**핵심은?** → ChatGPT는 '검색창'이 아니라 '생각 파이프라인'을 설계하는 도구다.
+
+**검색엔진 마인드**
+> "키워드를 뭐라고 치면 답이 나오지?"
+
+**프롬프트 엔지니어 마인드**
+> "어떤 역할·맥락·목표·형식을 정의해야 원하는 사고 과정을 밟게 만들 수 있지?"
+
+즉, **"질문 한 줄"이 아니라 "작업 시스템"을 설계한다는 느낌**으로 접근해야 한다.
+
+### 1-2. 좋은 프롬프트의 3원칙
+
+**핵심은?** → 프롬프트는 짧고 쌈마이하게가 아니라, 명확하고 설계적으로.
+
+1. **명확성 > 길이**
+   - "환경 에세이 써줘" 같은 애매한 한 줄보다,
+   - 과제 정보, 목적, 길이, 톤을 포함한 조금 긴 프롬프트가 훨씬 좋은 결과를 만든다.
+
+2. **결과를 탓하기 전에, 입력부터 의심하기**
+   - "왜 답이 쓰레기지?"보다
+   - "내 프롬프트가 어디까지 명확했지?"를 먼저 체크하는 습관.
+
+3. **매번 새 질문이 아니라, '재사용 가능한 프레임워크'를 만든다**
+   - 오늘 레포트 프롬프트
+   - 내일 사업계획서 프롬프트
+   - 다음주 발표 프롬프트가
+   - → 사실은 같은 구조(Roles, Context, Task, Format, Parameters)를 돌려 쓰는 것.`,
+
+  2: `## 2. 기본기: RCTFP 5요소 프롬프트 구조
+
+**RCTFP = Role + Context + Task + Format + Parameters**
+
+**핵심은?** → "누구(역할)가, 어떤 상황(Context)에서, 무슨 일(Task)을, 어떤 형식(Format)과 조건(Parameters)으로 할지"를 명시하는 것.
+
+### 2-1. RCTFP 요소 설명
+
+1. **R – Role (역할)**
+   - AI에게 "너는 지금 누구다"를 정의
+   - 예:
+     - "너는 대학생 에세이 튜터야."
+     - "너는 초기 스타트업을 보는 VC 애널리스트야."
+     - "너는 물리학과 3학년 수준을 맞춰 설명하는 튜터야."
+
+2. **C – Context (맥락)**
+   - 지금 이 대화가 어떤 상황인지 설명
+   - 예: 과목, 타깃, 배경, 현재 문제, 내 수준, 리소스 등
+
+3. **T – Task (할 일)**
+   - AI가 해야 하는 구체적인 작업
+   - 예: 요약, 브레인스토밍, 분석, 비교, 글쓰기, 코드 디버깅…
+
+4. **F – Format (출력 형식)**
+   - 출력이 어떤 모양으로 나와야 하는지
+   - 예: 표, 번호 리스트, 마크다운, JSON, Step-by-step, 슬라이드 아웃라인…
+
+5. **P – Parameters (조건·제약)**
+   - 톤, 길이, 난이도, 금지사항, 강조 포인트 등
+   - 예: "고등학생도 이해할 수 있게", "200자 이내", "전문용어는 유지하되 쉽게 풀어줘"
+
+### 2-2. 예시: "환경 에세이 써줘"를 RCTFP로 바꾸기
+
+**나쁜 프롬프트:**
+> "환경 문제 에세이 써줘."
+
+**RCTFP 적용 프롬프트:**
+
+\`\`\`
+[Role]
+너는 한국 대학생의 글쓰기를 도와주는 **에세이 튜터**야.
+
+[Context]
+나는 교양 과목에서 '플라스틱 사용 규제의 필요성'에 대한 **논증형 에세이**를 써야 해.
+분량은 A4 3장 정도이고, 교수님은 **논리 구조와 근거 제시**를 중요하게 보셔.
+
+[Task]
+1단계로, 이 주제에 맞는 **에세이 아웃라인(서론/본론/결론)**을 만들어줘.
+각 본론 단락마다 주장과 근거를 한 줄씩 써줘.
+
+[Format]
+- 마크다운 형식의 리스트로
+- 1. 서론 / 2. 본론1 / 3. 본론2 / 4. 본론3 / 5. 결론 구조
+
+[Parameters]
+- 너무 어려운 용어는 피하고,
+- 한국인 대학생이 쓴 레포트 수준의 문장으로 작성해줘.
+\`\`\`
+
+이 패턴(RCTFP)을 몸에 익히면, 어떤 도메인(코딩, 마케팅, 사업계획, 공부)에도 그대로 쓸 수 있다.`,
+
+  3: `## 3. ROSES: 복잡한 작업용 고급 프레임워크
+
+**ROSES = Role / Objective / Scenario / Expected Solution / Steps**
+
+**핵심은?** → 간단한 Q&A가 아니라, "리포트·전략·계획" 같은 고급 아웃풋을 뽑을 때 쓰는 구조.
+
+### 3-1. 각 요소 설명
+
+1. **Role**: AI의 전문 역할 (예: VC 애널리스트, PM, 시니어 개발자)
+2. **Objective**: 이번 대화의 명확한 목표 (무엇을 얻고 싶은가?)
+3. **Scenario**: 상황·제약·배경 (시장/타깃/리소스/단계 등)
+4. **Expected Solution**: "이런 구조의 결과물이 나오면 성공"이라는 정의
+5. **Steps**: 그 결과물을 만들기 위한 사고 단계 안내
+
+### 3-2. AIHub 예시: AIHub 비즈니스 분석 부탁할 때
+
+\`\`\`
+[Role]
+너는 초기 스타트업 투자 경험이 10년 이상 있는 **VC 애널리스트**야.
+
+[Objective]
+내 서비스 아이디어(AI 기반 학습·커뮤니티 플랫폼 AIHub)에 대해
+**시장성, 차별성, 수익모델 관점**에서 분석을 받고 싶어.
+
+[Scenario]
+- 나는 23살 대학생이고, 아직 MVP는 없는 단계야.
+- 주요 타깃: 대학생, 초보 창업자, 직장인.
+- 주요 기능: "프롬프트 가이드북, 프리셋, 커뮤니티, 에이전트".
+
+[Expected Solution]
+아래 구조의 리포트를 작성해줘.
+1) 아이템 요약 (3줄)
+2) 시장 기회 분석
+3) 경쟁자·대체제 분석
+4) 차별화 포인트
+5) 위험요인 & 개선 제안
+
+[Steps]
+1단계: 내가 준 정보를 요약하고,
+2단계: 시장·경쟁 구도를 정리한 뒤,
+3단계: 차별성과 리스크를 평가하고,
+4단계: 실행 우선순위 3가지를 제안해줘.
+\`\`\`
+
+이렇게 던지면, "그냥 의견"이 아니라 반쯤 컨설팅 리포트 수준의 아웃풋을 뽑아낼 수 있다.`,
+
+  4: `## 4. Few-shot & Chain-of-Thought: 예시와 사고과정 컨트롤하기
+
+### 4-1. Few-shot 프롬프트
+
+**핵심은?** → "이렇게 해줘"보다 "이런 예시처럼 따라 해"가 훨씬 강력하다.
+
+**Few-shot** = 입·출력 예시를 몇 개 보여준 다음, → "이제 이 케이스도 같은 방식으로 처리해"라고 시키는 것.
+
+**예시 (학생 질문 카테고리 분류):**
+
+아래는 '학생 질문'을 카테고리로 분류하는 예시야.
+
+**예시 1**
+Input: "레포트 마감 기한이 언제인가요?"
+Output: "수업/행정"
+
+**예시 2**
+Input: "벡터 미적분 개념이 너무 어렵습니다. 쉽게 설명해 주세요."
+Output: "학습 내용"
+
+**예시 3**
+Input: "팀플 팀원이 연락을 안 받습니다. 어떻게 해야 할까요?"
+Output: "대인관계/팀플"
+
+이제 아래 질문을 같은 방식으로 분류해줘.
+
+Input: "자연대 복수전공 신청은 어떻게 하나요?"
+Output:
+
+이 패턴은:
+- 질문 분류
+- 톤 맞추기
+- 특정 스타일의 글/요약 복제
+등에 공통적으로 활용 가능하다.
+
+### 4-2. Chain-of-Thought (CoT)
+
+**핵심은?** → "정답만" 요구하지 말고, "생각 과정을 단계별로 써보라"고 시키는 것.
+
+**그냥:**
+> "AIHub 사업 아이템 어떻게 생각해?"
+
+**CoT 버전:**
+> "AIHub 사업 아이템을 단계별로 분석해줘."
+
+**예시 (시장 진입 전략):**
+
+AI 기반 교육 서비스를 한국 대학생 시장에 론칭하려고 해.
+이 상황을 분석하기 위해 단계별로 생각해줘.
+
+**Step 1**: 주요 이해관계자와 핵심 변수 정리
+**Step 2**: 가능한 전략 옵션 나열 및 각 장단점 정리
+**Step 3**: 각 옵션의 리스크와 임팩트 평가
+**Step 4**: 가장 합리적인 전략 1~2개 추천 + 이유 설명
+
+위 단계에 따라 논리적으로 분석해줘.
+
+이렇게 하면 어떻게 생각했는지까지 보여주기 때문에, 답을 검수하고 수정하기 훨씬 쉬워진다.`,
+
+  5: `## 5. 출력 포맷을 통제하는 법 (FORMAT 감각)
+
+**핵심은?** → "내용"만 요구하지 말고, "어떤 모양으로 내보내라"고 구체적으로 말하기.
+
+자주 쓰는 패턴 몇 개만 몸에 익혀도 효율이 확 달라진다.
+
+### 5-1. 표 형태로 받기
+
+결과는 아래 열 구조의 표로 정리해줘.
+
+- Column 1: 기능 이름
+- Column 2: 한 줄 설명
+- Column 3: 추천 사용자
+- Column 4: 난이도(1~5)
+
+표만 출력해줘.
+
+### 5-2. 아웃라인 형태로 받기
+
+이 내용을 강의노트로 정리하고 싶어.
+1, 1-1, 1-2, 2, 2-1 형식의 **계층적 아웃라인**으로 정리해줘.
+
+### 5-3. 마크다운 문서로 받기
+
+마크다운 형식으로 정리해줘.
+
+- H1: 문서 제목
+- H2: 큰 섹션
+- H3: 필요하면 소제목
+- 본문은 불릿포인트와 번호 매기기를 적극 사용해줘.
+
+이걸 습관화하면, **그대로 Notion/AIHub에 붙여넣어서 "바로 공개 가능한 문서"**를 얻을 수 있다.`,
+
+  6: `## 6. 페르소나 & 컨텍스트 엔지니어링
+
+**핵심은?** → "마케팅 전문가"처럼 대충 말하지 말고, AI의 성격·관점을 세밀하게 설계하기.
+
+### 6-1. VOICE 축약 버전
+
+페르소나는 대략 이런 요소로 설계할 수 있다:
+
+- **Viewpoint**: 데이터 중심? 사용자 중심? 보수적? 실험적?
+- **Occupation**: VC? PM? 튜터? 디자이너? 개발자?
+- **Communication**: 말투·톤 (냉철/친절/서사적/칼같이 직설적…)
+- **Emphasis**: 무엇을 최우선? (리스크 최소화, 성장, UX, 속도…)
+
+### 6-2. AIHub 비즈니스 파트너 예시
+
+너는 한국·미국 초기 스타트업에 투자 경험이 있는 **VC 출신 전략 컨설턴트**야.
+
+대학생 창업자의 시각을 이해하고,
+- 현실적인 리스크
+- 시장성
+- 실행 가능성
+을 냉정하게 보되,
+'그래도 도전해볼 만한 방향'을 함께 설계해주는 스타일이야.
+
+설명은 고등학생도 이해할 수 있을 정도로 풀어서,
+핵심 개념은 **굵게 강조**하고,
+항상 2~3가지 옵션을 제시한 뒤, 네가 생각하는 베스트를 추천해줘.
+
+이런 페르소나는 한 번 만들면, **AIHub 전역에서 재사용 가능한 "역할 모듈"**이 된다.`,
+
+  7: `## 7. 모듈형 프롬프트: 레고처럼 조립하기
+
+**핵심은?** → 프롬프트를 통으로 새로 쓰지 말고, "모듈(조각)"로 쪼개서 재사용하기.
+
+AIHub 기준으로 기본 모듈을 이렇게 둘 수 있다:
+
+1. **[PERSONA_MODULE]** – 역할/톤
+2. **[TASK_MODULE]** – 해야 할 일
+3. **[FORMAT_MODULE]** – 출력 형식
+4. **[CONSTRAINT_MODULE]** – 조건/제약(난이도, 길이, 금지사항 등)
+
+**예시:**
+
+\`\`\`
+[PERSONA_MODULE]
+너는 한국 대학생과 초기 창업자의 AI 활용을 돕는 튜터이자 비즈니스 코치야.
+
+[TASK_MODULE]
+아래 툴에 대한 가이드북을, AIHub 템플릿에 맞게 작성해줘.
+
+[FORMAT_MODULE]
+마크다운 형식, 섹션/표/불릿포인트를 적극 사용해줘.
+
+[CONSTRAINT_MODULE]
+설명은 고등학생도 이해 가능할 정도로, 하지만 비즈니스 감각은 유지해줘.
+중요한 포인트는 항상 "핵심은?" 문구 다음에 **굵게** 강조해줘.
+\`\`\`
+
+→ 나중에는 툴 이름/도메인만 갈아끼우면 같은 구조로 무한 재생산 가능.`,
+
+  8: `## 8. AIHub 전용 프레임워크: A I H U B
+
+AIHub 스타일 프롬프트를 설계할 때 쓸 수 있는 내부 기준.
+
+**A I H U B = Audience / Intent / How / Use-case / Boundaries**
+
+- **A – Audience**: 누구를 위한 출력인가? (대학생 / 예비창업자 / 직장인 / 개발자 등)
+- **I – Intent**: 목적은? (교육 / 설득 / 분석 / 정리 / 영업 / 자기계발 등)
+- **H – How**: 어떤 스타일·톤·형식으로? (캐주얼 / 냉철 / 친절 / 표 / 스텝별 / 스토리텔링 등)
+- **U – Use-case**: 실제 사용 맥락은? (레포트, 피치덱, 면접 대비, 이메일 작성, 강의 요약 등)
+- **B – Boundaries**: 하지 말아야 할 것 / 길이 제한 / 윤리·정책 / 모델 한계 등
+
+이 프레임워크로 내 프롬프트를 검토해 보면 좋다:
+
+"지금 내가 던진 프롬프트는
+- Audience가 명확한가?
+- Intent가 드러나는가?
+- How(스타일/형식)를 지정했는가?
+- Use-case가 구체적인가?
+- Boundaries를 최소 하나는 언급했는가?"`,
+
+  9: `## 9. 실전 워크숍: 나만의 마스터 프롬프트 만들기
+
+이제 실제로 **"나만의 마스터 프롬프트"**를 하나 만들어보는 게 이 가이드북의 목표다.
+
+### 9-1. Step 1 – 도메인 선택
+
+- 예:
+  - "나의 전공(물리학) 튜터용 프롬프트"
+  - "AIHub 비즈니스 파트너 프롬프트"
+  - "에세이·레포트 전용 작문 코치 프롬프트"
+
+### 9-2. Step 2 – RCTFP로 초안 쓰기
+
+간단히 다음 질문에 답해 보자:
+
+1. **역할(Role)**: AI에게 어떤 역할을 맡길 것인가?
+2. **맥락(Context)**: 나는 누구고, 어떤 상황인가?
+3. **할 일(Task)**: 이 AI와 주로 뭘 하게 될까?
+4. **형식(Format)**: 어떤 형식으로 받고 싶은가?
+5. **조건(Parameters)**: 톤, 난이도, 길이, 금지사항은?
+
+이 답을 이어붙이면 곧바로 "마스터 프롬프트 초안"이 된다.
+
+### 9-3. Step 3 – 최종 예시: AIHub Prompt Coach
+
+아래는 AIHub에서 **"프롬프트 엔지니어링 교관 봇"**으로 쓸 수 있는 완성된 예시다.
+(필요하면 이름만 바꾸고 그대로 써도 된다.)
+
+\`\`\`
+[ 페르소나 / 역할 ]
+
+너는 **AIHub Prompt Coach** 다.  
+너의 역할은 "AI를 처음 쓰는 사람도, 프롬프트를 제대로 설계해서 쓸 수 있게 만들어주는 코치"다.
+
+구체적으로 너는:
+- ChatGPT, Claude, Perplexity 등 어떤 LLM이든 **프롬프트를 잘 쓰는 법**을 가르치는 전문가이고,
+- 사용자가 다른 AI 가이드북이나 프리셋을 쓰기 전에 반드시 거쳐야 하는 **기본 교육 담당 튜터**다.
+- "프롬프트 엔지니어링"을 어렵게 설명하지 않고, **대학생 기준**으로 이해시키는 데 최적화되어 있다.
+
+설명할 때 너는:
+- 차분하고 분석적이지만, 딱딱하지 않고 친근하게 말한다.
+- 중요한 부분은 항상
+  - 문장 앞에 **"핵심은?"** 이라고 쓰고,
+  - 그 뒤의 키워드를 **굵게** 강조한다.
+- 불릿포인트, 번호 매기기, 표, 단계별 가이드를 적극 활용한다.
+
+[ 목적 / 미션 ]
+
+너의 최우선 목표는 다음과 같다:
+
+1. 사용자가 "막연히 AI한테 물어보는 사람"에서
+   → "프레임워크를 써서 AI를 설계하는 사람(초보 프롬프트 엔지니어)"로 올라가게 돕는다.
+
+2. 사용자가 아래 네 가지를 확실히 이해하고, 직접 써보게 만든다.
+   - RCTFP 구조: Role / Context / Task / Format / Parameters
+   - ROSES 구조: Role / Objective / Scenario / Expected Solution / Steps
+   - Few-shot 예시 프롬프트
+   - Chain-of-Thought(단계별 사고) 프롬프트
+
+3. 대화를 끝낼 때 사용자가 **직접 만든 프롬프트 1~2개**를 가지고 나가도록 돕는다.
+
+[ 대화 스타일 & 출력 규칙 ]
+
+- 모든 설명은 고등학생도 이해할 수 있을 정도로 쉽게 풀어쓴다.
+- 하지만 비즈니스 감각과 구조는 유지한다.
+- 가능하면 실제 예시 프롬프트를 함께 제시한다.
+- 사용자가 막히면, 스스로 생각해볼 수 있는 "질문 리스트"를 먼저 던져준다.
+\`\`\`
+
+---
+
+## 마무리: 이 가이드북의 목표
+
+**핵심은?** → 이 문서를 다 읽은 사람은, "어떤 AI툴 가이드북을 보더라도 프롬프트를 스스로 튜닝할 수 있는 상태"가 되어야 한다.
+
+- 이제부터는:
+  - "이 툴 뭐가 좋아요?"에서 끝나는 게 아니라
+  - "이 툴을 쓸 때 RCTFP/ROSES/포맷을 어떻게 짜면 좋을까?"를 먼저 떠올려야 한다.
+
+- AIHub의 다른 가이드북(에세이, 레포트, 코딩, 디자인, 마케팅…)은
+ **전부 이 가이드북 위에 올라가는 "응용편"**이라고 생각하면 된다.`
+};
 
 // Supabase에서 진행도 가져오기
 const fetchPromptEngineeringProgress = async (userId: string) => {
@@ -114,6 +533,7 @@ const PromptEngineering = () => {
 
   const completedCount = completedChapters.size;
   const progress = (completedCount / chapters.length) * 100;
+  const currentContent = chapterContents[selectedChapter] || '';
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,12 +545,15 @@ const PromptEngineering = () => {
             <Card className="bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 border-0 shadow-2xl overflow-hidden">
               <CardContent className="p-6 md:p-10 text-white">
                 <div className="max-w-4xl mx-auto">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs bg-white/20 px-2 py-1 rounded">AIHub 필수 가이드북 00</span>
+                  </div>
                   <h1 className="text-3xl md:text-4xl font-bold mb-3">
-                    프롬프트 엔지니어링 입문
+                    ChatGPT 프롬프트 엔지니어링 입문
                   </h1>
                   <p className="text-base md:text-lg text-blue-50 mb-6 leading-relaxed">
-                    AI를 잘 쓰는 사람과 못 쓰는 사람의 차이는 결국 프롬프트 설계 능력입니다. 
-                    이 코스는 AIHub의 모든 가이드북을 보기 전에 먼저 완주하는 0번 트랙입니다.
+                    이 가이드북은 AIHub의 모든 다른 가이드북을 보기 전에 반드시 먼저 읽는 "0번 챕터"를 목표로 한다.
+                    AI를 잘 쓰는 사람과 못 쓰는 사람의 진짜 차이는 **"어떤 모델을 쓰냐"가 아니라, "어떻게 질문하느냐(프롬프트)"**에서 생기기 때문이다.
                   </p>
                   
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
@@ -188,46 +611,53 @@ const PromptEngineering = () => {
             {/* 메인 콘텐츠 영역 */}
             <div className="space-y-6">
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-6 md:p-8">
                   <div className="flex items-center gap-4 mb-6">
                     <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold">
                       {selectedChapter}
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold">{chapters[selectedChapter].title}</h2>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        AI를 효과적으로 사용하기 위한 필수 기초
-                      </p>
                     </div>
                   </div>
 
-                  <div className="prose max-w-none">
-                    <p className="text-foreground/90 leading-relaxed">
-                      ChatGPT, Claude, Gemini 같은 AI 도구들이 등장하면서 누구나 AI를 쓸 수 있게 되었습니다. 
-                      하지만 같은 AI를 사용해도 결과물의 품질은 천차만별입니다. 그 차이를 만드는 것은 바로 프롬프트 설계 능력입니다.
-                    </p>
-                    
-                    <p className="text-foreground/90 leading-relaxed mt-4">
-                      이 코스에서는 프롬프트 엔지니어링의 기초부터 고급 기법까지 단계별로 학습할 수 있습니다. 
-                      각 챕터를 완료하면 다음 챕터로 진행할 수 있으며, 실습을 통해 바로 적용해볼 수 있습니다.
-                    </p>
-
-                    {/* 챕터별 콘텐츠는 여기에 추가 */}
-                    {selectedChapter === 0 && (
-                      <div className="mt-6 space-y-4">
-                        <h3 className="text-xl font-semibold">좋은 프롬프트 예시</h3>
-                        <div className="bg-muted p-4 rounded-lg">
-                          <p className="text-sm font-medium mb-2">나쁜 예:</p>
-                          <p className="text-sm text-muted-foreground mb-4">"마케팅 글 써줘"</p>
-                          <p className="text-sm font-medium mb-2">좋은 예:</p>
-                          <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                            <li>당신은 B2B SaaS 마케팅 전문가입니다.</li>
-                            <li>스타트업 창업자를 대상으로, 우리 제품(AI 기반 고객 분석 도구)의 가치를 설명하는 블로그 글을 작성해주세요.</li>
-                            <li>출력 형식: 제목 (50자 이내, SEO 최적화) + 도입부 (문제 제기, 2-3문단) + 본문 (솔루션 제시, 5-6문단) + 결론 (CTA 포함, 2문단)</li>
-                          </ul>
-                        </div>
-                      </div>
-                    )}
+                  <div className="prose prose-sm max-w-none 
+                    prose-p:text-foreground/90 prose-p:leading-relaxed prose-p:mb-4
+                    prose-headings:text-foreground prose-headings:font-bold prose-headings:mb-4 prose-headings:mt-6
+                    prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4
+                    prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3
+                    prose-strong:text-foreground prose-strong:font-bold
+                    prose-ul:space-y-2 prose-ul:my-4 prose-ul:ml-6
+                    prose-ol:space-y-2 prose-ol:my-4 prose-ol:ml-6
+                    prose-li:text-foreground/90 prose-li:leading-relaxed
+                    prose-code:text-accent prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+                    prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
+                    prose-blockquote:border-l-accent prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-muted-foreground">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />,
+                        p: ({node, ...props}) => <p className="text-foreground/90 leading-relaxed mb-4" {...props} />,
+                        ul: ({node, ...props}) => <ul className="space-y-2 my-4 ml-6 list-disc" {...props} />,
+                        ol: ({node, ...props}) => <ol className="space-y-2 my-4 ml-6 list-decimal" {...props} />,
+                        li: ({node, ...props}) => <li className="text-foreground/90 leading-relaxed" {...props} />,
+                        code: ({node, className, children, ...props}: any) => {
+                          const match = /language-(\w+)/.exec(className || '');
+                          const isInline = !match;
+                          return isInline ? (
+                            <code className="text-accent bg-muted px-1.5 py-0.5 rounded text-sm" {...props}>
+                              {children}
+                            </code>
+                          ) : (
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
+                      {currentContent}
+                    </ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>
@@ -241,5 +671,3 @@ const PromptEngineering = () => {
 };
 
 export default PromptEngineering;
-
-

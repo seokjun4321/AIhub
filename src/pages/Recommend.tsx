@@ -149,24 +149,28 @@ const getFormatText = (time: number | null) => {
 // 주의: 이 이름들은 DB의 categories 테이블의 name과 정확히 일치해야 합니다!
 const categorySections = [
   {
-    name: '글쓰기 & 교정',  // DB의 실제 카테고리 이름으로 변경
+    name: '글쓰기 & 교정',
     description: '에세이, 리포트, 성찰문, 발표 스크립트를 AI로 작성하기',
-    searchName: '글쓰기'
+    searchName: '글쓰기',
+    step: 1
   },
   {
     name: '취업 준비',
     description: '이력서, 자기소개서, 포트폴리오, 면접 준비',
-    searchName: '취업'
+    searchName: '취업',
+    step: 4
   },
   {
-    name: '연구 & 학습',  // DB의 실제 카테고리 이름으로 변경
+    name: '연구 & 학습',
     description: '개념 이해, 노트 정리, 연습 문제 생성 등',
-    searchName: '학습'
+    searchName: '학습',
+    step: 3
   },
   {
-    name: '개발 & 코딩',  // DB의 실제 카테고리 이름으로 변경
+    name: '개발 & 코딩',
     description: '코드 작성, 디버깅, 기술 개념 설명',
-    searchName: '코딩'
+    searchName: '코딩',
+    step: 7
   }
 ];
 
@@ -285,41 +289,31 @@ const Recommend = () => {
           </div>
 
           {/* 프롬프트 엔지니어링 필수 섹션 */}
-          <div className="mb-16">
-            <Card className="bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 border-0 shadow-2xl overflow-hidden">
-              <CardContent className="p-6 md:p-8 text-white">
-                <div className="max-w-4xl mx-auto">
-                  <h2 className="text-3xl md:text-4xl font-bold mb-3">
-                    프롬프트 엔지니어링 입문
-                  </h2>
-                  <p className="text-base md:text-lg text-blue-50 mb-6 leading-relaxed">
-                    AI를 잘 쓰는 사람과 못 쓰는 사람의 차이는 결국 프롬프트 설계 능력입니다. 
-                    이 코스는 AIHub의 모든 가이드북을 보기 전에 먼저 완주하는 0번 트랙입니다.
-                  </p>
-                  
-                  <div className="mb-6">
+          <div className="mb-12">
+            <Card className="bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 border-0 shadow-lg overflow-hidden">
+              <CardContent className="p-5 md:p-6 text-white">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
+                        AIHub 필수 입문
+                      </Badge>
+                    </div>
+                    <h2 className="text-xl md:text-2xl font-bold mb-2">
+                      프롬프트 엔지니어링 가이드북
+                    </h2>
+                    <p className="text-sm md:text-base text-blue-50 mb-4 leading-relaxed">
+                      다른 AI 가이드북을 보기 전에, 프롬프트를 어떻게 설계해야 하는지 먼저 배울 수 있는 입문 가이드입니다.
+                    </p>
                     <Button
                       asChild
-                      size="lg"
-                      className="bg-white text-blue-600 hover:bg-blue-50 font-semibold text-base px-6 py-4 h-auto"
+                      size="sm"
+                      className="bg-white text-blue-600 hover:bg-blue-50 font-semibold"
                     >
                       <Link to="/prompt-engineering">
                         학습 시작하기
                       </Link>
                     </Button>
-                  </div>
-
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-blue-50">진행도</span>
-                      <span className="text-sm font-medium text-blue-50">{promptEngineeringProgress}/{TOTAL_CHAPTERS} 챕터 완료</span>
-                    </div>
-                    <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className="bg-white h-full rounded-full transition-all duration-500"
-                        style={{ width: `${(promptEngineeringProgress / TOTAL_CHAPTERS) * 100}%` }}
-                      />
-                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -329,50 +323,152 @@ const Recommend = () => {
           {/* 검색 결과 또는 사용 목적별 가이드북 섹션 */}
           {searchQuery || selectedCategory !== "전체" || selectedLevel !== "전체" ? (
             /* 검색/필터 결과 섹션 */
-            <div className="mb-16">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-3xl font-bold mb-2">
-                    {searchQuery ? `"${searchQuery}" 검색 결과` : "필터링된 가이드북"}
-                  </h2>
-                  <p className="text-muted-foreground">
-                    {filteredGuides.length}개의 가이드북을 찾았습니다
-                  </p>
+            <div className="grid lg:grid-cols-[1fr,320px] gap-8">
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-3xl font-bold mb-2">
+                      {searchQuery ? `"${searchQuery}" 검색 결과` : "필터링된 가이드북"}
+                    </h2>
+                    <p className="text-muted-foreground">
+                      {filteredGuides.length}개의 가이드북을 찾았습니다
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedCategory("전체");
+                      setSelectedLevel("전체");
+                    }}
+                  >
+                    필터 초기화
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("전체");
-                    setSelectedLevel("전체");
-                  }}
-                >
-                  필터 초기화
-                </Button>
+
+                {allGuidesLoading ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
+                      <Card key={i}>
+                        <CardHeader>
+                          <Skeleton className="h-4 w-20 mb-2" />
+                          <Skeleton className="h-6 w-full mb-2" />
+                          <Skeleton className="h-4 w-3/4" />
+                        </CardHeader>
+                        <CardContent>
+                          <Skeleton className="h-10 w-full" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : filteredGuides.length > 0 ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredGuides.map((guide: any) => (
+                      <Link to={`/guides/${guide.id}`} key={guide.id}>
+                        <Card className="h-full hover:shadow-lg transition-all hover:border-primary/50 flex flex-col group">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                              {guide.ai_models && (
+                                <Badge variant="outline" className="text-xs">
+                                  {(guide.ai_models as any)?.name || 'AI 도구'}
+                                </Badge>
+                              )}
+                              {getLevelBadge(guide.difficulty_level)}
+                            </div>
+                            <CardTitle className="text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                              {guide.title}
+                            </CardTitle>
+                            <CardDescription className="line-clamp-2 text-sm">
+                              {guide.description || '설명이 없습니다.'}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="flex-1 flex flex-col justify-between pt-0">
+                            <div className="space-y-2 mb-4">
+                              {guide.estimated_time && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Clock className="w-4 h-4" />
+                                  <span>{guide.estimated_time}분</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {getFormatIcon(guide.estimated_time)}
+                                <span>{getFormatText(guide.estimated_time)}</span>
+                              </div>
+                            </div>
+                            <Button className="w-full" variant="default">
+                              가이드 열기
+                              <ExternalLink className="w-4 h-4 ml-2" />
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <p className="text-lg text-muted-foreground mb-2">
+                      검색 결과가 없습니다
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      다른 검색어나 필터를 시도해보세요
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {allGuidesLoading ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {[...Array(8)].map((_, i) => (
-                    <Card key={i}>
-                      <CardHeader>
-                        <Skeleton className="h-4 w-20 mb-2" />
-                        <Skeleton className="h-6 w-full mb-2" />
-                        <Skeleton className="h-4 w-3/4" />
-                      </CardHeader>
-                      <CardContent>
-                        <Skeleton className="h-10 w-full" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : filteredGuides.length > 0 ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {filteredGuides.map((guide: any) => (
-                    <Link to={`/guides/${guide.id}`} key={guide.id}>
-                      <Card className="h-full hover:shadow-lg transition-shadow flex flex-col">
-                        <CardHeader>
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {/* 오른쪽 사이드바 (검색 결과 페이지에서도 동일) */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">내 학습 진행</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">프롬프트 엔지니어링 가이드북</span>
+                        <Badge variant="secondary" className="text-xs">진행 중</Badge>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>{promptEngineeringProgress}/{TOTAL_CHAPTERS} 챕터 완료</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                          <div 
+                            className="bg-primary h-full rounded-full transition-all duration-500"
+                            style={{ width: `${(promptEngineeringProgress / TOTAL_CHAPTERS) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <h4 className="text-sm font-semibold mb-3">최근에 본 가이드북</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="text-muted-foreground">
+                          <p className="line-clamp-1">ChatGPT로 에세이 쓰는 법</p>
+                          <p className="text-xs mt-1">2시간 전</p>
+                        </div>
+                        <div className="text-muted-foreground">
+                          <p className="line-clamp-1">AI로 발표 자료 만들기</p>
+                          <p className="text-xs mt-1">어제</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">AIHub 추천 가이드</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {allGuides && allGuides.slice(0, 2).map((guide: any) => (
+                      <Link to={`/guides/${guide.id}`} key={guide.id}>
+                        <div className="p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-2 mb-2">
                             {guide.ai_models && (
                               <Badge variant="outline" className="text-xs">
                                 {(guide.ai_models as any)?.name || 'AI 도구'}
@@ -380,111 +476,44 @@ const Recommend = () => {
                             )}
                             {getLevelBadge(guide.difficulty_level)}
                           </div>
-                          <CardTitle className="text-lg mb-2 line-clamp-2">
-                            {guide.title}
-                          </CardTitle>
-                          <CardDescription className="line-clamp-2 text-sm">
-                            {guide.description || '설명이 없습니다.'}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 flex flex-col justify-between">
-                          <div className="space-y-2 mb-4">
+                          <h4 className="font-semibold text-sm mb-1 line-clamp-2">{guide.title}</h4>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             {guide.estimated_time && (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Clock className="w-4 h-4" />
-                                <span>~{guide.estimated_time}분</span>
-                              </div>
+                              <>
+                                <Clock className="w-3 h-3" />
+                                <span>{guide.estimated_time}분</span>
+                              </>
                             )}
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              {getFormatIcon(guide.estimated_time)}
-                              <span>{getFormatText(guide.estimated_time)}</span>
-                            </div>
                           </div>
-                          <Button className="w-full" variant="default">
-                            가이드 열기
-                            <ExternalLink className="w-4 h-4 ml-2" />
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Search className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-lg text-muted-foreground mb-2">
-                    검색 결과가 없습니다
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    다른 검색어나 필터를 시도해보세요
-                  </p>
-                </div>
-              )}
+                        </div>
+                      </Link>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           ) : (
-            <>
-              {/* 사용 목적별 가이드북 섹션 */}
-              <div className="mb-16">
-                <h2 className="text-3xl font-bold mb-4">사용 목적별 가이드북</h2>
-                <p className="text-muted-foreground mb-6">
-                  달성하고 싶은 목표를 선택하세요 (글쓰기, 학습, 취업 준비, 콘텐츠, 스타트업, 코딩) 그리고 AI가 어떻게 도와줄 수 있는지 확인하세요.
-                </p>
-                
-                {/* 필터 */}
-                <div className="flex flex-wrap gap-4 mb-8">
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="px-4 py-2 border rounded-md bg-background"
-                  >
-                    <option value="전체">전체 카테고리</option>
-                    {categories?.map((cat) => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))}
-                  </select>
+            <div className="grid lg:grid-cols-[1fr,320px] gap-8">
+              {/* 메인 콘텐츠 영역 */}
+              <div>
+                {/* 카테고리별 가이드북 섹션들 */}
+                {displayCategories.map((section: any, sectionIndex: number) => {
+                  const { data: guides, isLoading } = categoryGuidesQueries[sectionIndex];
                   
-                  <select
-                    value={selectedTool}
-                    onChange={(e) => setSelectedTool(e.target.value)}
-                    className="px-4 py-2 border rounded-md bg-background"
-                  >
-                    <option value="전체">전체 도구</option>
-                    {/* TODO: AI 모델 목록 추가 */}
-                  </select>
-                  
-                  <select
-                    value={selectedLevel}
-                    onChange={(e) => setSelectedLevel(e.target.value)}
-                    className="px-4 py-2 border rounded-md bg-background"
-                  >
-                    <option value="전체">전체 레벨</option>
-                    <option value="초급">초급</option>
-                    <option value="중급">중급</option>
-                    <option value="고급">고급</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* 카테고리별 가이드북 섹션들 */}
-          {displayCategories.map((section: any, sectionIndex: number) => {
-            const { data: guides, isLoading } = categoryGuidesQueries[sectionIndex];
-            
-            return (
-              <div key={section.name} className="mb-16">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-2">{section.name}</h3>
-                    <p className="text-muted-foreground">{section.description}</p>
-                  </div>
-                  <Link 
-                    to={`/guides?category=${encodeURIComponent(section.name)}`}
-                    className="text-primary hover:underline"
-                  >
-                    전체 보기 &gt;
-                  </Link>
-                </div>
+                  return (
+                    <div key={section.name} className="mb-16">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex-1">
+                          <h3 className="text-2xl font-bold mb-2">{section.name}</h3>
+                          <p className="text-muted-foreground">{section.description}</p>
+                        </div>
+                        <Link 
+                          to={`/guides?category=${encodeURIComponent(section.name)}`}
+                          className="text-primary hover:underline whitespace-nowrap ml-4"
+                        >
+                          전체 보기 &gt;
+                        </Link>
+                      </div>
                 
                 {isLoading ? (
                   <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -502,12 +531,12 @@ const Recommend = () => {
                     ))}
                   </div>
                 ) : guides && guides.length > 0 ? (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {guides.map((guide: any) => (
                       <Link to={`/guides/${guide.id}`} key={guide.id}>
-                        <Card className="h-full hover:shadow-lg transition-shadow flex flex-col">
-                          <CardHeader>
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <Card className="h-full hover:shadow-lg transition-all hover:border-primary/50 flex flex-col group">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-3 flex-wrap">
                               {guide.ai_models && (
                                 <Badge variant="outline" className="text-xs">
                                   {(guide.ai_models as any)?.name || 'AI 도구'}
@@ -515,19 +544,19 @@ const Recommend = () => {
                               )}
                               {getLevelBadge(guide.difficulty_level)}
                             </div>
-                            <CardTitle className="text-lg mb-2 line-clamp-2">
+                            <CardTitle className="text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
                               {guide.title}
                             </CardTitle>
                             <CardDescription className="line-clamp-2 text-sm">
                               {guide.description || '설명이 없습니다.'}
                             </CardDescription>
                           </CardHeader>
-                          <CardContent className="flex-1 flex flex-col justify-between">
+                          <CardContent className="flex-1 flex flex-col justify-between pt-0">
                             <div className="space-y-2 mb-4">
                               {guide.estimated_time && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                   <Clock className="w-4 h-4" />
-                                  <span>~{guide.estimated_time}분</span>
+                                  <span>{guide.estimated_time}분</span>
                                 </div>
                               )}
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -549,10 +578,87 @@ const Recommend = () => {
                     <p>이 카테고리의 가이드북이 아직 없습니다.</p>
                   </div>
                 )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-            </>
+
+              {/* 오른쪽 사이드바 */}
+              <div className="space-y-6">
+                {/* 내 학습 진행 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">내 학습 진행</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">프롬프트 엔지니어링 가이드북</span>
+                        <Badge variant="secondary" className="text-xs">진행 중</Badge>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>{promptEngineeringProgress}/{TOTAL_CHAPTERS} 챕터 완료</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                          <div 
+                            className="bg-primary h-full rounded-full transition-all duration-500"
+                            style={{ width: `${(promptEngineeringProgress / TOTAL_CHAPTERS) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 최근에 본 가이드북 */}
+                    <div className="pt-4 border-t">
+                      <h4 className="text-sm font-semibold mb-3">최근에 본 가이드북</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="text-muted-foreground">
+                          <p className="line-clamp-1">ChatGPT로 에세이 쓰는 법</p>
+                          <p className="text-xs mt-1">2시간 전</p>
+                        </div>
+                        <div className="text-muted-foreground">
+                          <p className="line-clamp-1">AI로 발표 자료 만들기</p>
+                          <p className="text-xs mt-1">어제</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* AIHub 추천 가이드 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">AIHub 추천 가이드</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {allGuides && allGuides.slice(0, 2).map((guide: any) => (
+                      <Link to={`/guides/${guide.id}`} key={guide.id}>
+                        <div className="p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-2 mb-2">
+                            {guide.ai_models && (
+                              <Badge variant="outline" className="text-xs">
+                                {(guide.ai_models as any)?.name || 'AI 도구'}
+                              </Badge>
+                            )}
+                            {getLevelBadge(guide.difficulty_level)}
+                          </div>
+                          <h4 className="font-semibold text-sm mb-1 line-clamp-2">{guide.title}</h4>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {guide.estimated_time && (
+                              <>
+                                <Clock className="w-3 h-3" />
+                                <span>{guide.estimated_time}분</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           )}
         </div>
       </main>
