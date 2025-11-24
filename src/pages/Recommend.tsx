@@ -452,7 +452,7 @@ const Recommend = () => {
               </div>
 
               {/* 오른쪽 사이드바 (검색 결과 페이지에서도 동일) */}
-              <div className="space-y-6">
+              <div className="space-y-6 sticky-sidebar">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">내 학습 진행</CardTitle>
@@ -472,20 +472,6 @@ const Recommend = () => {
                             className="bg-primary h-full rounded-full transition-all duration-500"
                             style={{ width: `${(promptEngineeringProgress / TOTAL_CHAPTERS) * 100}%` }}
                           />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t">
-                      <h4 className="text-sm font-semibold mb-3">최근에 본 가이드북</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="text-muted-foreground">
-                          <p className="line-clamp-1">ChatGPT로 에세이 쓰는 법</p>
-                          <p className="text-xs mt-1">2시간 전</p>
-                        </div>
-                        <div className="text-muted-foreground">
-                          <p className="line-clamp-1">AI로 발표 자료 만들기</p>
-                          <p className="text-xs mt-1">어제</p>
                         </div>
                       </div>
                     </div>
@@ -616,7 +602,7 @@ const Recommend = () => {
               </div>
 
               {/* 오른쪽 사이드바 */}
-              <div className="space-y-6">
+              <div className="space-y-6 sticky-sidebar">
                 {/* 내 학습 진행 */}
                 <Card>
                   <CardHeader>
@@ -637,21 +623,6 @@ const Recommend = () => {
                             className="bg-primary h-full rounded-full transition-all duration-500"
                             style={{ width: `${(promptEngineeringProgress / TOTAL_CHAPTERS) * 100}%` }}
                           />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 최근에 본 가이드북 */}
-                    <div className="pt-4 border-t">
-                      <h4 className="text-sm font-semibold mb-3">최근에 본 가이드북</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="text-muted-foreground">
-                          <p className="line-clamp-1">ChatGPT로 에세이 쓰는 법</p>
-                          <p className="text-xs mt-1">2시간 전</p>
-                        </div>
-                        <div className="text-muted-foreground">
-                          <p className="line-clamp-1">AI로 발표 자료 만들기</p>
-                          <p className="text-xs mt-1">어제</p>
                         </div>
                       </div>
                     </div>

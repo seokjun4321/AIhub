@@ -164,6 +164,12 @@ html {
   will-change: transform !important;
 }
 
+/* 커뮤니티 페이지 프로필 사이드바 - 필터 섹션 높이 고려 */
+.community-page .sticky-sidebar {
+  top: 10.5rem !important; /* 6rem (navbar) + 4.5rem (필터 섹션 예상 높이: py-4 + 필터 버튼 높이) */
+  max-height: calc(100vh - 10.5rem) !important;
+}
+
 /* 부모 요소에 overflow가 없도록 보장 */
 .community-page main,
 .community-page main > div,
@@ -212,45 +218,67 @@ main .flex.flex-col.lg\:flex-row {
   align-items: flex-start !important;
 }
 
-/* PromptEngineering 페이지 sticky 보정 */
+/* PromptEngineering 페이지 sticky 보정 - 커뮤니티 페이지 방식 적용 */
+.prompt-engineering-page {
+  position: relative;
+}
+
 .prompt-engineering-page,
 .prompt-engineering-page > * {
   overflow: visible !important;
 }
 
+/* 부모 요소에 overflow가 없도록 보장 */
 .prompt-engineering-page main,
 .prompt-engineering-page main > div,
-.prompt-engineering-page main > div > div,
-.prompt-engineering-page main > div > div.grid {
+.prompt-engineering-page main > div > div {
   overflow: visible !important;
-  position: relative !important;
-  /* Grid 컨테이너가 충분한 높이를 가져야 sticky가 작동함 */
-  min-height: 100vh !important;
 }
 
 /* PromptEngineering 페이지 ChapterNav sticky 강제 적용 */
+/* Grid에서는 align-self: start를 사용해야 함 (flex-start가 아님) */
 .prompt-engineering-page aside {
   align-self: start !important;
-  position: relative !important;
   overflow: visible !important;
   height: auto !important;
-  /* Grid 아이템이 stretch되지 않도록 */
-  align-self: start !important;
 }
 
-.prompt-engineering-page aside nav {
+/* 프롬프트 엔지니어링 페이지 sticky-sidebar는 기본 top 사용 (필터가 없으므로) */
+/* aside에 직접 sticky-sidebar를 적용하므로 Grid 아이템 자체가 sticky */
+.prompt-engineering-page aside.sticky-sidebar {
   position: -webkit-sticky !important;
   position: sticky !important;
   top: 6rem !important;
+  align-self: start !important;
   z-index: 30 !important;
   max-height: calc(100vh - 6rem) !important;
   overflow-y: auto !important;
+  flex-shrink: 0 !important;
   height: fit-content !important;
   width: 100% !important;
+  will-change: transform !important;
+}
+
+/* Grid 컨테이너도 확인 */
+.prompt-engineering-page main > div > div.grid {
+  overflow: visible !important;
+  align-items: start !important;
+  height: auto !important;
+}
+
+/* 프롬프트 엔지니어링 페이지의 모든 부모 요소 overflow 확인 */
+.prompt-engineering-page main > div.max-w-7xl {
+  overflow: visible !important;
+}
+
+/* 추천 페이지 Grid 레이아웃 sticky 보정 */
+main > div.container > div.grid {
+  overflow: visible !important;
+  align-items: start !important;
+}
+
+main > div.container > div.grid > div.sticky-sidebar {
   align-self: start !important;
-  /* 브라우저 호환성을 위한 추가 속성 */
-  -webkit-transform: translateZ(0) !important;
-  transform: translateZ(0) !important;
 }
 
 /* 모든 페이지의 sticky 요소를 위한 전역 보정 */

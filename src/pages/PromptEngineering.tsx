@@ -164,7 +164,7 @@ const PromptEngineering = () => {
   const completedCount = completedChapters.size;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background prompt-engineering-page">
       <Navbar />
       <main className="pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -172,7 +172,7 @@ const PromptEngineering = () => {
 
           <div className="grid lg:grid-cols-[280px_1fr] gap-8 mt-8">
             {/* Left: Navigation */}
-            <aside className="hidden lg:block">
+            <aside className="hidden lg:block sticky-sidebar">
               <ChapterNav
                 chapters={chapters}
                 activeChapter={activeChapter}

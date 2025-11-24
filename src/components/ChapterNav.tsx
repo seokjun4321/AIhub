@@ -15,7 +15,7 @@ interface ChapterNavProps {
 
 export const ChapterNav = ({ chapters, activeChapter, onChapterClick }: ChapterNavProps) => {
   return (
-    <nav className="sticky top-24 bg-card rounded-xl shadow-lg p-6 space-y-2">
+    <nav className="bg-card rounded-xl shadow-lg p-6 space-y-2">
       <h2 className="font-semibold text-lg mb-4 text-foreground">학습 목차</h2>
       <div className="space-y-1">
         {chapters.map((chapter) => (
