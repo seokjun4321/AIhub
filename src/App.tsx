@@ -21,6 +21,7 @@ import Careers from './pages/Careers';
 import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ui/protected-route';
+import PresetStore from "./pages/PresetStore"; // Added import for PresetStore
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
         <Route path="/guidebook" element={<Tools />} />
         <Route path="/guidebook/:id" element={<ToolDetail />} />
         <Route path="/guidebook/:toolId/:id" element={<GuideDetail />} />
+        <Route path="/presets" element={<PresetStore />} />
         <Route path="/community" element={<Community />} />
         <Route path="/community/:id" element={<PostDetail />} />
         <Route path="/community/new" element={<ProtectedRoute><NewPost /></ProtectedRoute>} />

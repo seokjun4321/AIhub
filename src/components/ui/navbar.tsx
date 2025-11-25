@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, Menu, X, Search, Users, Zap, LogOut, User, UserCog, Bookmark } from "lucide-react";
+import { Brain, Menu, X, Search, Users, Zap, LogOut, User, UserCog, Bookmark, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "@/components/ui/notifications";
@@ -27,7 +27,8 @@ const fetchUserProfile = async (userId: string) => {
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuth();
-  
+  const headerRef = useRef<HTMLElement>(null);
+
   // 사용자 프로필 데이터
   const { data: userProfile } = useQuery({
     queryKey: ['userProfile', user?.id],
@@ -35,14 +36,44 @@ const Navbar = () => {
     enabled: !!user,
   });
 
+  // Navbar 높이 측정 및 CSS 변수 설정
+  useEffect(() => {
+    const updateHeight = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        document.documentElement.style.setProperty('--navbar-height', `${height}px`);
+      }
+    };
+
+    // 초기 높이 설정
+    updateHeight();
+
+    // ResizeObserver로 크기 변경 감지
+    const resizeObserver = new ResizeObserver(() => {
+      updateHeight();
+    });
+
+    if (headerRef.current) {
+      resizeObserver.observe(headerRef.current);
+    }
+
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, []);
+
   const navItems = [
     { name: "AI 추천", href: "/recommend", icon: Zap },
     { name: "AI 도구", href: "/guidebook", icon: Search },
+    { name: "프리셋 스토어", href: "/presets", icon: ShoppingBag },
     { name: "커뮤니티", href: "/community", icon: Users }
   ];
-  
+
   return (
-    <header className="fixed top-0 w-full z-50 bg-card border-b border-border/50">
+    <header ref={headerRef} className="fixed top-0 w-full z-50 bg-card border-b border-border/50">
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -81,9 +112,9 @@ const Navbar = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon" className="rounded-full p-0 h-8 w-8">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage 
-                          src={userProfile?.avatar_url || ''} 
-                          alt={userProfile?.username || 'User'} 
+                        <AvatarImage
+                          src={userProfile?.avatar_url || ''}
+                          alt={userProfile?.username || 'User'}
                         />
                         <AvatarFallback>
                           {userProfile?.username?.charAt(0).toUpperCase() || 'U'}
@@ -92,34 +123,34 @@ const Navbar = () => {
                       <span className="sr-only">Open user menu</span>
                     </Button>
                   </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>
-                    <div>
-                      <div>내 계정</div>
-                      <div className="text-xs text-muted-foreground font-normal mt-1">
-                        @{userProfile?.username || 'user'}
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>
+                      <div>
+                        <div>내 계정</div>
+                        <div className="text-xs text-muted-foreground font-normal mt-1">
+                          @{userProfile?.username || 'user'}
+                        </div>
                       </div>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to="/profile" className="flex items-center gap-2">
-                      <UserCog className="w-4 h-4" />
-                      <span>프로필 설정</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to="/bookmarks" className="flex items-center gap-2">
-                      <Bookmark className="w-4 h-4" />
-                      <span>북마크</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={signOut} className="cursor-pointer flex items-center gap-2 text-red-500 focus:text-red-500">
-                    <LogOut className="w-4 h-4" />
-                    <span>로그아웃</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link to="/profile" className="flex items-center gap-2">
+                        <UserCog className="w-4 h-4" />
+                        <span>프로필 설정</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link to="/bookmarks" className="flex items-center gap-2">
+                        <Bookmark className="w-4 h-4" />
+                        <span>북마크</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={signOut} className="cursor-pointer flex items-center gap-2 text-red-500 focus:text-red-500">
+                      <LogOut className="w-4 h-4" />
+                      <span>로그아웃</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <>

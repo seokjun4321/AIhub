@@ -154,7 +154,7 @@ html {
 .sticky-sidebar {
   position: -webkit-sticky !important;
   position: sticky !important;
-  top: 6rem !important;
+  top: var(--navbar-height, 6rem) !important;
   align-self: flex-start !important;
   z-index: 30 !important;
   max-height: calc(100vh - 6rem) !important;
@@ -166,8 +166,8 @@ html {
 
 /* 커뮤니티 페이지 프로필 사이드바 - 필터 섹션 높이 고려 */
 .community-page .sticky-sidebar {
-  top: 10.5rem !important; /* 6rem (navbar) + 4.5rem (필터 섹션 예상 높이: py-4 + 필터 버튼 높이) */
-  max-height: calc(100vh - 10.5rem) !important;
+  top: calc(var(--navbar-height, 6rem) + 4.5rem) !important; /* navbar + 필터 섹션 예상 높이 */
+  max-height: calc(100vh - (var(--navbar-height, 6rem) + 4.5rem)) !important;
 }
 
 /* 부모 요소에 overflow가 없도록 보장 */
@@ -185,25 +185,25 @@ main > div.flex {
 /* 필터 섹션 sticky 강제 적용 */
 .community-page .bg-background\/95 {
   position: sticky !important;
-  top: 6rem !important;
+  top: var(--navbar-height, 6rem) !important;
   z-index: 40 !important;
 }
 
 /* 모든 sticky 요소 강제 적용 */
 .community-page .sticky {
   position: sticky !important;
-  top: 6rem !important;
+  top: var(--navbar-height, 6rem) !important;
   z-index: 40 !important;
 }
 
 /* 가이드 페이지 목차 sticky 강제 적용 */
 .guide-toc-aside {
   position: sticky !important;
-  top: 6rem !important;
+  top: var(--navbar-height, 6rem) !important;
   z-index: 10 !important;
   align-self: flex-start !important;
   height: fit-content !important;
-  max-height: calc(100vh - 8rem) !important;
+  max-height: calc(100vh - (var(--navbar-height, 6rem) + 2rem)) !important;
   overflow-y: auto !important;
 }
 
@@ -248,10 +248,10 @@ main .flex.flex-col.lg\:flex-row {
 .prompt-engineering-page aside.sticky-sidebar {
   position: -webkit-sticky !important;
   position: sticky !important;
-  top: 6rem !important;
+  top: var(--navbar-height, 6rem) !important;
   align-self: start !important;
   z-index: 30 !important;
-  max-height: calc(100vh - 6rem) !important;
+  max-height: calc(100vh - var(--navbar-height, 6rem)) !important;
   overflow-y: auto !important;
   flex-shrink: 0 !important;
   height: fit-content !important;
@@ -324,13 +324,15 @@ div.grid {
 
 /* Navbar가 fixed이므로 sticky 요소는 navbar 높이만큼 아래에 위치 */
 /* Navbar 높이: 약 64px (4rem), 여백: 32px (2rem) = 총 6rem */
+/* Navbar가 fixed이므로 sticky 요소는 navbar 높이만큼 아래에 위치 */
+/* Navbar 높이: 약 64px (4rem), 여백: 32px (2rem) = 총 6rem */
 nav.sticky,
 .sticky-sidebar,
 .guide-toc-aside,
 aside.sticky {
   position: -webkit-sticky !important;
   position: sticky !important;
-  top: 6rem !important;
+  top: var(--navbar-height, 6rem) !important;
 }
 
 /* 특정 sticky 요소들에 대한 추가 보정 */
