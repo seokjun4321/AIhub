@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,19 +9,20 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StarRating } from '@/components/ui/StarRating';
-import { 
-  Search, 
-  Filter, 
-  Star, 
-  ExternalLink, 
-  Grid3X3, 
+import StarRating from '@/components/ui/StarRating';
+import {
+  Search,
+  Filter,
+  Star,
+  ExternalLink,
+  Grid3X3,
   List,
   TrendingUp,
   Clock,
   Users,
   Zap,
-  GitCompare
+  GitCompare,
+  X
 } from 'lucide-react';
 import Navbar from '@/components/ui/navbar';
 
@@ -51,6 +53,7 @@ interface Category {
 }
 
 const Tools = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('rating');
@@ -69,7 +72,7 @@ const Tools = () => {
 
       // 검색 필터
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%, description.ilike.%${searchQuery}%`);
+        query = query.or(`name.ilike.% ${searchQuery}%, description.ilike.% ${searchQuery}% `);
       }
 
       // 정렬
@@ -100,7 +103,7 @@ const Tools = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as AIModel[];
+      return data as unknown as AIModel[];
     },
   });
 
@@ -112,7 +115,7 @@ const Tools = () => {
         .from('categories')
         .select('*')
         .order('name');
-      
+
       if (error) throw error;
       return data as Category[];
     },
@@ -151,7 +154,7 @@ const Tools = () => {
       alert('최소 2개 이상의 도구를 선택해주세요.');
       return;
     }
-    window.location.href = `/tools/compare?tools=${compareTools.join(',')}`;
+    navigate(`/tools/compare?tools=${compareTools.join(',')}`);
   };
 
   const renderSkeleton = () => (
@@ -230,7 +233,7 @@ const Tools = () => {
           <p className="text-sm text-muted-foreground mb-4 line-clamp-2 min-h-[40px]">
             {model.description || '설명이 없습니다.'}
           </p>
-          
+
           <div className="flex flex-wrap gap-2 mb-4 max-h-[48px] overflow-hidden">
             {model.features?.slice(0, 3).map((feature, index) => (
               <Badge key={index} variant="secondary" className="text-xs">
@@ -251,7 +254,7 @@ const Tools = () => {
             </div>
             <div className="flex gap-2">
               {model.website_url && (
-                <Button 
+                <Button
                   size="sm"
                   onClick={(e) => {
                     e.preventDefault();
@@ -395,11 +398,10 @@ const Tools = () => {
             {modelsLoading ? (
               renderSkeleton()
             ) : filteredModels && filteredModels.length > 0 ? (
-              <div className={`grid gap-6 ${
-                viewMode === 'grid' 
-                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
-                  : 'grid-cols-1'
-              }`}>
+              <div className={`grid gap-6 ${viewMode === 'grid'
+                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                : 'grid-cols-1'
+                }`}>
                 {filteredModels.map(renderModelCard)}
               </div>
             ) : (
@@ -446,7 +448,7 @@ const Tools = () => {
                 </div>
                 <p className="text-sm text-muted-foreground">과제/리포트 작성</p>
               </div>
-              
+
               <div className="bg-background rounded-lg p-4 border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
@@ -464,7 +466,7 @@ const Tools = () => {
                 </div>
                 <p className="text-sm text-muted-foreground">자소서/취업 준비</p>
               </div>
-              
+
               <div className="bg-background rounded-lg p-4 border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold">
@@ -482,7 +484,7 @@ const Tools = () => {
                 </div>
                 <p className="text-sm text-muted-foreground">PPT/디자인 이미지</p>
               </div>
-              
+
               <div className="bg-background rounded-lg p-4 border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center text-white font-bold">
@@ -501,7 +503,7 @@ const Tools = () => {
                 <p className="text-sm text-muted-foreground">코딩 과제/프로젝트</p>
               </div>
             </div>
-            
+
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-background rounded-lg p-4 border">
                 <div className="flex items-center gap-3 mb-3">
@@ -520,7 +522,7 @@ const Tools = () => {
                 </div>
                 <p className="text-sm text-muted-foreground">영문 에세이 교정</p>
               </div>
-              
+
               <div className="bg-background rounded-lg p-4 border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg flex items-center justify-center text-white font-bold">
@@ -538,7 +540,7 @@ const Tools = () => {
                 </div>
                 <p className="text-sm text-muted-foreground">디자인/포스터 제작</p>
               </div>
-              
+
               <div className="bg-background rounded-lg p-4 border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center text-white font-bold">
@@ -556,7 +558,7 @@ const Tools = () => {
                 </div>
                 <p className="text-sm text-muted-foreground">해외 자료 번역</p>
               </div>
-              
+
               <div className="bg-background rounded-lg p-4 border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold">
@@ -576,6 +578,57 @@ const Tools = () => {
               </div>
             </div>
           </div>
+          {/* Floating Comparison Bar */}
+          {compareTools.length > 0 && (
+            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-900 border shadow-2xl rounded-full px-6 py-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+              <div className="flex items-center gap-2">
+                <div className="bg-primary text-primary-foreground text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                  {compareTools.length}
+                </div>
+                <span className="font-medium text-sm hidden md:inline">
+                  비교함에 담김
+                </span>
+              </div>
+
+              <div className="h-4 w-px bg-border" />
+
+              <div className="flex -space-x-2">
+                {compareTools.map(id => {
+                  const tool = aiModels?.find(m => m.id === id);
+                  if (!tool) return null;
+                  return (
+                    <div key={id} className="w-8 h-8 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden" title={tool.name}>
+                      {tool.logo_url ? (
+                        <img src={tool.logo_url} alt={tool.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-bold">{tool.name.charAt(0)}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-2 ml-2">
+                <Button
+                  size="sm"
+                  onClick={goToCompare}
+                  disabled={compareTools.length < 2}
+                  className="rounded-full px-6"
+                >
+                  비교하기
+                  <TrendingUp className="w-4 h-4 ml-2" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full h-8 w-8 hover:bg-muted"
+                  onClick={() => setCompareTools([])}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
