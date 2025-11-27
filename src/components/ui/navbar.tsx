@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, Menu, X, Search, Users, Zap, LogOut, User, UserCog, Bookmark, ShoppingBag } from "lucide-react";
+import { Brain, Menu, X, Search, Users, Zap, LogOut, User, UserCog, Bookmark, ShoppingBag, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "@/components/ui/notifications";
@@ -91,16 +91,23 @@ const Navbar = () => {
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
-                <a
+                <Link
                   key={item.name}
-                  href={item.href}
+                  to={item.href}
                   className="flex items-center gap-2 text-foreground hover:text-primary transition-colors group"
                 >
                   <Icon className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   {item.name}
-                </a>
+                </Link>
               );
             })}
+            <Link
+              to="/tools/suggest"
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Zap className="w-4 h-4" />
+              도구 제안
+            </Link>
           </div>
 
           {/* Desktop CTA */}
@@ -140,9 +147,15 @@ const Navbar = () => {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link to="/my-tools" className="flex items-center gap-2">
+                        <FolderOpen className="w-4 h-4" />
+                        <span>나만의 도구함</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="cursor-pointer">
                       <Link to="/bookmarks" className="flex items-center gap-2">
                         <Bookmark className="w-4 h-4" />
-                        <span>북마크</span>
+                        <span>게시글 북마크</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={signOut} className="cursor-pointer flex items-center gap-2 text-red-500 focus:text-red-500">

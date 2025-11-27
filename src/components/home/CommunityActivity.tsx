@@ -51,7 +51,7 @@ const CommunityActivity = () => {
 
             if (error) throw error;
             // post_categories 필터링이 Supabase 조인에서 완벽하지 않을 수 있어 클라이언트에서 한 번 더 확인
-            return (data as any[]).filter(post => post.post_categories?.name === '질문') as Post[];
+            return (data as unknown as Post[]).filter(post => post.post_categories?.name === '질문');
         }
     });
 

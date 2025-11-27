@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, Type, Image, Code, Search, Video, Music, MessageSquare, Briefcase, Sparkles } from "lucide-react";
+import { ArrowRight, Type, Image, Code, Search, Video, Music, MessageSquare, Briefcase, Sparkles, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,12 +10,12 @@ interface CategoryData {
     id: number;
     name: string;
     count: number;
-    icon: any;
+    icon: LucideIcon;
     color: string;
     bg: string;
 }
 
-const categoryConfig: Record<string, { icon: any, color: string, bg: string }> = {
+const categoryConfig: Record<string, { icon: LucideIcon, color: string, bg: string }> = {
     "텍스트 생성": { icon: Type, color: "text-blue-500", bg: "bg-blue-500/10" },
     "이미지 생성": { icon: Image, color: "text-purple-500", bg: "bg-purple-500/10" },
     "코드 작성": { icon: Code, color: "text-green-500", bg: "bg-green-500/10" },
@@ -50,7 +50,7 @@ const ToolDirectory = () => {
 
             // 카운트 계산
             const counts: Record<number, number> = {};
-            (modelsData as any[])?.forEach(model => {
+            (modelsData as unknown as { category_id: number | null }[])?.forEach(model => {
                 if (model.category_id) {
                     counts[model.category_id] = (counts[model.category_id] || 0) + 1;
                 }

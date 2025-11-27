@@ -7,15 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import StarRating from '@/components/ui/StarRating';
-import { 
-  Star, 
-  ExternalLink, 
-  BookOpen, 
-  MessageSquare, 
+import {
+  Star,
+  ExternalLink,
+  BookOpen,
+  MessageSquare,
   Heart,
   Share2,
   ArrowLeft,
@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/ui/navbar';
 import { toast } from '@/hooks/use-toast';
+import BookmarkForm from '@/components/tools/BookmarkForm'; // Added import
 
 interface AIModel {
   id: number;
@@ -84,6 +85,7 @@ const ToolDetail = () => {
   const [userReview, setUserReview] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBookmarkOpen, setIsBookmarkOpen] = useState(false);
   const [currentRating, setCurrentRating] = useState(0);
   const [uiAverage, setUiAverage] = useState<number | null>(null);
   const [uiCount, setUiCount] = useState<number | null>(null);
@@ -98,7 +100,7 @@ const ToolDetail = () => {
         .select('*')
         .eq('id', parseInt(id!))
         .single();
-      
+
       if (error) throw error;
       return data as any;
     },
@@ -137,7 +139,7 @@ const ToolDetail = () => {
         `)
         .eq('ai_model_id', parseInt(id!))
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return data as any;
     },
@@ -155,7 +157,7 @@ const ToolDetail = () => {
         .eq('ai_model_id', parseInt(id!))
         .eq('user_id', user.id)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') throw error;
       return data as any;
     },
@@ -166,7 +168,7 @@ const ToolDetail = () => {
   const submitReviewMutation = useMutation({
     mutationFn: async ({ rating, review }: { rating: number; review: string }) => {
       if (!user) throw new Error('로그인이 필요합니다');
-      
+
       const { data, error } = await supabase
         .from('ratings')
         .upsert({
@@ -177,7 +179,7 @@ const ToolDetail = () => {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -284,121 +286,10 @@ const ToolDetail = () => {
     rateMutation.mutate({ rating });
   };
 
-  // AI 도구별 실제 요금 정보
-  const getPricingPlans = (modelName: string) => {
-    switch (modelName) {
-      case 'ChatGPT':
-        return [
-          { name: '무료', price: '$0/월' },
-          { name: 'Plus', price: '$20/월' },
-          { name: 'Team', price: '$25/월' }
-        ];
-      case 'Gemini':
-        return [
-          { name: '무료', price: '$0/월' },
-          { name: '스타터', price: '$8.4/월' },
-          { name: '고급', price: '₩29,000/월' }
-        ];
-      case 'Midjourney':
-        return [
-          { name: '기본', price: '$10/월' },
-          { name: '표준', price: '$30/월' },
-          { name: '프로', price: '$60/월' }
-        ];
-      case 'DALL-E':
-        return [
-          { name: 'ChatGPT Plus', price: '$20/월' },
-          { name: 'API', price: '$0.04-0.08/이미지' }
-        ];
-      case 'Adobe Firefly':
-        return [
-          { name: '스탠다드', price: '$9.99/월' },
-          { name: '프로', price: '$29.99/월' },
-          { name: '엔터프라이즈', price: '$199.99/월' }
-        ];
-      case 'Stable Diffusion':
-        return [
-          { name: '오픈소스', price: '무료' },
-          { name: 'DreamStudio', price: '$8.33/월' }
-        ];
-      case 'Notion AI':
-        return [
-          { name: '무료 시작', price: '$0/월' },
-          { name: '개인', price: '$10/월' },
-          { name: '팀', price: '$20-24/월' }
-        ];
-      case 'Grammarly':
-        return [
-          { name: '무료', price: '$0/월' },
-          { name: '프리미엄', price: '$12/월' },
-          { name: '월간', price: '$30/월' }
-        ];
-      case 'Jasper':
-        return [
-          { name: '크리에이터', price: '$39-49/월' },
-          { name: '팀', price: '$125/월' }
-        ];
-      case 'Copy.ai':
-        return [
-          { name: '무료 체험', price: '$0/월' },
-          { name: '프로', price: '$35/월' },
-          { name: '월간', price: '$49/월' }
-        ];
-      case 'GitHub Copilot':
-        return [
-          { name: '개인', price: '$10/월' },
-          { name: '비즈니스', price: '$19/월' }
-        ];
-      case 'Replit':
-        return [
-          { name: '무료 시작', price: '$0/월' },
-          { name: '코어', price: '$20/월' },
-          { name: '팀', price: '$40/월' }
-        ];
-      case 'Tabnine':
-        return [
-          { name: '무료 플랜', price: '$0/월' },
-          { name: '프로', price: '$9/월' },
-          { name: '엔터프라이즈', price: '$39/월' }
-        ];
-      case 'Synthesia':
-        return [
-          { name: '스타터', price: '$22/월' },
-          { name: '크리에이터', price: '$67/월' }
-        ];
-      case 'ElevenLabs':
-        return [
-          { name: '스타터', price: '$4.17/월' },
-          { name: '크리에이터', price: '$11/월' },
-          { name: '프로', price: '$82.5/월' }
-        ];
-      case 'Suno':
-        return [
-          { name: '무료 플랜', price: '$0/월' },
-          { name: '프로', price: '$10/월' },
-          { name: '프리미엄', price: '$30/월' }
-        ];
-      case 'Zapier':
-        return [
-          { name: '무료 플랜', price: '$0/월' },
-          { name: '스타터', price: '$29.99/월' },
-          { name: '프로', price: '$79/월' }
-        ];
-      case 'Canva':
-        return [
-          { name: '무료 플랜', price: '$0/월' },
-          { name: '프로', price: '$12.99/월' },
-          { name: '엔터프라이즈', price: '별도 문의' }
-        ];
-      default:
-        return [
-          { name: '무료', price: '$0/월' },
-          { name: '프로', price: '$29/월' }
-        ];
-    }
-  };
-
-  const pricingPlans = getPricingPlans(aiModel?.name || '');
+  // AI 도구별 실제 요금 정보 (DB에서 가져옴)
+  const pricingPlans = (aiModel?.pricing_plans as any[]) || [
+    { name: '정보 없음', price: '가격 정보가 없습니다' }
+  ];
 
   const renderSkeleton = () => (
     <div className="space-y-8">
@@ -406,7 +297,7 @@ const ToolDetail = () => {
         <Skeleton className="w-8 h-8" />
         <Skeleton className="h-8 w-32" />
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <Card>
@@ -430,7 +321,7 @@ const ToolDetail = () => {
             </CardContent>
           </Card>
         </div>
-        
+
         <div className="space-y-6">
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-48 w-full" />
@@ -516,13 +407,31 @@ const ToolDetail = () => {
                     <div className="text-xs">사용자 평점</div>
                   </div>
                 </div>
-                <Button 
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white border-0" 
-                  size="sm" 
-                  onClick={() => setIsModalOpen(true)}
-                >
-                  <Star className="w-4 h-4 mr-2" />평점 남기기
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-0"
+                    size="sm"
+                    onClick={() => setIsModalOpen(true)}
+                  >
+                    <Star className="w-4 h-4 mr-2" />평점 남기기
+                  </Button>
+                  <Dialog open={isBookmarkOpen} onOpenChange={setIsBookmarkOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="icon" className="text-pink-500 border-pink-200 hover:bg-pink-50 hover:text-pink-600">
+                        <Heart className="w-5 h-5" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>나만의 도구함에 저장</DialogTitle>
+                        <DialogDescription>
+                          이 도구를 저장할 폴더를 선택하세요.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <BookmarkForm aiModelId={aiModel.id} onSuccess={() => setIsBookmarkOpen(false)} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
             </div>
           </div>
@@ -552,12 +461,11 @@ const ToolDetail = () => {
                         <div className={`grid gap-4 mb-4 ${pricingPlans.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                           {pricingPlans.map((plan, index) => (
                             <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
-                              <div className={`font-bold text-lg ${
-                                plan.name.includes('무료') || plan.name.includes('Free') ? 'text-green-600' :
+                              <div className={`font-bold text-lg ${plan.name.includes('무료') || plan.name.includes('Free') ? 'text-green-600' :
                                 plan.name.includes('Pro') || plan.name.includes('프로') ? 'text-blue-600' :
-                                plan.name.includes('Team') || plan.name.includes('팀') ? 'text-purple-600' :
-                                'text-gray-600'
-                              }`}>
+                                  plan.name.includes('Team') || plan.name.includes('팀') ? 'text-purple-600' :
+                                    'text-gray-600'
+                                }`}>
                                 {plan.name}
                               </div>
                               <div className="text-sm text-gray-600">{plan.price}</div>
@@ -874,11 +782,11 @@ const ToolDetail = () => {
                   <div className="space-y-4">
                     <div className="text-center">
                       <div className="flex justify-center mb-2">
-                        <StarRating 
-                          key={`sidebar-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`} 
-                          rating={Number(uiAverage ?? aiModel.average_rating) || 0} 
-                          size={24} 
-                          readOnly 
+                        <StarRating
+                          key={`sidebar-${(uiAverage ?? aiModel.average_rating)}-${(uiCount ?? aiModel.rating_count)}`}
+                          rating={Number(uiAverage ?? aiModel.average_rating) || 0}
+                          size={24}
+                          readOnly
                         />
                       </div>
                       <div className="text-2xl font-bold text-gray-900 mb-1">
@@ -887,49 +795,49 @@ const ToolDetail = () => {
                       <div className="text-sm text-gray-600 mb-3">
                         {(uiCount ?? aiModel.rating_count) || 0}개의 평가
                       </div>
-                      <Button 
-                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white" 
+                      <Button
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
                         onClick={() => setIsModalOpen(true)}
                       >
                         <Star className="w-4 h-4 mr-2" />
                         내 평점 남기기
                       </Button>
                     </div>
-                    
+
                     {/* 별점 분포 */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-600 w-8">5점</span>
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '70%'}}></div>
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '70%' }}></div>
                         </div>
                         <span className="text-xs text-gray-600 w-8">70%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-600 w-8">4점</span>
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '20%'}}></div>
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '20%' }}></div>
                         </div>
                         <span className="text-xs text-gray-600 w-8">20%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-600 w-8">3점</span>
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '7%'}}></div>
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '7%' }}></div>
                         </div>
                         <span className="text-xs text-gray-600 w-8">7%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-600 w-8">2점</span>
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '2%'}}></div>
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '2%' }}></div>
                         </div>
                         <span className="text-xs text-gray-600 w-8">2%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-600 w-8">1점</span>
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div className="bg-yellow-500 h-2 rounded-full" style={{width: '1%'}}></div>
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '1%' }}></div>
                         </div>
                         <span className="text-xs text-gray-600 w-8">1%</span>
                       </div>
@@ -1017,11 +925,11 @@ const ToolDetail = () => {
           <div className="py-6">
             <div className="text-center space-y-4">
               <div className="flex justify-center">
-                <StarRating 
-                  rating={currentRating} 
-                  size={40} 
-                  onRate={handleRate} 
-                  readOnly={!user || rateMutation.isPending} 
+                <StarRating
+                  rating={currentRating}
+                  size={40}
+                  onRate={handleRate}
+                  readOnly={!user || rateMutation.isPending}
                 />
               </div>
               <div className="text-lg font-medium text-gray-900">
@@ -1056,7 +964,7 @@ const ToolDetail = () => {
               취소
             </Button>
             {user && (
-              <Button 
+              <Button
                 onClick={() => setIsModalOpen(false)}
                 disabled={currentRating === 0 || rateMutation.isPending}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white"

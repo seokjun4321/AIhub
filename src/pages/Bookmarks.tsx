@@ -9,12 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SocialShare } from "@/components/ui/social-share";
-import { 
-  MessageSquare, 
-  UserCircle, 
-  ThumbsUp, 
-  ThumbsDown, 
-  Clock, 
+import {
+  MessageSquare,
+  UserCircle,
+  ThumbsUp,
+  ThumbsDown,
+  Clock,
   MessageCircle,
   Bookmark,
   Flag,
@@ -29,10 +29,28 @@ import { toast } from "sonner";
 // 페이지당 게시글 수
 const POSTS_PER_PAGE = 10;
 
+// 북마크된 게시글 타입 정의
+interface BookmarkedPost {
+  id: number;
+  title: string;
+  content: string | null;
+  created_at: string;
+  upvotes_count: number | null;
+  downvotes_count: number | null;
+  view_count: number | null;
+  comment_count: number | null;
+  is_pinned: boolean | null;
+  is_locked: boolean | null;
+  images: string[] | null;
+  profiles: { username: string | null } | null;
+  community_sections: { name: string; color: string | null; icon: string | null } | null;
+  post_categories: { name: string; color: string | null; icon: string | null } | null;
+}
+
 // 북마크된 게시글 데이터를 가져오는 함수
-const fetchBookmarkedPosts = async ({ 
-  pageParam = 0, 
-  userId 
+const fetchBookmarkedPosts = async ({
+  pageParam = 0,
+  userId
 }: {
   pageParam?: number;
   userId: string;
@@ -64,10 +82,10 @@ const fetchBookmarkedPosts = async ({
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  
+
   // 북마크 데이터에서 게시글만 추출
-  const posts = data?.map(item => item.posts).filter(Boolean) || [];
-  
+  const posts = (data?.map(item => item.posts).filter(Boolean) || []) as unknown as BookmarkedPost[];
+
   return {
     data: posts,
     nextCursor: posts.length === POSTS_PER_PAGE ? pageParam + 1 : null,
@@ -120,13 +138,13 @@ const Bookmarks = () => {
   const removeBookmarkMutation = useMutation({
     mutationFn: async (postId: number) => {
       if (!user) throw new Error("로그인이 필요합니다.");
-      
+
       const { error } = await supabase
         .from('post_bookmarks')
         .delete()
         .eq('post_id', postId)
         .eq('user_id', user.id);
-      
+
       if (error) throw new Error(error.message);
       return { action: 'removed' };
     },
@@ -203,7 +221,7 @@ const Bookmarks = () => {
                             </Badge>
                           )}
                           {post.community_sections && (
-                            <Badge 
+                            <Badge
                               variant="secondary"
                               style={{ backgroundColor: post.community_sections.color + '20', color: post.community_sections.color }}
                             >
@@ -211,7 +229,7 @@ const Bookmarks = () => {
                             </Badge>
                           )}
                           {post.post_categories && (
-                            <Badge 
+                            <Badge
                               variant="outline"
                               style={{ borderColor: post.post_categories.color, color: post.post_categories.color }}
                             >
@@ -227,7 +245,7 @@ const Bookmarks = () => {
                         <CardDescription className="mt-2 line-clamp-2">
                           {post.content?.replace(/<[^>]*>/g, '').substring(0, 150)}...
                         </CardDescription>
-                        
+
                         {/* 이미지 미리보기 */}
                         {post.images && post.images.length > 0 && (
                           <div className="mt-3 flex gap-2 overflow-x-auto">
@@ -253,7 +271,7 @@ const Bookmarks = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between pt-4">
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
@@ -270,7 +288,7 @@ const Bookmarks = () => {
                           <span>{post.comment_count || 0}</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -281,7 +299,7 @@ const Bookmarks = () => {
                         >
                           <Bookmark className="w-4 h-4" />
                         </Button>
-                        
+
                         {/* SNS 공유 버튼 */}
                         <div onClick={(e) => e.stopPropagation()}>
                           <SocialShare
@@ -296,7 +314,7 @@ const Bookmarks = () => {
                   </CardHeader>
                 </Card>
               ))}
-              
+
               {/* 무한 스크롤 로딩 인디케이터 */}
               <div ref={loadMoreRef} className="flex justify-center py-8">
                 {isFetchingNextPage && (
@@ -311,7 +329,7 @@ const Bookmarks = () => {
                   </div>
                 )}
               </div>
-              
+
               {posts?.length === 0 && (
                 <div className="text-center py-12">
                   <BookmarkIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

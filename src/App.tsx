@@ -21,7 +21,10 @@ import Careers from './pages/Careers';
 import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ui/protected-route';
-import PresetStore from "./pages/PresetStore"; // Added import for PresetStore
+import PresetStore from "./pages/PresetStore";
+import SuggestTool from "./pages/SuggestTool";
+import ToolProposals from "./pages/admin/ToolProposals";
+import MyTools from "./pages/MyTools"; // Added import // Added import // Added import
 
 function App() {
   return (
@@ -44,6 +47,9 @@ function App() {
         <Route path="/recommend" element={<Recommend />} />
         <Route path="/prompt-engineering" element={<PromptEngineering />} />
         <Route path="/tools" element={<Tools />} />
+        <Route path="/tools/suggest" element={<ProtectedRoute><SuggestTool /></ProtectedRoute>} />
+        <Route path="/admin/proposals" element={<ProtectedRoute><ToolProposals /></ProtectedRoute>} />
+        <Route path="/my-tools" element={<ProtectedRoute><MyTools /></ProtectedRoute>} />
         <Route path="/tools/:id" element={<ToolDetail />} />
         <Route path="/tools/compare" element={<ToolCompare />} />
         <Route path="/auth" element={<Auth />} />

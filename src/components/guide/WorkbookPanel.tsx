@@ -26,21 +26,23 @@ interface WorkbookPanelProps {
 export function WorkbookPanel({ fields, stepId, guideId }: WorkbookPanelProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, string | boolean | number | null>>({});
   const [isComplete, setIsComplete] = useState(false);
 
   // Supabase에서 데이터 로드
   useEffect(() => {
     if (user) {
       supabase
-        .from('guide_progress')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from('guide_progress' as any)
         .select('workbook_data, completed')
         .eq('user_id', user.id)
         .eq('step_id', stepId)
         .single()
-        .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then(({ data }: { data: any }) => {
           if (data) {
-            setFormData(data.workbook_data || {});
+            setFormData(data.workbook_data as Record<string, string | boolean | number | null> || {});
             setIsComplete(data.completed || false);
           }
         });
@@ -48,7 +50,7 @@ export function WorkbookPanel({ fields, stepId, guideId }: WorkbookPanelProps) {
   }, [user, stepId]);
 
   // Supabase에 저장
-  const saveData = async (data: Record<string, any>, complete: boolean) => {
+  const saveData = async (data: Record<string, string | boolean | number | null>, complete: boolean) => {
     if (!user) {
       toast({
         title: "로그인이 필요합니다",
@@ -58,7 +60,8 @@ export function WorkbookPanel({ fields, stepId, guideId }: WorkbookPanelProps) {
     }
 
     const { error } = await supabase
-      .from('guide_progress')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from('guide_progress' as any)
       .upsert({
         user_id: user.id,
         guide_id: guideId,
@@ -79,7 +82,7 @@ export function WorkbookPanel({ fields, stepId, guideId }: WorkbookPanelProps) {
     }
   };
 
-  const handleChange = (key: string, value: any) => {
+  const handleChange = (key: string, value: string | boolean | number | null) => {
     const newData = { ...formData, [key]: value };
     setFormData(newData);
     saveData(newData, isComplete);
@@ -89,7 +92,7 @@ export function WorkbookPanel({ fields, stepId, guideId }: WorkbookPanelProps) {
     const newComplete = !isComplete;
     setIsComplete(newComplete);
     await saveData(formData, newComplete);
-    
+
     if (newComplete) {
       toast({
         title: "작업 완료! 🎉",
@@ -123,7 +126,7 @@ export function WorkbookPanel({ fields, stepId, guideId }: WorkbookPanelProps) {
               <Textarea
                 id={field.field_key}
                 placeholder={field.placeholder || ""}
-                value={formData[field.field_key] || ""}
+                value={(formData[field.field_key] as string) || ""}
                 onChange={(e) => handleChange(field.field_key, e.target.value)}
                 rows={4}
                 className="resize-none focus-visible:ring-accent"
@@ -132,8 +135,8 @@ export function WorkbookPanel({ fields, stepId, guideId }: WorkbookPanelProps) {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id={field.field_key}
-                  checked={formData[field.field_key] || false}
-                  onCheckedChange={(checked) => handleChange(field.field_key, checked)}
+                  checked={(formData[field.field_key] as boolean) || false}
+                  onCheckedChange={(checked) => handleChange(field.field_key, checked as boolean)}
                   className="data-[state=checked]:bg-accent data-[state=checked]:border-accent"
                 />
                 <label htmlFor={field.field_key} className="text-sm text-muted-foreground cursor-pointer">
@@ -145,7 +148,7 @@ export function WorkbookPanel({ fields, stepId, guideId }: WorkbookPanelProps) {
                 id={field.field_key}
                 type="text"
                 placeholder={field.placeholder || ""}
-                value={formData[field.field_key] || ""}
+                value={(formData[field.field_key] as string) || ""}
                 onChange={(e) => handleChange(field.field_key, e.target.value)}
                 className="focus-visible:ring-accent"
               />

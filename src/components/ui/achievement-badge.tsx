@@ -1,21 +1,22 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { 
-  Footprints, 
-  MessageCircle, 
-  Flame, 
-  MessagesSquare, 
-  ThumbsUp, 
-  Heart, 
-  Calendar, 
-  Building2, 
-  Award, 
+import {
+  Footprints,
+  MessageCircle,
+  Flame,
+  MessagesSquare,
+  ThumbsUp,
+  Heart,
+  Calendar,
+  Building2,
+  Award,
   Crown,
   Star,
   Gem,
   Trophy,
   Zap,
-  Moon
+  Moon,
+  type LucideIcon
 } from "lucide-react";
 
 interface AchievementBadgeProps {
@@ -30,7 +31,7 @@ interface AchievementBadgeProps {
   onClick?: () => void;
 }
 
-const achievementIcons: Record<string, any> = {
+const achievementIcons: Record<string, LucideIcon> = {
   'footprints': Footprints,
   'message-circle': MessageCircle,
   'flame': Flame,
@@ -54,22 +55,22 @@ const badgeSizes = {
   lg: "text-base px-4 py-2",
 };
 
-export function AchievementBadge({ 
-  name, 
-  description, 
-  icon = "award", 
-  badgeColor = "#F59E0B", 
+export function AchievementBadge({
+  name,
+  description,
+  icon = "award",
+  badgeColor = "#F59E0B",
   pointsReward = 0,
   earned = false,
-  className, 
+  className,
   size = "md",
-  onClick 
+  onClick
 }: AchievementBadgeProps) {
   const Icon = achievementIcons[icon] || Award;
   const sizeClass = badgeSizes[size];
 
   return (
-    <Badge 
+    <Badge
       className={cn(
         "flex items-center gap-1 font-semibold text-white cursor-pointer transition-all",
         earned ? "opacity-100" : "opacity-50",
@@ -105,12 +106,12 @@ export function AchievementList({ achievements, className }: AchievementListProp
   return (
     <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3", className)}>
       {achievements.map((achievement) => (
-        <div 
+        <div
           key={achievement.id}
           className={cn(
             "p-3 rounded-lg border transition-all",
-            achievement.earned 
-              ? "bg-green-50 border-green-200" 
+            achievement.earned
+              ? "bg-green-50 border-green-200"
               : "bg-gray-50 border-gray-200"
           )}
         >
