@@ -24,7 +24,8 @@ import ProtectedRoute from './components/ui/protected-route';
 import PresetStore from "./pages/PresetStore";
 import SuggestTool from "./pages/SuggestTool";
 import ToolProposals from "./pages/admin/ToolProposals";
-import MyTools from "./pages/MyTools"; // Added import // Added import // Added import
+import MyTools from "./pages/MyTools";
+
 
 function App() {
   return (
@@ -38,6 +39,8 @@ function App() {
         <Route path="/guidebook" element={<Tools />} />
         <Route path="/guidebook/:id" element={<ToolDetail />} />
         <Route path="/guidebook/:toolId/:id" element={<GuideDetail />} />
+        {/* 새로운 가이드북 디자인 라우트 */}
+
         <Route path="/presets" element={<PresetStore />} />
         <Route path="/community" element={<Community />} />
         <Route path="/community/:id" element={<PostDetail />} />

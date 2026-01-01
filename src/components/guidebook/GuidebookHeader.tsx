@@ -1,0 +1,99 @@
+
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Play } from "lucide-react";
+
+interface GuidebookHeaderProps {
+  title: string;
+  description: string;
+  progress?: number;
+  category?: string;
+  toolName?: string;
+  logoUrl?: string;
+  duration?: string;
+  difficulty?: string;
+}
+
+export function GuidebookHeader({
+  title,
+  description,
+  progress = 0,
+  category = "가이드",
+  toolName = "AI Tool",
+  logoUrl,
+  duration,
+  difficulty
+}: GuidebookHeaderProps) {
+  return (
+    <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8 bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex-1 space-y-4">
+        <div className="flex items-center gap-3 mb-4">
+          {logoUrl && (
+            <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center p-2">
+              <img src={logoUrl} alt={toolName} className="w-full h-full object-contain" />
+            </div>
+          )}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
+                {category}
+              </span>
+              {difficulty && (
+                <span className="text-slate-400 text-xs px-2 border-l border-slate-300">
+                  난이도: {difficulty}
+                </span>
+              )}
+              {duration && (
+                <span className="text-slate-400 text-xs px-2 border-l border-slate-300">
+                  {String(duration).includes('분') ? duration : `${duration}분`} 소요
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 leading-tight">{title}</h1>
+          </div>
+        </div>
+
+        <p className="text-lg text-slate-500 max-w-2xl leading-relaxed">
+          {description}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-100 min-w-[240px]">
+        {/* Circular Progress */}
+        <div className="relative w-16 h-16">
+          <svg className="w-full h-full transform -rotate-90">
+            <circle
+              className="text-slate-200"
+              strokeWidth="6"
+              stroke="currentColor"
+              fill="transparent"
+              r="28"
+              cx="32"
+              cy="32"
+            />
+            <circle
+              className="text-green-500 transition-all duration-1000 ease-out"
+              strokeWidth="6"
+              strokeDasharray={2 * Math.PI * 28}
+              strokeDashoffset={2 * Math.PI * 28 * (1 - progress / 100)}
+              strokeLinecap="round"
+              stroke="currentColor"
+              fill="transparent"
+              r="28"
+              cx="32"
+              cy="32"
+            />
+          </svg>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <span className="text-sm font-bold text-slate-900">{progress}%</span>
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-500">나의 진행률</p>
+          <p className="text-sm text-slate-400">
+            {progress === 0 ? "아직 시작하지 않음" : progress === 100 ? "완료됨" : "진행 중"}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
