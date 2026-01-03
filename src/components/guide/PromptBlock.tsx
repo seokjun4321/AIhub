@@ -11,9 +11,11 @@ interface Prompt {
 
 interface PromptBlockProps {
   prompt: Prompt;
+  fallbackToolName?: string;
+  fallbackToolUrl?: string;
 }
 
-export function PromptBlock({ prompt }: PromptBlockProps) {
+export function PromptBlock({ prompt, fallbackToolName, fallbackToolUrl }: PromptBlockProps) {
   const { toast } = useToast();
 
   const handleCopy = () => {
@@ -26,17 +28,31 @@ export function PromptBlock({ prompt }: PromptBlockProps) {
 
   const handleTryInTool = () => {
     let url = "";
-    if (prompt.provider) {
-      const provider = prompt.provider.toLowerCase();
+    const providerToCheck = prompt.provider || fallbackToolName || "";
+
+    // 1. Try prompt provider or fallback name
+    if (providerToCheck) {
+      const provider = providerToCheck.toLowerCase();
       if (provider.includes("chatgpt") || provider.includes("openai")) {
         url = "https://chat.openai.com";
       } else if (provider.includes("gemini") || provider.includes("google")) {
         url = "https://gemini.google.com";
       } else if (provider.includes("claude") || provider.includes("anthropic")) {
         url = "https://claude.ai";
+      } else if (provider.includes("midjourney")) {
+        url = "https://discord.com/invite/midjourney";
+      } else if (provider.includes("notion")) {
+        url = "https://www.notion.so";
+      } else if (provider.includes("wrtn") || provider.includes("뤼튼")) {
+        url = "https://wrtn.ai";
       }
     }
-    
+
+    // 2. Use specific fallback URL if available and no URL found yet
+    if (!url && fallbackToolUrl) {
+      url = fallbackToolUrl;
+    }
+
     if (url) {
       window.open(url, "_blank");
     } else {

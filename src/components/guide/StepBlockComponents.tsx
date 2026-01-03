@@ -143,7 +143,23 @@ export const ExampleBlock = ({ type, content }: { type: 'Input' | 'Output', cont
     );
 };
 
-export const CopyBlock = ({ content }: { content: string }) => {
+// Helper for tool URLs
+const getToolUrl = (name?: string, url?: string) => {
+    if (url) return url;
+    if (!name) return 'https://chat.openai.com'; // Default
+
+    const lower = name.toLowerCase();
+    if (lower.includes('chatgpt') || lower.includes('gpt')) return 'https://chat.openai.com';
+    if (lower.includes('claude')) return 'https://claude.ai';
+    if (lower.includes('gemini')) return 'https://gemini.google.com';
+    if (lower.includes('midjourney')) return 'https://discord.com/invite/midjourney';
+    if (lower.includes('notion')) return 'https://www.notion.so';
+    if (lower.includes('wrtn') || lower.includes('뤼튼')) return 'https://wrtn.ai';
+
+    return 'https://chat.openai.com'; // Fallback
+};
+
+export const CopyBlock = ({ content, toolName, toolUrl }: { content: string, toolName?: string, toolUrl?: string }) => {
     if (!content) return null;
     const [copied, setCopied] = React.useState(false);
 
@@ -154,6 +170,12 @@ export const CopyBlock = ({ content }: { content: string }) => {
         navigator.clipboard.writeText(cleanContent);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleRun = () => {
+        handleCopy();
+        const url = getToolUrl(toolName, toolUrl);
+        window.open(url, '_blank');
     };
 
     return (
@@ -167,25 +189,34 @@ export const CopyBlock = ({ content }: { content: string }) => {
                         </div>
                         <span className="font-semibold text-sm text-slate-700">Good Prompt Example</span>
                     </div>
-                    <button
-                        onClick={handleCopy}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
-                    >
-                        {copied ? (
-                            <>
-                                <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                <span className="text-emerald-600">Copied</span>
-                            </>
-                        ) : (
-                            <>
-                                <div className="w-3.5 h-3.5 relative">
-                                    <div className="absolute inset-0 border-2 border-slate-400 rounded-sm" />
-                                    <div className="absolute inset-0 border-2 border-slate-400 rounded-sm translate-x-0.5 -translate-y-0.5 bg-white" />
-                                </div>
-                                <span>Copy</span>
-                            </>
-                        )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleRun}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md hover:opacity-90 transition-opacity shadow-sm"
+                        >
+                            <Terminal className="w-3.5 h-3.5" />
+                            <span>Run</span>
+                        </button>
+                        <button
+                            onClick={handleCopy}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
+                        >
+                            {copied ? (
+                                <>
+                                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span className="text-emerald-600">Copied</span>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-3.5 h-3.5 relative">
+                                        <div className="absolute inset-0 border-2 border-slate-400 rounded-sm" />
+                                        <div className="absolute inset-0 border-2 border-slate-400 rounded-sm translate-x-0.5 -translate-y-0.5 bg-white" />
+                                    </div>
+                                    <span>Copy</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}

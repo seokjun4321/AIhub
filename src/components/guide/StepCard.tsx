@@ -45,6 +45,8 @@ interface StepCardProps {
   stepNumber: number;
   isOpen?: boolean;
   guideId: number;
+  toolName?: string;
+  toolUrl?: string;
 }
 
 // Simple markdown splitter (Fallback)
@@ -114,7 +116,7 @@ const parseStepContent = (content: string | null) => {
   return sections;
 };
 
-export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCardProps) {
+export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, toolUrl }: StepCardProps) {
   const [open, setOpen] = useState(isOpen);
   const [completed, setCompleted] = useState(false);
   const { user } = useAuth();
@@ -278,7 +280,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCard
 
               <ActionList content={actions} />
 
-              <CopyBlock content={copyPrompt} />
+              <CopyBlock content={copyPrompt} toolName={toolName} toolUrl={toolUrl} />
 
               {inputExample && <ExampleBlock type="Input" content={inputExample} />}
               {outputExample && <ExampleBlock type="Output" content={outputExample} />}
@@ -296,7 +298,12 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCard
                     Prompt Pack
                   </h4>
                   {step.guide_prompts.map((prompt) => (
-                    <PromptBlock key={prompt.id} prompt={prompt} />
+                    <PromptBlock
+                      key={prompt.id}
+                      prompt={prompt}
+                      fallbackToolName={toolName}
+                      fallbackToolUrl={toolUrl}
+                    />
                   ))}
                 </div>
               )}

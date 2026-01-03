@@ -29,7 +29,7 @@ const fetchGuideById = async (id: string) => {
     .from('guides')
     .select(`
       *,
-      ai_models(name, logo_url),
+      ai_models(name, logo_url, website_url),
       categories(name),
       profiles(id, username, avatar_url)
     `)
@@ -38,6 +38,8 @@ const fetchGuideById = async (id: string) => {
   if (error) throw new Error(error.message);
   return data as any;
 };
+
+
 
 // 가이드의 단계들을 불러오는 함수
 const fetchGuideSteps = async (guideId: number) => {
@@ -473,6 +475,8 @@ const GuideDetail = () => {
                         stepNumber={activeStepIndex + 1}
                         guideId={guide.id}
                         isOpen={true} // Always open in focus mode
+                        toolName={(guide.ai_models as any)?.name}
+                        toolUrl={(guide.ai_models as any)?.website_url}
                       />
 
                       {/* Navigation Footer */}
