@@ -40,7 +40,7 @@ interface Step {
   }>;
 }
 
-interface StepCardProps {
+export interface StepCardProps {
   step: Step;
   stepNumber: number;
   isOpen?: boolean;

@@ -469,8 +469,8 @@ const GuideDetail = () => {
                         step={{
                           ...currentStep,
                           id: currentStep.id,
-                          guide_prompts: currentStep.guide_prompts || [],
-                          guide_workbook_fields: currentStep.guide_workbook_fields || [],
+                          guide_prompts: (currentStep as any).guide_prompts || [],
+                          guide_workbook_fields: (currentStep as any).guide_workbook_fields || [],
                         }}
                         stepNumber={activeStepIndex + 1}
                         guideId={guide.id}
