@@ -7,7 +7,7 @@ import { Brain, Github, Twitter, Mail, ArrowRight, Users, Target, Lightbulb, Cod
 const Footer = () => {
   const footerLinks = {
     product: [
-      { name: "AI 추천", href: "/recommend" },
+      { name: "AI 추천", href: "/guides" },
       { name: "AI 도구", href: "/guidebook" },
       { name: "커뮤니티", href: "/community" },
     ],
@@ -72,10 +72,10 @@ const Footer = () => {
                 </span>
               </div>
               <p className="text-muted-foreground mb-6 max-w-md">
-                당신의 문제에 딱 맞는 AI 솔루션을 찾아드립니다. 
+                당신의 문제에 딱 맞는 AI 솔루션을 찾아드립니다.
                 실제 사용자들이 검증한 AI 추천과 활용법을 한곳에서 만나보세요.
               </p>
-              
+
               {/* Social Links */}
               <div className="flex gap-3">
                 <Button variant="outline" size="icon" className="hover:bg-primary/10">
@@ -149,7 +149,7 @@ const Footer = () => {
           <div className="text-sm text-muted-foreground">
             © 2024 AIHub. All rights reserved.
           </div>
-          
+
           <div className="flex gap-6">
             {footerLinks.legal.map((link) => (
               <a

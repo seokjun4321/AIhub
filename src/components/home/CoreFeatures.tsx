@@ -8,7 +8,7 @@ const features = [
         icon: Sparkles,
         title: "도구 추천",
         description: "당신의 문제에 딱 맞는 AI 도구를 추천해드립니다.",
-        link: "/recommend",
+        link: "/guides",
         color: "text-green-500",
         bg: "bg-green-500/10"
     },

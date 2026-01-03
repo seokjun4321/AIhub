@@ -4,10 +4,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, Link as LinkIcon } from "lucide-react";
 import { PromptBlock } from "./PromptBlock";
 import { WorkbookPanel } from "./WorkbookPanel";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, TipsBlock, ChecklistBlock, CopyBlock } from "./StepBlockComponents";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -17,6 +18,13 @@ interface Step {
   title: string;
   summary: string | null;
   content: string | null;
+  // New structured fields
+  goal?: string | null;
+  done_when?: string | null;
+  why_matters?: string | null;
+  tips?: string | null;
+  checklist?: string | null;
+
   guide_prompts?: Array<{
     id: number;
     label: string;
@@ -39,32 +47,129 @@ interface StepCardProps {
   guideId: number;
 }
 
+// Simple markdown splitter (Fallback)
+const parseStepContent = (content: string | null) => {
+  if (!content) return {};
+
+  const sections: Record<string, string> = {};
+  const lines = content.split(/\r?\n/);
+  let currentKey = 'intro';
+  let buffer: string[] = [];
+
+  const flush = () => {
+    if (buffer.length > 0) {
+      if (sections[currentKey]) {
+        sections[currentKey] += '\n' + buffer.join('\n').trim();
+      } else {
+        sections[currentKey] = buffer.join('\n').trim();
+      }
+    }
+    buffer = [];
+  };
+
+  lines.forEach(line => {
+    // 1. Strict Headers: ## Title
+    const matchHash = line.match(/^\s*(#{2,6})\s+(.+)$/);
+    // 2. Bold Headers: **Title** ... 
+    // Capture: Group 1=**, Group 2=Title, Group 3=**, Group 4=remaining
+    const matchBold = line.match(/^\s*(\*\*)\s*(.+?)\s*(\*\*)(.*)$/);
+
+    if (matchHash || matchBold) {
+      flush();
+
+      let rawTitle = "";
+      let remainingLine = "";
+
+      if (matchHash) {
+        rawTitle = matchHash[2].trim().toLowerCase();
+      } else if (matchBold) {
+        rawTitle = matchBold[2].trim().toLowerCase();
+        remainingLine = matchBold[4].trim();
+      }
+
+      const t = rawTitle;
+
+      if (t.includes('goal') || t.includes('목표') || t.includes('핵심')) currentKey = 'goal';
+      else if (t.includes('done') || t.includes('완료')) currentKey = 'doneWhen';
+      else if (t.includes('why') || t.includes('이유')) currentKey = 'why';
+      else if (t.includes('action') || t.includes('할 일') || t.includes('할일') || t.includes('실행') || t.includes('따라하기')) currentKey = 'actions';
+      else if (t.includes('(c)') || t.includes('복붙') || t.includes('copy') || t.includes('template') || t.includes('템플릿')) currentKey = 'copyPrompt';
+      else if (t.includes('example') || t.includes('예시')) currentKey = 'example';
+      else if (t.includes('input') || t.includes('입력')) currentKey = 'input_example';
+      else if (t.includes('output') || t.includes('출력') || t.includes('결과')) currentKey = 'output_example';
+      else if (t.includes('tip') || t.includes('팁') || t.includes('mistake') || t.includes('실수') || t.includes('주의')) currentKey = 'tips';
+      else if (t.includes('check') || t.includes('체크')) currentKey = 'checklist';
+      else currentKey = 'other';
+
+      if (remainingLine) {
+        const cleanContent = remainingLine.replace(/^[:→-]\s*/, '');
+        if (cleanContent) buffer.push(cleanContent);
+      }
+    } else {
+      buffer.push(line);
+    }
+  });
+  flush();
+
+  return sections;
+};
+
 export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCardProps) {
   const [open, setOpen] = useState(isOpen);
   const [completed, setCompleted] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const parsedContent = useMemo(() => parseStepContent(step.content), [step.content]);
+
+  // Prioritize structured columns, fallback to parsed markdown
+  const goal = step.goal || parsedContent.goal;
+  const doneWhen = step.done_when || parsedContent.doneWhen;
+  const whyMatters = step.why_matters || parsedContent.why;
+  const tips = step.tips || parsedContent.tips;
+  const checklist = step.checklist || parsedContent.checklist;
+
+  // If we have specific action items, use them. 
+  // If we have 'other' content (unclassified), use that.
+  // DO NOT fallback to step.content if we are using the structured layout, 
+  // as step.content contains the raw full markdown which would cause duplication.
+  const actions = parsedContent.actions || parsedContent.other || "";
+  const copyPrompt = parsedContent.copyPrompt;
+
+  // Also check for example blocks in parsed content
+  const inputExample = parsedContent.input_example;
+  const outputExample = parsedContent.output_example;
+  const generalExample = parsedContent.example;
+
+  // Handle content that doesn't fit the strict schema (fallback)
+  // detailed check: if we have any structured columns OR parsed sections beyond intro
+  console.log('RAW STEP CONTENT:', step.content);
+  const hasStructuredContent = Boolean(
+    goal || doneWhen || whyMatters || tips || checklist ||
+    actions || inputExample || outputExample || generalExample ||
+    step.goal || step.done_when || step.why_matters || step.tips || step.checklist || // Check DB fields directly
+    Object.keys(parsedContent).length > 1
+  );
+
+  useEffect(() => {
+    setOpen(isOpen);
+  }, [isOpen]);
+
   useEffect(() => {
     if (typeof step.id === 'number') {
-      // DB 스텝인 경우 Supabase에서 진행률 확인
       if (user) {
-        supabase
+        (supabase as any)
           .from('guide_progress')
           .select('completed')
           .eq('user_id', user.id)
           .eq('step_id', step.id)
           .single()
-          .then(({ data }) => {
-            if (data) {
-              setCompleted(data.completed);
-            }
+          .then(({ data }: any) => {
+            if (data) setCompleted(data.completed);
           });
       }
     } else {
-      // 파싱된 스텝(문자열 ID)은 로컬 스토리지에서 확인
-      // 사용자별로 구분하기 위해 user.id를 키에 포함
-      const storageKey = user 
+      const storageKey = user
         ? `guide_progress_${guideId}_${step.id}_${user.id}`
         : `guide_progress_${guideId}_${step.id}`;
       const stored = localStorage.getItem(storageKey);
@@ -76,18 +181,14 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCard
     const newCompleted = !completed;
     setCompleted(newCompleted);
 
-    // DB 스텝인 경우 Supabase에 저장
     if (typeof step.id === 'number') {
       if (!user) {
-        toast({
-          title: "로그인이 필요합니다",
-          description: "진행률을 저장하려면 로그인해주세요",
-        });
-        setCompleted(!newCompleted); // 롤백
+        toast({ title: "로그인이 필요합니다", description: "진행률을 저장하려면 로그인해주세요" });
+        setCompleted(!newCompleted);
         return;
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('guide_progress')
         .upsert({
           user_id: user.id,
@@ -95,135 +196,105 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCard
           step_id: step.id,
           completed: newCompleted,
           completed_at: newCompleted ? new Date().toISOString() : null,
-        }, {
-          onConflict: 'user_id,step_id'
-        });
+        }, { onConflict: 'user_id,step_id' });
 
       if (error) {
-        toast({
-          title: "오류 발생",
-          description: error.message,
-          variant: "destructive",
-        });
-        setCompleted(!newCompleted); // 롤백
+        toast({ title: "오류 발생", description: error.message, variant: "destructive" });
+        setCompleted(!newCompleted);
         return;
       }
-      
-      // 진행률 업데이트를 위해 이벤트 발생
-      window.dispatchEvent(new CustomEvent('stepProgressChanged', { 
-        detail: { guideId, stepId: step.id, completed: newCompleted } 
-      }));
     } else {
-      // 파싱된 스텝(문자열 ID)은 로컬 스토리지에 저장
-      // 사용자별로 구분하기 위해 user.id를 키에 포함
-      const storageKey = user 
+      const storageKey = user
         ? `guide_progress_${guideId}_${step.id}_${user.id}`
         : `guide_progress_${guideId}_${step.id}`;
-      if (newCompleted) {
-        localStorage.setItem(storageKey, 'true');
-      } else {
-        localStorage.removeItem(storageKey);
-      }
-      
-      // 진행률 업데이트를 위해 이벤트 발생
-      window.dispatchEvent(new CustomEvent('stepProgressChanged', { 
-        detail: { guideId, stepId: step.id, completed: newCompleted } 
-      }));
+      if (newCompleted) localStorage.setItem(storageKey, 'true');
+      else localStorage.removeItem(storageKey);
     }
 
-    toast({
-      title: newCompleted ? "완료되었습니다! 🎉" : "완료 취소됨",
-    });
+    window.dispatchEvent(new CustomEvent('stepProgressChanged', {
+      detail: { guideId, stepId: step.id, completed: newCompleted }
+    }));
+
+    toast({ title: newCompleted ? "완료되었습니다! 🎉" : "완료 취소됨" });
   };
 
   const handleCopyLink = () => {
     const url = `${window.location.pathname}#step-${step.id}`;
     navigator.clipboard.writeText(window.location.origin + url);
-    toast({
-      title: "링크 복사됨",
-      description: "이 단계의 링크가 클립보드에 복사되었습니다",
-    });
+    toast({ title: "링크 복사됨", description: "이 단계의 링크가 클립보드에 복사되었습니다" });
   };
 
   return (
     <div id={`step-${step.id}`} className="scroll-mt-24">
       <Collapsible open={open} onOpenChange={setOpen} className="group">
-        <div className="rounded-xl border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden">
+        <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${open ? 'bg-white border-slate-200 shadow-lg' : 'bg-white border-slate-100 shadow-sm hover:shadow-md'}`}>
           <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full justify-between p-5 h-auto hover:bg-muted/30 rounded-xl"
+            <div
+              className="flex w-full items-center justify-between p-6 h-auto hover:bg-slate-50/50 rounded-none cursor-pointer text-left"
             >
-              <div className="flex items-center gap-4 text-left flex-1 min-w-0">
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <Checkbox
-                    checked={completed}
-                    onCheckedChange={handleToggleComplete}
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-5 w-5 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
-                  />
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground font-bold text-sm shadow-sm">
-                    {stepNumber}
+              <div className="flex items-center gap-5 text-left flex-1 min-w-0">
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="relative">
+                    <Checkbox
+                      checked={completed}
+                      onCheckedChange={handleToggleComplete}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute -top-1 -right-1 z-10 bg-white shadow-sm h-5 w-5 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-none text-white rounded-full"
+                    />
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-lg shadow-inner transition-colors ${completed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {stepNumber}
+                    </div>
                   </div>
                 </div>
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <h3 className="font-semibold text-base text-foreground truncate">
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-bold text-lg transition-colors ${completed ? 'text-slate-500 line-through decoration-slate-300 decoration-2' : 'text-slate-900'}`}>
                     {step.title.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^Step\s+/i, '').replace(/^\d+\.\s*/, '')}
                   </h3>
                   {step.summary && !open && (
-                    <p className="text-sm text-muted-foreground mt-1 truncate">{step.summary}</p>
+                    <p className="text-sm text-slate-500 mt-1 truncate">{step.summary}</p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleCopyLink();
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                >
-                  <LinkIcon className="h-4 w-4" />
-                </Button>
-                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+                <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
               </div>
-            </Button>
+            </div>
           </CollapsibleTrigger>
 
-          <CollapsibleContent className="px-5 pb-6 space-y-6 animate-accordion-down">
-            <div className="border-t border-border/50 pt-6">
-              {step.content && (
-                <div className="prose prose-sm max-w-none text-foreground/90 mb-6
-                  prose-p:text-foreground/90 prose-p:leading-relaxed prose-p:mb-4
-                  prose-headings:text-foreground prose-headings:font-semibold prose-headings:mb-3 prose-headings:mt-4
-                  prose-strong:text-foreground prose-strong:font-bold
-                  prose-ul:space-y-2 prose-ul:my-4 prose-ul:ml-4
-                  prose-ol:space-y-2 prose-ol:my-4 prose-ol:ml-4
-                  prose-li:text-foreground/90 prose-li:leading-relaxed
-                  prose-code:text-accent prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
-                  prose-blockquote:border-l-accent prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-muted-foreground">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />,
-                      a: ({node, ...props}) => <a className="text-foreground font-medium underline hover:opacity-80" {...props} />
-                    }}
-                  >
-                    {step.content}
-                  </ReactMarkdown>
+          <CollapsibleContent className="animate-accordion-down">
+            <div className="px-6 pb-8 pt-2">
+              <div className="w-full h-px bg-slate-100 mb-8" />
+
+              <GoalBanner goal={goal} doneWhen={doneWhen} />
+
+              {/* Intro content if any (often empty if everything is modularized) */}
+              {parsedContent.intro && (
+                <div className="mb-8 prose prose-sm max-w-none text-slate-600">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsedContent.intro}</ReactMarkdown>
                 </div>
               )}
 
+              <WhyThisMatters content={whyMatters} />
+
+              <ActionList content={actions} />
+
+              <CopyBlock content={copyPrompt} />
+
+              {inputExample && <ExampleBlock type="Input" content={inputExample} />}
+              {outputExample && <ExampleBlock type="Output" content={outputExample} />}
+              {generalExample && <ExampleBlock type="Input" content={generalExample} />}
+
+              <TipsBlock content={tips} />
+              <ChecklistBlock content={checklist} guideId={guideId} stepId={step.id} />
+
+
+              {/* Prompts and Workbooks (Always rendered if exist) */}
               {step.guide_prompts && step.guide_prompts.length > 0 && (
-                <div className="space-y-4 mt-6">
-                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">프롬프트</h4>
+                <div className="space-y-4 mt-8 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
+                  <h4 className="font-bold text-indigo-900 mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                    Prompt Pack
+                  </h4>
                   {step.guide_prompts.map((prompt) => (
                     <PromptBlock key={prompt.id} prompt={prompt} />
                   ))}
@@ -231,10 +302,10 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId }: StepCard
               )}
 
               {step.guide_workbook_fields && step.guide_workbook_fields.length > 0 && (
-                <div className="mt-6">
-                  <WorkbookPanel 
-                    fields={step.guide_workbook_fields} 
-                    stepId={step.id}
+                <div className="mt-8">
+                  <WorkbookPanel
+                    fields={step.guide_workbook_fields}
+                    stepId={typeof step.id === 'string' ? (parseInt(step.id) || 0) : step.id}
                     guideId={guideId}
                   />
                 </div>

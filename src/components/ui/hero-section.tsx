@@ -10,7 +10,7 @@ const HeroSection = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/20 rounded-full blur-3xl" />
-      
+
       <div className="relative container mx-auto px-6 py-20">
         <div className="text-center space-y-8 max-w-4xl mx-auto">
           {/* Logo & Title */}
@@ -22,7 +22,7 @@ const HeroSection = () => {
               AIHub
             </h1>
           </div>
-          
+
           {/* Main Headline */}
           <h2 className="text-3xl md:text-5xl font-bold text-foreground leading-tight">
             당신의 문제에 딱 맞는
@@ -31,28 +31,28 @@ const HeroSection = () => {
               AI 솔루션을 찾아드립니다
             </span>
           </h2>
-          
+
           {/* Subtitle */}
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            AI가 넘쳐나는 시대, 무엇을 써야 할지 모르겠다면? 
+            AI가 넘쳐나는 시대, 무엇을 써야 할지 모르겠다면?
             실제 사용자들이 검증한 AI 추천과 활용법을 한곳에서 만나보세요.
           </p>
-          
+
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-            <Link to="/recommend">
+            <Link to="/guides">
               <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-primary group">
                 AI 추천받기
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
+              </Button>
             </Link>
             <Link to="/guidebook">
               <Button variant="outline" size="lg" className="border-2 hover:bg-accent/10">
-                AI 도구 둘러보기 
+                AI 도구 둘러보기
               </Button>
             </Link>
           </div>
-          
+
           {/* Stats (Currently Dummy Data) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16">
             <Card className="bg-card/80 backdrop-blur-sm border-0 shadow-glass">
@@ -80,7 +80,7 @@ const HeroSection = () => {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Feature Highlights */}
           <div className="grid md:grid-cols-3 gap-8 mt-20">
             <div className="flex flex-col items-center text-center space-y-4">
@@ -90,7 +90,7 @@ const HeroSection = () => {
               <h3 className="text-xl font-semibold">맞춤형 AI 추천</h3>
               <p className="text-muted-foreground">상황과 목표를 알려주시면 최적의 AI 도구를 추천해드립니다</p>
             </div>
-            
+
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="p-4 bg-gradient-primary rounded-2xl shadow-primary">
                 <BookOpen className="w-8 h-8 text-primary-foreground" />
@@ -98,7 +98,7 @@ const HeroSection = () => {
               <h3 className="text-xl font-semibold">실용적 가이드북</h3>
               <p className="text-muted-foreground">단계별 활용법부터 프롬프트 작성까지 모든 것을 알려드립니다</p>
             </div>
-            
+
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="p-4 bg-gradient-primary rounded-2xl shadow-primary">
                 <Users className="w-8 h-8 text-primary-foreground" />
@@ -109,7 +109,7 @@ const HeroSection = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Floating Elements */}
       <div className="absolute top-20 left-10 opacity-20">
         <Sparkles className="w-6 h-6 text-primary animate-pulse" />

@@ -13,6 +13,9 @@ export function GuideOverviewCards({
     requirements = [],
     corePrinciples = []
 }: GuideOverviewCardsProps) {
+    // Helper to clean text
+    const cleanText = (text: string) => text.replace(/^[\d\.\)\s]+/, '');
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {/* One Line Summary */}
@@ -32,18 +35,18 @@ export function GuideOverviewCards({
                     <User className="w-5 h-5" />
                     <h3 className="font-bold text-sm">이런 분께 추천</h3>
                 </div>
-                <ul className="space-y-2">
+                <div className="space-y-2">
                     {recommendations.length > 0 ? (
                         recommendations.map((item, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-slate-600">
+                            <div key={idx} className="flex items-start gap-2 text-sm text-slate-600">
                                 <span className="mt-1.5 w-1 h-1 bg-slate-400 rounded-full shrink-0" />
-                                <span>{item}</span>
-                            </li>
+                                <span>{cleanText(item)}</span>
+                            </div>
                         ))
                     ) : (
-                        <li className="text-sm text-slate-400">추천 대상 정보가 없습니다.</li>
+                        <div className="text-sm text-slate-400">추천 대상 정보가 없습니다.</div>
                     )}
-                </ul>
+                </div>
             </div>
 
             {/* Preparation */}
@@ -52,18 +55,18 @@ export function GuideOverviewCards({
                     <AppWindow className="w-5 h-5" />
                     <h3 className="font-bold text-sm">준비물</h3>
                 </div>
-                <ul className="space-y-2">
+                <div className="space-y-2">
                     {requirements.length > 0 ? (
                         requirements.map((item, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-slate-600">
+                            <div key={idx} className="flex items-start gap-2 text-sm text-slate-600">
                                 <span className="mt-1.5 w-1 h-1 bg-slate-400 rounded-full shrink-0" />
-                                <span>{item}</span>
-                            </li>
+                                <span>{cleanText(item)}</span>
+                            </div>
                         ))
                     ) : (
-                        <li className="text-sm text-slate-400">준비물 정보가 없습니다.</li>
+                        <div className="text-sm text-slate-400">준비물 정보가 없습니다.</div>
                     )}
-                </ul>
+                </div>
             </div>
 
             {/* Core Principles */}
@@ -72,18 +75,18 @@ export function GuideOverviewCards({
                     <Lightbulb className="w-5 h-5" />
                     <h3 className="font-bold text-sm">핵심 사용 원칙</h3>
                 </div>
-                <ul className="space-y-2">
+                <div className="space-y-2">
                     {corePrinciples.length > 0 ? (
                         corePrinciples.map((item, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-slate-600">
+                            <div key={idx} className="flex items-start gap-2 text-sm text-slate-600">
                                 <span className="mt-1.5 w-1 h-1 bg-slate-400 rounded-full shrink-0" />
-                                <span>{item}</span>
-                            </li>
+                                <span>{cleanText(item)}</span>
+                            </div>
                         ))
                     ) : (
-                        <li className="text-sm text-slate-400">핵심 원칙 정보가 없습니다.</li>
+                        <div className="text-sm text-slate-400">핵심 원칙 정보가 없습니다.</div>
                     )}
-                </ul>
+                </div>
             </div>
         </div>
     );

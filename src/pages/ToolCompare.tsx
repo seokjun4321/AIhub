@@ -203,8 +203,9 @@ const ToolCompare = () => {
                 name={tool.name}
                 dataKey={tool.name}
                 stroke={COLORS[index % COLORS.length]}
+                strokeWidth={3}
                 fill={COLORS[index % COLORS.length]}
-                fillOpacity={0.3}
+                fillOpacity={0.1}
               />
             ))}
             <Legend />
@@ -215,26 +216,138 @@ const ToolCompare = () => {
     );
   };
 
+  // Helper to parse pricing info into multiple plans
+  const parsePricingPlans = (pricingStr: string | null): { name: string; price: number }[] => {
+    if (!pricingStr) return [];
+
+    // Split by major separators: " / ", ", ", "\n"
+    // We avoid splitting by simple "/" because it breaks units like "$10/mo" or "원/년"
+    const chunks = pricingStr.split(/(?:\s\/\s|\s,\s|\n)/).filter(s => s.trim().length > 0);
+    const plans: { name: string; price: number }[] = [];
+
+    chunks.forEach(chunk => {
+      let price = 0;
+      let name = chunk.trim();
+      const lowerChunk = chunk.toLowerCase();
+
+      // Detect Free
+      if (lowerChunk.includes('무료') || lowerChunk.includes('free')) {
+        price = 0;
+      } else {
+        // Extract price
+        const priceMatch = lowerChunk.replace(/,/g, '').match(/(\d+(\.\d+)?)/);
+        if (priceMatch) {
+          price = parseFloat(priceMatch[0]);
+
+          // Currency conversion
+          if (lowerChunk.includes('원') || lowerChunk.includes('krw')) {
+            price = price / 1400;
+          }
+
+          // Timeframe normalization
+          // 1. If it explicitly says Year/Yearly/Annual AND NOT Month/Monthly -> Divide by 12
+          // 2. We must be careful of "$10/mo (billed annually)" -> This is already monthly.
+          const isMonthly = lowerChunk.includes('/월') || lowerChunk.includes('/mo') || lowerChunk.includes('month');
+          const isYearly = lowerChunk.includes('/년') || lowerChunk.includes('/ye') || lowerChunk.includes('연') || lowerChunk.includes('annua');
+
+          if (isYearly && !isMonthly) {
+            price = price / 12;
+          }
+        } else {
+          return;
+        }
+      }
+
+      // Clean up names for the chart label
+      if (name.includes(':')) {
+        name = name.split(':')[0].trim();
+      } else {
+        name = name.replace(/\(.*\)/, '').replace(/[\d,]+(원|\$|krw).*/i, '').replace(/(free|무료).*/i, 'Free').trim();
+      }
+
+      if (!name) name = 'Plan';
+
+      if (price > 0 || lowerChunk.includes('free') || lowerChunk.includes('무료')) {
+        plans.push({ name, price: Math.round(price * 10) / 10 });
+      }
+    });
+
+    return plans.length > 0 ? plans : [{ name: 'Base', price: 0 }];
+  };
+
   const renderBarChart = () => {
     if (!selectedToolsData || selectedToolsData.length === 0) return null;
 
-    // Mock price data for visualization if not strictly numeric
-    const data = selectedToolsData.map(tool => ({
-      name: tool.name,
-      price: tool.comparison_data?.cost_efficiency_score ? tool.comparison_data.cost_efficiency_score * 20 : 0 // Scale to 100 for visual
-    }));
+    // Flatten data: Tool -> Plans -> Individual Bar Data
+    const flatData: any[] = [];
+
+    selectedToolsData.forEach((tool, index) => {
+      const plans = parsePricingPlans(tool.pricing_info);
+      plans.forEach(plan => {
+        flatData.push({
+          toolName: tool.name,
+          planName: plan.name,
+          fullName: `${tool.name} - ${plan.name}`,
+          price: plan.price,
+          color: COLORS[index % COLORS.length], // Same color for same tool
+          originalInfo: tool.pricing_info
+        });
+      });
+    });
 
     return (
       <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <BarChart data={flatData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-            <YAxis hide />
-            <Tooltip cursor={{ fill: 'transparent' }} />
-            <Bar dataKey="price" name="가격 효율성" radius={[4, 4, 0, 0]}>
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <XAxis
+              dataKey="fullName"
+              tick={({ x, y, payload }) => {
+                const data = flatData[payload.index] || {};
+                return (
+                  <g transform={`translate(${x},${y})`}>
+                    <text x={0} y={0} dy={16} textAnchor="middle" fill="#374151" fontSize={12} fontWeight="bold">
+                      {data.planName}
+                    </text>
+                    <text x={0} y={0} dy={32} textAnchor="middle" fill="#9CA3AF" fontSize={10}>
+                      {data.toolName}
+                    </text>
+                  </g>
+                );
+              }}
+              interval={0}
+              height={60}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tickFormatter={(value) => `$${value}`}
+              axisLine={false}
+              tickLine={false}
+              label={{ value: '월 예상 비용 (USD)', angle: -90, position: 'insideLeft', style: { fill: '#6b7280', fontSize: 12 } }}
+            />
+            <Tooltip
+              cursor={{ fill: 'transparent' }}
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
+                      <p className="font-bold mb-1">{data.toolName}</p>
+                      <p className="text-muted-foreground mb-2">{data.planName}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }} />
+                        <span className="font-medium">${data.price}</span>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Bar dataKey="price" name="비용" radius={[4, 4, 0, 0]}>
+              {flatData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Bar>
           </BarChart>

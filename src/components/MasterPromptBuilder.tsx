@@ -219,7 +219,7 @@ export const MasterPromptBuilder = () => {
                 </Link>
               </Button>
               <Button variant="outline" className="gap-2" asChild>
-                <Link to="/recommend">
+                <Link to="/guides">
                   취업 가이드북 보러가기
                   <ArrowRight className="w-4 h-4" />
                 </Link>

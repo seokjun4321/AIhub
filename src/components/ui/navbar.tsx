@@ -66,7 +66,7 @@ const Navbar = () => {
   }, []);
 
   const navItems = [
-    { name: "가이드북", href: "/recommend", icon: Zap },
+    { name: "가이드북", href: "/guides", icon: Zap },
     { name: "AI 도구", href: "/guidebook", icon: Search },
     { name: "프리셋 스토어", href: "/presets", icon: ShoppingBag },
     { name: "커뮤니티", href: "/community", icon: Users }
