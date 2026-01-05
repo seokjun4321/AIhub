@@ -1,3 +1,4 @@
+import { Heart, Star } from "lucide-react";
 import { Preset } from "@/types/preset";
 
 interface PresetCardProps {
@@ -9,44 +10,46 @@ const PresetCard = ({ preset, onClick }: PresetCardProps) => {
     return (
         <div
             onClick={onClick}
-            className="group bg-white border border-gray-200 rounded-xl p-6 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 cursor-pointer"
+            className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
         >
-            <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-full">
-                        {preset.category}
-                    </span>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                        {preset.tag}
-                    </span>
-                </div>
+            {/* Image Section */}
+            <div className="relative aspect-[1.6/1] bg-gray-100 overflow-hidden">
+                <img
+                    src={preset.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800"}
+                    alt={preset.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <button className="absolute top-3 right-3 p-1.5 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white text-gray-400 hover:text-red-500 transition-colors">
+                    <Heart className="w-4 h-4" />
+                </button>
             </div>
 
-            <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
-                {preset.title}
-            </h3>
-
-            <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                {preset.description}
-            </p>
-
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                    {preset.isFree ? (
-                        <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">
-                            무료
-                        </span>
-                    ) : (
-                        <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-full">
-                            유료
+            {/* Content Section */}
+            <div className="p-4">
+                <div className="flex justify-between items-start mb-2 gap-2">
+                    <h3 className="font-bold text-gray-900 line-clamp-2 leading-tight flex-1">
+                        {preset.title}
+                    </h3>
+                    {preset.productType && (
+                        <span className="shrink-0 px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded-sm border border-gray-200">
+                            {preset.productType}
                         </span>
                     )}
                 </div>
-                {!preset.isFree && (
-                    <span className="text-lg font-bold text-indigo-600">
-                        ₩{preset.price.toLocaleString()}
-                    </span>
-                )}
+
+                <div className="text-xs text-gray-500 mb-2">
+                    {preset.creator || "AIHub Creator"}
+                </div>
+
+                <div className="flex items-center gap-1 mb-3">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span className="text-sm font-bold text-gray-900">{preset.rating || "0.0"}</span>
+                    <span className="text-xs text-gray-400">({preset.reviewCount || 0})</span>
+                </div>
+
+                <div className="font-bold text-gray-900">
+                    {preset.isFree ? "무료" : `₩${preset.price.toLocaleString()}`}
+                </div>
             </div>
         </div>
     );

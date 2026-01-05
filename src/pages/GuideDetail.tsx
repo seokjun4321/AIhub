@@ -29,6 +29,7 @@ const fetchGuideById = async (id: string) => {
     .from('guides')
     .select(`
       *,
+      target_audience,
       ai_models(name, logo_url, website_url),
       categories(name),
       profiles(id, username, avatar_url)
@@ -373,6 +374,14 @@ const GuideDetail = () => {
   // Current Active Step Data
   const currentStep = hasSteps ? stepsArray[activeStepIndex] : null;
 
+  console.log('Guide Data:', guide);
+  console.log('Sections Data:', sections);
+
+  const personaSection = sections?.find(s => s.section_type === 'persona');
+  const recommendations = personaSection
+    ? (Array.isArray(personaSection.data) ? personaSection.data : [personaSection.content || personaSection.title || ""])
+    : (guide.target_audience ? [guide.target_audience] : ["누구나"]);
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
@@ -391,12 +400,11 @@ const GuideDetail = () => {
         <GuidebookHeader
           title={guide.title}
           description={guide.description}
-          progress={progressPercentage}
-          category={(guide.categories as any)?.name}
-          toolName={(guide.ai_models as any)?.name}
-          logoUrl={(guide.ai_models as any)?.logo_url}
+          progress={Math.round(progressPercentage)}
+          category={guide.categories?.name}
+          tags={id === '14' ? ['ChatGPT', 'Kling AI', 'Hailuo AI'] : [guide.ai_models?.name]}
           duration={guide.estimated_time}
-          difficulty={guide.difficulty || "초급"}
+          difficulty={guide.difficulty}
         />
 
         <div className="space-y-12">
@@ -404,7 +412,7 @@ const GuideDetail = () => {
           <section className="space-y-8">
             <GuideOverviewCards
               summary={guide.one_line_summary}
-              recommendations={guide.target_audience ? [guide.target_audience, "AI 활용법이 궁금한 분"] : ["누구나"]}
+              recommendations={recommendations}
               requirements={guide.requirements && Array.isArray(guide.requirements) ? guide.requirements : ["ChatGPT 계정"]}
               corePrinciples={guide.core_principles && Array.isArray(guide.core_principles) ? guide.core_principles : ["AI는 조수, 판단은 본인"]}
             />

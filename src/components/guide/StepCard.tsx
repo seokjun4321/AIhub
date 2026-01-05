@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, TipsBlock, ChecklistBlock, CopyBlock } from "./StepBlockComponents";
+import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock } from "./StepBlockComponents";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -70,43 +70,33 @@ const parseStepContent = (content: string | null) => {
   };
 
   lines.forEach(line => {
-    // 1. Strict Headers: ## Title
+    // Only match markdown headers: #### Title
     const matchHash = line.match(/^\s*(#{2,6})\s+(.+)$/);
-    // 2. Bold Headers: **Title** ... 
-    // Capture: Group 1=**, Group 2=Title, Group 3=**, Group 4=remaining
-    const matchBold = line.match(/^\s*(\*\*)\s*(.+?)\s*(\*\*)(.*)$/);
 
-    if (matchHash || matchBold) {
+    if (matchHash) {
       flush();
 
-      let rawTitle = "";
-      let remainingLine = "";
-
-      if (matchHash) {
-        rawTitle = matchHash[2].trim().toLowerCase();
-      } else if (matchBold) {
-        rawTitle = matchBold[2].trim().toLowerCase();
-        remainingLine = matchBold[4].trim();
-      }
+      const rawTitle = matchHash[2].trim().toLowerCase();
 
       const t = rawTitle;
 
-      if (t.includes('goal') || t.includes('목표') || t.includes('핵심')) currentKey = 'goal';
+      // Extract marker patterns like (A), (B), (C), (D), (E) from the title
+      const markerMatch = t.match(/\(([a-e])\)/i);
+      const marker = markerMatch ? markerMatch[1].toLowerCase() : null;
+      console.log('[PARSER] rawTitle:', rawTitle, '| marker:', marker);
+
+      if (marker === 'b' || t.includes('action') || t.includes('할 일') || t.includes('할일') || t.includes('실행') || t.includes('따라하기')) currentKey = 'actions';
+      else if (marker === 'c' || t.includes('복붙') || t.includes('copy') || t.includes('template') || t.includes('템플릿')) currentKey = 'copyPrompt';
+      else if (marker === 'e' || t.includes('분기') || t.includes('branch') || t.includes('선택')) currentKey = 'branch';
+      else if (marker === 'd' || t.includes('example') || t.includes('예시')) currentKey = 'example';
+      else if (marker === 'a' || t.includes('goal') || t.includes('목표') || t.includes('핵심')) currentKey = 'goal';
       else if (t.includes('done') || t.includes('완료')) currentKey = 'doneWhen';
       else if (t.includes('why') || t.includes('이유')) currentKey = 'why';
-      else if (t.includes('action') || t.includes('할 일') || t.includes('할일') || t.includes('실행') || t.includes('따라하기')) currentKey = 'actions';
-      else if (t.includes('(c)') || t.includes('복붙') || t.includes('copy') || t.includes('template') || t.includes('템플릿')) currentKey = 'copyPrompt';
-      else if (t.includes('example') || t.includes('예시')) currentKey = 'example';
       else if (t.includes('input') || t.includes('입력')) currentKey = 'input_example';
       else if (t.includes('output') || t.includes('출력') || t.includes('결과')) currentKey = 'output_example';
       else if (t.includes('tip') || t.includes('팁') || t.includes('mistake') || t.includes('실수') || t.includes('주의')) currentKey = 'tips';
       else if (t.includes('check') || t.includes('체크')) currentKey = 'checklist';
       else currentKey = 'other';
-
-      if (remainingLine) {
-        const cleanContent = remainingLine.replace(/^[:→-]\s*/, '');
-        if (cleanContent) buffer.push(cleanContent);
-      }
     } else {
       buffer.push(line);
     }
@@ -136,7 +126,8 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
   // DO NOT fallback to step.content if we are using the structured layout, 
   // as step.content contains the raw full markdown which would cause duplication.
   const actions = parsedContent.actions || parsedContent.other || "";
-  const copyPrompt = parsedContent.copyPrompt;
+  const copyPrompt = step.guide_prompts?.[0]?.text || parsedContent.copyPrompt; // use DB prompt only if not in content? Actually let's trust content more as it's newer, or both. Let's use content > db for now as DB might be empty.
+  const branch = parsedContent.branch;
 
   // Also check for example blocks in parsed content
   const inputExample = parsedContent.input_example;
@@ -146,6 +137,9 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
   // Handle content that doesn't fit the strict schema (fallback)
   // detailed check: if we have any structured columns OR parsed sections beyond intro
   console.log('RAW STEP CONTENT:', step.content);
+  console.log('PARSED CONTENT KEYS:', Object.keys(parsedContent));
+  console.log('PARSED BRANCH:', parsedContent.branch);
+  console.log('PARSED COPY PROMPT:', parsedContent.copyPrompt);
   const hasStructuredContent = Boolean(
     goal || doneWhen || whyMatters || tips || checklist ||
     actions || inputExample || outputExample || generalExample ||
@@ -281,6 +275,8 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
               <ActionList content={actions} />
 
               <CopyBlock content={copyPrompt} toolName={toolName} toolUrl={toolUrl} />
+
+              <BranchBlock content={branch} />
 
               {inputExample && <ExampleBlock type="Input" content={inputExample} />}
               {outputExample && <ExampleBlock type="Output" content={outputExample} />}

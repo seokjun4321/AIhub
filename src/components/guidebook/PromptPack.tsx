@@ -50,7 +50,7 @@ export function PromptPack({ prompts, onStepClick }: PromptPackProps) {
                             <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">
-                                        #{item.id.replace('prompt-', '')}
+                                        #{item.id?.replace('prompt-', '') || 'N/A'}
                                     </span>
                                     {item.tags?.map((tag, idx) => (
                                         <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold">

@@ -99,8 +99,9 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                 {/* Main Content */}
                 <div className="flex-1 flex flex-col">
                     {/* Header */}
+                    {/* Header */}
                     <div className="p-6 border-b border-gray-200">
-                        <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start justify-between">
                             <div className="flex-1">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
                                     {preset.title}
@@ -113,22 +114,6 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                             >
                                 <X className="w-5 h-5" />
                             </button>
-                        </div>
-
-                        {/* Tabs */}
-                        <div className="flex items-center gap-4 border-b border-gray-200">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab
-                                        ? "border-indigo-600 text-indigo-600"
-                                        : "border-transparent text-gray-500 hover:text-gray-700"
-                                        }`}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
                         </div>
                     </div>
 

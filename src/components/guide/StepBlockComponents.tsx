@@ -92,7 +92,7 @@ export const ActionList = ({ content }: { content: string }) => {
                             li: (props) => (
                                 <li className="relative pl-10 text-sm text-slate-700 leading-relaxed group">
                                     {/* Number Badge */}
-                                    <span className="absolute left-0 top-0 flex items-center justify-center w-6 h-6 text-xs font-bold text-purple-600 bg-purple-100 rounded-full ring-4 ring-white group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                    <span className="absolute left-0 top-0 flex items-center justify-center w-6 h-6 text-xs font-bold text-purple-600 bg-purple-100 rounded-full ring-4 ring-white transition-colors">
                                         {/* We can't easily get index here without context, so we'll use CSS counter if possible? 
                                             Actually, pure CSS list-style works best or css counters. */}
                                     </span>
@@ -103,10 +103,10 @@ export const ActionList = ({ content }: { content: string }) => {
                                             list-style: none;
                                             padding: 0;
                                         }
-                                        li {
+                                        .counter-reset-step li {
                                             counter-increment: step-counter;
                                         }
-                                        li span::before {
+                                        .counter-reset-step li span::before {
                                             content: counter(step-counter);
                                         }
                                     `}</style>
@@ -225,7 +225,7 @@ export const CopyBlock = ({ content, toolName, toolUrl }: { content: string, too
                         remarkPlugins={[remarkGfm]}
                         components={{
                             code: ({ node, ...props }) => <span className="font-mono text-slate-800 bg-slate-200/60 px-1 py-0.5 rounded text-[13px]" {...props} />,
-                            pre: ({ node, ...props }) => <div className="not-prose" {...props} />, // Prevent default pre styling
+                            pre: ({ node, ...props }) => <div className="not-prose" {...props as any} />, // Prevent default pre styling
                             p: ({ node, ...props }) => <div className="mb-2 last:mb-0" {...props} />,
                             ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-1 mb-2" {...props} />,
                             ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-1 mb-2" {...props} />,
@@ -330,7 +330,7 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
             }
         }
 
-        const lines = effectiveContent.split('\n');
+        const lines = effectiveContent.split(/\r?\n/);
         const parsedItems = lines
             .map((line, index) => {
                 // Match "- [ ] text" or "- [x] text" or just "- text" with optional leading whitespace
@@ -395,6 +395,70 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
                         >
                             {item.text}
                         </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+export const BranchBlock = ({ content }: { content: string | null | undefined }) => {
+    if (!content) return null;
+
+    // Parse content into options
+    // Expected format: **Title**: Description
+    const lines = content.split(/\r?\n/).filter(line => line.trim());
+    const options: { title: string; desc: string[] }[] = [];
+
+    let currentOption: { title: string; desc: string[] } | null = null;
+
+    lines.forEach(line => {
+        // Match **Title**: ... or just **Title**
+        const titleMatch = line.match(/^\s*\*\*(.+?)\*\*[:\s]*(.*)$/);
+
+        if (titleMatch) {
+            if (currentOption) options.push(currentOption);
+            currentOption = {
+                title: titleMatch[1],
+                desc: titleMatch[2] ? [titleMatch[2]] : []
+            };
+        } else if (currentOption) {
+            currentOption.desc.push(line);
+        }
+    });
+    if (currentOption) options.push(currentOption);
+
+    // Fallback if no strict structure found, just render markdown
+    if (options.length === 0) {
+        return (
+            <div className="mb-8 bg-blue-50/50 rounded-xl border border-blue-100 p-5">
+                <div className="flex items-center gap-2 mb-3 text-blue-700">
+                    <div className="p-1 rounded bg-blue-100">
+                        <Info className="w-4 h-4" />
+                    </div>
+                    <h4 className="font-bold text-base">선택하세요 (분기)</h4>
+                </div>
+                <MarkdownContent content={content} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4 text-slate-800 px-1">
+                <div className="p-1 rounded bg-indigo-100 text-indigo-600">
+                    <span className="text-xs font-bold px-1">Branch</span>
+                </div>
+                <h4 className="font-bold text-base">상황별 선택 가이드</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {options.map((opt, idx) => (
+                    <div key={idx} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group h-full">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
+                        <h5 className="font-bold text-lg text-slate-900 mb-3">{opt.title}</h5>
+                        <div className="text-sm text-slate-600 space-y-1">
+                            <MarkdownContent content={opt.desc.join('\n')} />
+                        </div>
                     </div>
                 ))}
             </div>
