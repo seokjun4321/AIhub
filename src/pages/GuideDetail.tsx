@@ -40,8 +40,6 @@ const fetchGuideById = async (id: string) => {
   return data as any;
 };
 
-
-
 // 가이드의 단계들을 불러오는 함수
 const fetchGuideSteps = async (guideId: number) => {
   const { data, error } = await (supabase as any)
@@ -366,7 +364,25 @@ const GuideDetail = () => {
   if (error) return <div>에러가 발생했습니다: {error.message}</div>;
   if (!guide) return <div>가이드를 찾을 수 없습니다.</div>;
 
-  const promptPacks = sections?.filter(s => s.section_type === 'prompt_pack').flatMap(s => s.data) || [];
+  // Load prompts from guide_sections table where section_type is 'prompt_pack'
+  const promptPacks = sections
+    ?.filter(s => s.section_type === 'prompt_pack')
+    .flatMap((s, sectionIndex) => {
+      const data = s.data;
+      // data is a JSONB array of objects with {label, text} structure
+      if (Array.isArray(data)) {
+        return data.map((item: any, index: number) => ({
+          id: `prompt-${sectionIndex}-${index}`,
+          title: item.label,
+          prompt: item.text,
+          description: undefined,
+          tags: undefined,
+          relatedStep: undefined,
+          failurePatterns: undefined
+        }));
+      }
+      return [];
+    }) || [];
   const totalSteps = navSteps.length;
   const completedCount = completedStepIds.length;
   const progressPercentage = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
@@ -381,6 +397,11 @@ const GuideDetail = () => {
   const recommendations = personaSection
     ? (Array.isArray(personaSection.data) ? personaSection.data : [personaSection.content || personaSection.title || ""])
     : (guide.target_audience ? [guide.target_audience] : ["누구나"]);
+
+  const principlesSection = sections?.find(s => s.section_type === 'principles');
+  const corePrinciples = principlesSection
+    ? (Array.isArray(principlesSection.data) ? principlesSection.data : [principlesSection.content || principlesSection.title || ""])
+    : (guide.core_principles && Array.isArray(guide.core_principles) ? guide.core_principles : ["AI는 조수, 판단은 본인"]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -414,7 +435,7 @@ const GuideDetail = () => {
               summary={guide.one_line_summary}
               recommendations={recommendations}
               requirements={guide.requirements && Array.isArray(guide.requirements) ? guide.requirements : ["ChatGPT 계정"]}
-              corePrinciples={guide.core_principles && Array.isArray(guide.core_principles) ? guide.core_principles : ["AI는 조수, 판단은 본인"]}
+              corePrinciples={corePrinciples}
             />
           </section>
 

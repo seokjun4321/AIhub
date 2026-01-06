@@ -49,9 +49,6 @@ export function PromptPack({ prompts, onStepClick }: PromptPackProps) {
                             {/* Header & Tags */}
                             <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">
-                                        #{item.id?.replace('prompt-', '') || 'N/A'}
-                                    </span>
                                     {item.tags?.map((tag, idx) => (
                                         <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold">
                                             {tag}
@@ -92,9 +89,6 @@ export function PromptPack({ prompts, onStepClick }: PromptPackProps) {
 
                     {/* Prompt Box */}
                     <div className="relative mb-6">
-                        <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-white/80 backdrop-blur border border-slate-100 text-[10px] font-mono text-slate-400 pointer-events-none uppercase tracking-wider">
-                            Prompt
-                        </div>
                         <div className="bg-slate-900 text-slate-50 p-6 rounded-2xl border border-slate-800 text-sm font-mono leading-relaxed whitespace-pre-wrap shadow-inner selection:bg-emerald-500/30">
                             {item.prompt}
                         </div>

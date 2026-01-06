@@ -166,10 +166,14 @@ export const CopyBlock = ({ content, toolName, toolUrl }: { content: string, too
     // Clean up content: Remove code block markers if present
     const cleanContent = content.replace(/^```\w*\n?/, '').replace(/\n?```$/, '').trim();
 
-    const handleCopy = () => {
-        navigator.clipboard.writeText(cleanContent);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(cleanContent);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
     };
 
     const handleRun = () => {
@@ -179,61 +183,69 @@ export const CopyBlock = ({ content, toolName, toolUrl }: { content: string, too
     };
 
     return (
-        <div className="mb-8 group">
-            <div className="relative rounded-xl border border-slate-200 bg-slate-50 overflow-hidden transition-all hover:border-slate-300 hover:shadow-sm">
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200/60 bg-slate-100/50">
-                    <div className="flex items-center gap-2">
-                        <div className="p-1 rounded bg-white border border-slate-200 shadow-sm">
-                            <Terminal className="w-3 h-3 text-slate-500" />
-                        </div>
-                        <span className="font-semibold text-sm text-slate-700">Good Prompt Example</span>
+        <div className="my-6 rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 overflow-hidden shadow-sm">
+            {/* Header */}
+            <div className="bg-emerald-600 text-white px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                        <Terminal className="w-5 h-5" />
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div>
+                        <h4 className="font-bold text-lg">복붙 블록</h4>
+                        <p className="text-emerald-100 text-sm mt-0.5">템플릿을 복사해서 AI 도구에 바로 사용하세요</p>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    {toolName && toolUrl && (
                         <button
                             onClick={handleRun}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md hover:opacity-90 transition-opacity shadow-sm"
+                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-emerald-600 bg-white rounded-lg hover:bg-emerald-50 transition-all shadow-lg"
                         >
-                            <Terminal className="w-3.5 h-3.5" />
-                            <span>Run</span>
+                            <Terminal className="w-4 h-4" />
+                            실행
                         </button>
-                        <button
-                            onClick={handleCopy}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
-                        >
-                            {copied ? (
-                                <>
-                                    <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                    <span className="text-emerald-600">Copied</span>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="w-3.5 h-3.5 relative">
-                                        <div className="absolute inset-0 border-2 border-slate-400 rounded-sm" />
-                                        <div className="absolute inset-0 border-2 border-slate-400 rounded-sm translate-x-0.5 -translate-y-0.5 bg-white" />
-                                    </div>
-                                    <span>Copy</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-5 text-sm text-slate-700 leading-relaxed font-sans whitespace-pre-wrap">
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                            code: ({ node, ...props }) => <span className="font-mono text-slate-800 bg-slate-200/60 px-1 py-0.5 rounded text-[13px]" {...props} />,
-                            pre: ({ node, ...props }) => <div className="not-prose" {...props as any} />, // Prevent default pre styling
-                            p: ({ node, ...props }) => <div className="mb-2 last:mb-0" {...props} />,
-                            ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-1 mb-2" {...props} />,
-                            ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-1 mb-2" {...props} />,
-                        }}
+                    )}
+                    <button
+                        onClick={handleCopy}
+                        className={`
+                            flex items-center gap-2 px-6 py-2 text-sm font-semibold rounded-lg shadow-lg transition-all duration-200
+                            ${copied
+                                ? 'bg-white text-emerald-600 hover:bg-white'
+                                : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                            }
+                        `}
                     >
-                        {cleanContent}
-                    </ReactMarkdown>
+                        {copied ? (
+                            <>
+                                <Check className="w-4 h-4" />
+                                복사완료!
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-4 h-4 relative">
+                                    <div className="absolute inset-0 border-2 border-current rounded-sm" />
+                                    <div className="absolute inset-0 border-2 border-current rounded-sm translate-x-0.5 -translate-y-0.5 bg-emerald-600" />
+                                </div>
+                                복사하기
+                            </>
+                        )}
+                    </button>
                 </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 bg-white">
+                <pre className="bg-slate-900 text-slate-50 p-6 rounded-xl overflow-x-auto text-sm leading-relaxed font-mono whitespace-pre-wrap border-2 border-slate-700 shadow-inner">
+                    <code>{cleanContent}</code>
+                </pre>
+            </div>
+
+            {/* Footer Tip */}
+            <div className="bg-emerald-50 px-6 py-3 border-t border-emerald-200">
+                <p className="text-sm text-emerald-800 flex items-center gap-2">
+                    <span className="text-emerald-600">💡</span>
+                    <span className="font-medium">이 템플릿을 ChatGPT, Kling AI, Hailuo AI 등에 바로 붙여넣으세요!</span>
+                </p>
             </div>
         </div>
     );
