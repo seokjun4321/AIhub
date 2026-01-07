@@ -9,7 +9,7 @@ WHERE name = 'Cursor';
 -- 2. ChatGPT (ID: 1 or 41)
 UPDATE public.ai_models
 SET pricing_info = 'Free: 무료 / Plus: $20/월 / Team: $25/월'
-WHERE name LIKE 'ChatGPT%';
+WHERE name = 'ChatGPT';
 
 -- 3. Claude (ID: 83)
 UPDATE public.ai_models

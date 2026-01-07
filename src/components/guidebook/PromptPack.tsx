@@ -87,10 +87,13 @@ export function PromptPack({ prompts, onStepClick }: PromptPackProps) {
                         </Button>
                     </div>
 
-                    {/* Prompt Box */}
+
+                    {/* Prompt Box - Light Sky Blue Theme */}
                     <div className="relative mb-6">
-                        <div className="bg-slate-900 text-slate-50 p-6 rounded-2xl border border-slate-800 text-sm font-mono leading-relaxed whitespace-pre-wrap shadow-inner selection:bg-emerald-500/30">
-                            {item.prompt}
+                        <div className="bg-gradient-to-br from-sky-50 to-blue-50 p-6 rounded-2xl border-2 border-sky-200 shadow-sm">
+                            <pre className="font-mono text-slate-800 text-sm leading-snug whitespace-pre-wrap overflow-x-auto">
+                                {item.prompt ? item.prompt.replace(/\\n/g, '\n') : 'No prompt content'}
+                            </pre>
                         </div>
                     </div>
 
@@ -109,18 +112,15 @@ export function PromptPack({ prompts, onStepClick }: PromptPackProps) {
                     {/* Related Steps (Moved to Bottom) */}
                     {item.relatedStep && item.relatedStep.length > 0 && (
                         <div className="mt-auto pt-6 border-t border-slate-100 flex items-center gap-3">
-                            <span className="text-sm font-semibold text-slate-500">관련 Step:</span>
+                            <span className="text-sm font-semibold text-slate-600">Related Steps:</span>
                             <div className="flex flex-wrap gap-2">
                                 {item.relatedStep.map(step => (
                                     <button
                                         key={step}
                                         onClick={() => onStepClick?.(step)}
-                                        className="h-8 pl-3 pr-4 rounded-full bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 text-xs font-bold transition-colors flex items-center gap-1.5 group/btn"
+                                        className="px-3 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-700 hover:text-sky-800 text-sm font-semibold transition-all border border-sky-200 hover:border-sky-300"
                                     >
-                                        <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-[10px] group-hover/btn:bg-white/80">
-                                            {step}
-                                        </span>
-                                        이동
+                                        Step {step}
                                     </button>
                                 ))}
                             </div>

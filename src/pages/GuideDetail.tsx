@@ -20,6 +20,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 
 // 단일 가이드를 불러오는 함수 (관련 데이터 포함)
 const fetchGuideById = async (id: string) => {
@@ -225,11 +226,6 @@ function parseMarkdownToSteps(content: string | null): Array<{
   return steps;
 }
 
-// ... (imports remain mostly same)
-import { ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react"; // Add icons
-
-// ... (fetch functions remain same)
-
 const GuideDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -275,26 +271,37 @@ const GuideDetail = () => {
     title: s.title
   }));
 
+  // Helper function for consistent scroll behavior
+  const scrollToContent = () => {
+    setTimeout(() => {
+      const contentElement = document.querySelector('.lg\\:col-span-2');
+      if (contentElement) {
+        const top = contentElement.getBoundingClientRect().top + window.pageYOffset - 100; // 100px offset for navbar
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    }, 50); // Small delay to ensure DOM is updated
+  };
+
   // Handlers
   const handleStepClick = (stepId: string | number) => {
     const index = stepsArray.findIndex(s => s.id === stepId);
     if (index >= 0) {
       setActiveStepIndex(index);
-      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top when switching
+      scrollToContent();
     }
   };
 
   const handleNextStep = () => {
     if (activeStepIndex < stepsArray.length - 1) {
       setActiveStepIndex(prev => prev + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToContent();
     }
   };
 
   const handlePrevStep = () => {
     if (activeStepIndex > 0) {
       setActiveStepIndex(prev => prev - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToContent();
     }
   };
 
@@ -313,7 +320,7 @@ const GuideDetail = () => {
     const targetIndex = stepNumber - 1;
     if (targetIndex >= 0 && targetIndex < stepsArray.length) {
       setActiveStepIndex(targetIndex);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToContent();
     }
   };
 
@@ -372,13 +379,13 @@ const GuideDetail = () => {
       // data is a JSONB array of objects with {label, text} structure
       if (Array.isArray(data)) {
         return data.map((item: any, index: number) => ({
-          id: `prompt-${sectionIndex}-${index}`,
-          title: item.label,
-          prompt: item.text,
-          description: undefined,
-          tags: undefined,
-          relatedStep: undefined,
-          failurePatterns: undefined
+          id: item.id || `prompt-${sectionIndex}-${index}`,
+          title: item.title || item.label, // Support both new and old format
+          prompt: item.prompt || item.text, // Support both new and old format
+          description: item.description,
+          tags: item.tags,
+          relatedStep: item.relatedStep,
+          failurePatterns: item.failurePatterns
         }));
       }
       return [];
@@ -393,15 +400,20 @@ const GuideDetail = () => {
   console.log('Guide Data:', guide);
   console.log('Sections Data:', sections);
 
-  const personaSection = sections?.find(s => s.section_type === 'persona');
-  const recommendations = personaSection
-    ? (Array.isArray(personaSection.data) ? personaSection.data : [personaSection.content || personaSection.title || ""])
-    : (guide.target_audience ? [guide.target_audience] : ["누구나"]);
+  // Process sections for Overview Cards
+  const summarySection = sections?.find((s: any) => s.section_type === 'summary');
+  const targetAudienceSection = sections?.find((s: any) => s.section_type === 'target_audience');
+  const preparationSection = sections?.find((s: any) => s.section_type === 'preparation');
+  const corePrinciplesSection = sections?.find((s: any) => s.section_type === 'core_principles');
 
-  const principlesSection = sections?.find(s => s.section_type === 'principles');
-  const corePrinciples = principlesSection
-    ? (Array.isArray(principlesSection.data) ? principlesSection.data : [principlesSection.content || principlesSection.title || ""])
-    : (guide.core_principles && Array.isArray(guide.core_principles) ? guide.core_principles : ["AI는 조수, 판단은 본인"]);
+  const summaryContent = summarySection?.content || guide?.one_line_summary;
+  const recommendations = targetAudienceSection?.data || [];
+  const requirements = preparationSection?.data || (guide?.requirements && Array.isArray(guide.requirements) ? guide.requirements : ["ChatGPT 계정"]);
+
+  const rawCorePrinciples = corePrinciplesSection?.data || [];
+  const corePrinciples = Array.isArray(rawCorePrinciples)
+    ? rawCorePrinciples.map((item: any) => typeof item === 'string' ? item : `${item.title}: ${item.description}`)
+    : [];
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -432,9 +444,9 @@ const GuideDetail = () => {
           {/* 2. Overview Cards */}
           <section className="space-y-8">
             <GuideOverviewCards
-              summary={guide.one_line_summary}
+              summary={summaryContent}
               recommendations={recommendations}
-              requirements={guide.requirements && Array.isArray(guide.requirements) ? guide.requirements : ["ChatGPT 계정"]}
+              requirements={requirements}
               corePrinciples={corePrinciples}
             />
           </section>

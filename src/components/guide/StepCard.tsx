@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock } from "./StepBlockComponents";
+import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, InputOutputBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock } from "./StepBlockComponents";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -103,6 +103,36 @@ const parseStepContent = (content: string | null) => {
   });
   flush();
 
+  // Post-process: Split 'example' section into 'input', 'process', and 'output' parts
+  if (sections.example && !sections.input_example && !sections.output_example) {
+    const exampleText = sections.example;
+
+    // Regex to match sections
+    // Input: starts with **입력 or **Input, captures until **과정 or **Process or **출력 or **Output or end
+    const inputMatch = exampleText.match(/\*\*(?:입력|Input)[^*]*\*\*\s*:?\s*([^]*?)(?=\*\*(?:과정|Process|출력|Output)|\s*$)/i);
+
+    // Process: starts with **과정 or **Process, captures until **출력 or **Output or end
+    const processMatch = exampleText.match(/\*\*(?:과정|Process)[^*]*\*\*\s*:?\s*([^]*?)(?=\*\*(?:출력|Output)|\s*$)/i);
+
+    // Output: starts with **출력 or **Output, captures until end
+    const outputMatch = exampleText.match(/\*\*(?:출력|Output)[^*]*\*\*\s*:?\s*([^]*?)$/i);
+
+    if (inputMatch) {
+      sections.input_example = inputMatch[1].trim();
+      console.log('[PARSER] Extracted input_example');
+    }
+
+    if (processMatch) {
+      sections.process_example = processMatch[1].trim();
+      console.log('[PARSER] Extracted process_example');
+    }
+
+    if (outputMatch) {
+      sections.output_example = outputMatch[1].trim();
+      console.log('[PARSER] Extracted output_example');
+    }
+  }
+
   return sections;
 };
 
@@ -131,6 +161,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
 
   // Also check for example blocks in parsed content
   const inputExample = parsedContent.input_example;
+  const processExample = parsedContent.process_example;
   const outputExample = parsedContent.output_example;
   const generalExample = parsedContent.example;
 
@@ -142,7 +173,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
   console.log('PARSED COPY PROMPT:', parsedContent.copyPrompt);
   const hasStructuredContent = Boolean(
     goal || doneWhen || whyMatters || tips || checklist ||
-    actions || inputExample || outputExample || generalExample ||
+    actions || inputExample || processExample || outputExample || generalExample ||
     step.goal || step.done_when || step.why_matters || step.tips || step.checklist || // Check DB fields directly
     Object.keys(parsedContent).length > 1
   );
@@ -278,9 +309,17 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
 
               <BranchBlock content={branch} />
 
-              {inputExample && <ExampleBlock type="Input" content={inputExample} />}
-              {outputExample && <ExampleBlock type="Output" content={outputExample} />}
-              {generalExample && <ExampleBlock type="Input" content={generalExample} />}
+              {/* Show Input/Output side by side if both exist, otherwise show separately */}
+              {(inputExample || outputExample) ? (
+                <InputOutputBlock inputContent={inputExample} processContent={processExample} outputContent={outputExample} />
+              ) : (
+                <>
+                  {inputExample && <ExampleBlock type="Input" content={inputExample} />}
+                  {processExample && <ExampleBlock type="Process" content={processExample} />}
+                  {outputExample && <ExampleBlock type="Output" content={outputExample} />}
+                  {generalExample && <ExampleBlock type="Example" content={generalExample} />}
+                </>
+              )}
 
               <TipsBlock content={tips} />
               <ChecklistBlock content={checklist} guideId={guideId} stepId={step.id} />
