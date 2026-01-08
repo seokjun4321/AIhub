@@ -46,7 +46,7 @@ const fetchGuidesByCategory = async (categoryName: string) => {
     return [];
   }
 
-  // 카테고리 ID로 가이드북 가져오기
+  // 기본 guides 테이블 조회 (우선 단일 카테고리만 지원)
   const { data, error } = await supabase
     .from('guides')
     .select(`
@@ -145,40 +145,8 @@ const getFormatText = (time: number | null) => {
   return '텍스트 가이드';
 };
 
-// 카테고리별 섹션 정보 (한국어)
-// 주의: 이 이름들은 DB의 categories 테이블의 name과 정확히 일치해야 합니다!
-const categorySections = [
-  {
-    name: '콘텐츠 제작',
-    description: 'AI로 영상, 이미지, 블로그 콘텐츠 만들기',
-    searchName: '콘텐츠',
-    step: 0
-  },
-  {
-    name: '개발 & 코딩',
-    description: '코드 작성, 디버깅, 기술 개념 설명',
-    searchName: '코딩',
-    step: 7
-  },
-  {
-    name: '글쓰기 & 교정',
-    description: '에세이, 리포트, 성찰문, 발표 스크립트를 AI로 작성하기',
-    searchName: '글쓰기',
-    step: 1
-  },
-  {
-    name: '취업 준비',
-    description: '이력서, 자기소개서, 포트폴리오, 면접 준비',
-    searchName: '취업',
-    step: 4
-  },
-  {
-    name: '연구 & 학습',
-    description: '개념 이해, 노트 정리, 연습 문제 생성 등',
-    searchName: '학습',
-    step: 3
-  }
-];
+// 카테고리별 섹션 정보는 이제 DB에서 가져옵니다
+// 하드코딩 제거됨 - fetchCategories() 사용
 
 const Guides = () => {
   const { user } = useAuth();
@@ -209,24 +177,34 @@ const Guides = () => {
     };
   }, [user, queryClient]);
 
-  // 카테고리 가져오기
-  const { data: categories } = useQuery({
+  // 카테고리 가져오기 (DB에서 동적으로)
+  const { data: categories, isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories
   });
 
-  // 고정된 카테고리 목록 사용 (항상 같은 개수의 쿼리 실행)
-  // 각 카테고리별 가이드북 가져오기
-  const categoryGuidesQueries = categorySections.map((section) =>
-    useQuery({
-      queryKey: ['guidesByCategory', section.name],
-      queryFn: () => fetchGuidesByCategory(section.name),
-      enabled: !!section.name
-    })
-  );
+  // 모든 가이드를 한번에 가져오기 (Hooks 규칙 준수)
+  const { data: allGuidesWithCategories, isLoading: allGuidesWithCategoriesLoading } = useQuery({
+    queryKey: ['allGuidesWithCategories'],
+    queryFn: fetchAllGuides
+  });
 
-  // 표시할 카테고리: 모든 카테고리 표시 (가이드북이 없어도 섹션은 보여줌)
-  const displayCategories = categorySections;
+  // 카테고리별로 가이드 그룹화
+  const categoryGuidesMap = useMemo(() => {
+    if (!allGuidesWithCategories || !categories) return {};
+
+    const map: Record<string, any[]> = {};
+    categories.forEach((category: any) => {
+      map[category.name] = allGuidesWithCategories
+        .filter((guide: any) => (guide.categories as any)?.name === category.name)
+        .slice(0, 4); // 각 카테고리당 최대 4개
+    });
+
+    return map;
+  }, [allGuidesWithCategories, categories]);
+
+  // displayCategories는 categories 데이터 사용
+  const displayCategories = categories || [];
 
   // 검색용 가이드북 가져오기
   const { data: allGuides, isLoading: allGuidesLoading } = useQuery({
@@ -504,7 +482,7 @@ const Guides = () => {
                             {guide.estimated_time && (
                               <>
                                 <Clock className="w-3 h-3" />
-                                <span>{guide.estimated_time}분</span>
+                                <span>{guide.estimated_time}</span>
                               </>
                             )}
                           </div>
@@ -520,18 +498,19 @@ const Guides = () => {
               {/* 메인 콘텐츠 영역 */}
               <div>
                 {/* 카테고리별 가이드북 섹션들 */}
-                {displayCategories.map((section: any, sectionIndex: number) => {
-                  const { data: guides, isLoading } = categoryGuidesQueries[sectionIndex];
+                {displayCategories.map((category: any) => {
+                  const guides = categoryGuidesMap[category.name] || [];
+                  const isLoading = categoriesLoading || allGuidesWithCategoriesLoading;
 
                   return (
-                    <div key={section.name} className="mb-16">
+                    <div key={category.name} className="mb-16">
                       <div className="flex items-center justify-between mb-6">
                         <div className="flex-1">
-                          <h3 className="text-2xl font-bold mb-2">{section.name}</h3>
-                          <p className="text-muted-foreground">{section.description}</p>
+                          <h3 className="text-2xl font-bold mb-2">{category.name}</h3>
+                          <p className="text-muted-foreground">{category.description}</p>
                         </div>
                         <Link
-                          to={`/guides?category=${encodeURIComponent(section.name)}`}
+                          to={`/guides?category=${encodeURIComponent(category.name)}`}
                           className="text-primary hover:underline whitespace-nowrap ml-4"
                         >
                           전체 보기 &gt;
@@ -556,7 +535,7 @@ const Guides = () => {
                       ) : guides && guides.length > 0 ? (
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {guides.map((guide: any) => (
-                            <Link to={`/guides/${guide.id}`} key={guide.id}>
+                            <Link to={`/guides/${guide.id}`} key={guide.id} className="block h-full">
                               <Card className="h-full hover:shadow-lg transition-all hover:border-primary/50 flex flex-col group">
                                 <CardHeader className="pb-3">
                                   <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -579,7 +558,7 @@ const Guides = () => {
                                     {guide.estimated_time && (
                                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Clock className="w-4 h-4" />
-                                        <span>{guide.estimated_time}분</span>
+                                        <span>{guide.estimated_time}</span>
                                       </div>
                                     )}
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
