@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Info, Lightbulb, AlertTriangle, Terminal, XCircle, CheckCircle2 } from "lucide-react";
+import { Check, Info, Lightbulb, AlertTriangle, Terminal, XCircle, CheckCircle2, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -23,6 +23,26 @@ const MarkdownContent = ({ content, className }: MarkdownProps) => (
         </ReactMarkdown>
     </div>
 );
+
+export const ImageDisplayBlock = ({ src, alt }: { src?: string, alt?: string }) => {
+    if (!src) return null;
+    return (
+        <div className="my-6 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm not-prose block w-full max-w-full">
+            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Image</span>
+            </div>
+            <div className="bg-white">
+                <img src={src} alt={alt} className="w-full h-auto block" />
+            </div>
+            {alt && (
+                <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 text-center">
+                    <span className="text-xs text-slate-500 font-medium">{alt}</span>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const GoalBanner = ({ goal, doneWhen }: { goal?: string, doneWhen?: string }) => {
     if (!goal && !doneWhen) return null;
@@ -129,22 +149,65 @@ export const ActionList = ({ content }: { content: string }) => {
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
+                            // Handle Checkboxes (GFM Task Lists)
+                            input: (props) => {
+                                if (props.type === "checkbox") {
+                                    const [checked, setChecked] = React.useState(props.checked);
+                                    return (
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={() => setChecked(!checked)}
+                                            className="appearance-none w-5 h-5 border-2 border-slate-300 rounded bg-white checked:bg-purple-500 checked:border-purple-500 cursor-pointer mr-2 align-text-bottom text-purple-600 focus:ring-purple-500 focus:ring-offset-2 transition-colors relative"
+                                            style={{
+                                                backgroundImage: checked ? `url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e")` : 'none',
+                                                backgroundSize: '100% 100%',
+                                                backgroundPosition: 'center',
+                                                backgroundRepeat: 'no-repeat'
+                                            }}
+                                        />
+                                    );
+                                }
+                                return <input {...props} />;
+                            },
                             // Force both ul and ol to look like numbered steps
                             ul: (props) => <ul className="space-y-4 counter-reset-step" {...props} />,
                             ol: (props) => <ol className="space-y-4 counter-reset-step" {...props} />,
-                            li: (props) => (
-                                <li className="relative pl-10 text-sm text-slate-700 leading-relaxed group">
-                                    {/* Number Badge */}
-                                    <span className="step-badge absolute left-0 top-0 flex items-center justify-center w-6 h-6 text-xs font-bold text-purple-600 bg-purple-100 rounded-full ring-4 ring-white transition-colors z-10">
-                                        {/* CSS Content handles number */}
-                                    </span>
-                                    {/* Optional Connector Line for main steps (visual flair, optional) - skipping for now to reduce clutter */}
+                            li: (props) => {
+                                // Detect if this list item is a task list item (checkbox)
+                                // Standard GFM adds 'task-list-item' class to li
+                                const isClassNameTask = props.className?.includes('task-list-item');
 
-                                    <div className="flex-1">
-                                        {props.children}
-                                    </div>
-                                </li>
-                            ),
+                                const childrenArr = React.Children.toArray(props.children);
+                                const isChildTask = childrenArr.some((child: any) =>
+                                    child?.props?.type === 'checkbox'
+                                );
+
+                                const isTaskItem = isClassNameTask || isChildTask;
+
+                                // If task item, remove numbering badge and reduce padding
+                                if (isTaskItem) {
+                                    return (
+                                        <li className="relative text-sm text-slate-700 leading-relaxed group flex items-start -ml-0 list-none my-1">
+                                            <div className="flex-1">
+                                                {props.children}
+                                            </div>
+                                        </li>
+                                    );
+                                }
+
+                                return (
+                                    <li className="relative pl-10 text-sm text-slate-700 leading-relaxed group">
+                                        {/* Number Badge */}
+                                        <span className="step-badge absolute left-0 top-0 flex items-center justify-center w-6 h-6 text-xs font-bold text-purple-600 bg-purple-100 rounded-full ring-4 ring-white transition-colors z-10">
+                                            {/* CSS Content handles number */}
+                                        </span>
+                                        <div className="flex-1">
+                                            {props.children}
+                                        </div>
+                                    </li>
+                                );
+                            },
                             p: (props) => <span {...props} />,
                         }}
                     >
@@ -174,34 +237,100 @@ export const InputOutputBlock = ({ inputContent, processContent, outputContent }
         // Fallback logic if we just have one block can be complex with 3 items. 
         // But usually we have at least Input+Output or Input+Process+Output.
         // If we strictly have just one, render simple block.
-        const content = cleanQuotes(inputContent || processContent || outputContent || '');
+        // Fallback logic if we just have one block behavior
+        let content = cleanQuotes(inputContent || processContent || outputContent || '');
         const type = inputContent ? 'Input' : (processContent ? 'Process' : 'Output');
+
+        // Extract Footer (same logic as below)
+        let footerText = '';
+        const footerMatch = content.match(/(\n\s*)?((?:👉|➡️|☞).+)$/s) || content.match(/(\n\s*)?(\*\*.*(?:👉|➡️|☞).+\*\*)$/s);
+
+        if (footerMatch) {
+            footerText = footerMatch[2].trim();
+            content = content.replace(footerMatch[0], '').trim();
+        }
+
         return (
-            <div className="mb-8 rounded-xl bg-slate-900 overflow-hidden text-slate-200">
-                <div className="px-5 py-2.5 bg-slate-950 flex items-center justify-between border-b border-slate-800">
-                    <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                        {type === 'Input' ? <Terminal className="w-3.5 h-3.5" /> :
-                            type === 'Process' ? <div className="w-3.5 h-3.5 rounded-full border border-purple-500 bg-purple-500/20" /> :
-                                <div className="w-3.5 h-3.5 rounded-full border border-emerald-500 bg-emerald-500/20" />}
-                        {type} Example
+            <div className="mb-8">
+                <div className="rounded-xl bg-slate-900 overflow-hidden text-slate-200">
+                    <div className="px-5 py-2.5 bg-slate-950 flex items-center justify-between border-b border-slate-800">
+                        <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                            {type === 'Input' ? <Terminal className="w-3.5 h-3.5" /> :
+                                type === 'Process' ? <div className="w-3.5 h-3.5 rounded-full border border-purple-500 bg-purple-500/20" /> :
+                                    <div className="w-3.5 h-3.5 rounded-full border border-emerald-500 bg-emerald-500/20" />}
+                            {type} Example
+                        </div>
+                    </div>
+                    <div className="p-5 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+                        {content}
                     </div>
                 </div>
-                <div className="p-5 font-mono text-sm leading-relaxed whitespace-pre-wrap">
-                    {content}
-                </div>
+
+                {/* Extracted Footer */}
+                {footerText && (
+                    <div className="mt-3 flex items-start gap-2 px-1 animate-in fade-in slide-in-from-top-2 duration-500">
+                        <div className="p-0.5 rounded-full bg-slate-100 text-slate-500 mt-0.5">
+                            <Info className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 text-sm text-slate-600 font-medium whitespace-pre-wrap">
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                    p: ({ node, ...props }) => <span {...props} />,
+                                    strong: ({ node, ...props }) => <span className="font-bold text-slate-800 bg-yellow-100 px-1 rounded mx-0.5" {...props} />
+                                }}
+                            >
+                                {footerText.replace(/^(?:👉|➡️|☞)\s*/, '')}
+                            </ReactMarkdown>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
 
+    // 1. Extract Footer from Output if present (e.g., starts with 👉 or **👉)
+    // The previous cleaner might have removed code fences, but we need to split body and footer.
+    let finalOutput = outputContent ? cleanQuotes(outputContent) : '';
+    let footerText = '';
+
+    // Regex to find footer at the end: matches 👉 ... or **👉 ...** at the end of string
+    const footerMatch = finalOutput.match(/(\n\s*)?((?:👉|➡️|☞).+)$/s) || finalOutput.match(/(\n\s*)?(\*\*.*(?:👉|➡️|☞).+\*\*)$/s);
+
+    if (footerMatch) {
+        footerText = footerMatch[2].trim();
+        finalOutput = finalOutput.replace(footerMatch[0], '').trim();
+    }
+
     const cleanedInput = inputContent ? cleanQuotes(inputContent) : '';
     const cleanedProcess = processContent ? cleanQuotes(processContent) : '';
-    const cleanedOutput = outputContent ? cleanQuotes(outputContent) : '';
+    const cleanedOutput = finalOutput;
 
     const hasProcess = !!cleanedProcess;
 
     // Layout configuration
+    // Dynamic Layout Logic: If Output is significantly longer than Input (e.g. > 2.5x), use Stacked (Vertical) layout.
+    // This prevents the "empty left column" issue when Output is huge.
+    const inputLength = cleanedInput.length || 1;
+    const outputLength = cleanedOutput.length || 0;
+    const isOutputVeryLong = outputLength > inputLength * 2.5 && outputLength > 200; // Thresholds
+
     // If we have Process, use 3 columns on LG. If not, 2 columns.
-    const gridCols = hasProcess ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2";
+    // BUT if output is very long, force single column (vertical stack).
+    const gridCols = (isOutputVeryLong)
+        ? "grid-cols-1"
+        : (hasProcess ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2");
+
+    // Arrows need to rotate if vertical
+    // For vertical (stacked), we use relative positioning (flow) to place it between grid items.
+    // For horizontal, we use absolute positioning to float over the grid gap/content.
+    const arrowClass = (isOutputVeryLong)
+        ? "relative h-0 flex justify-center items-center z-20 rotate-90" // Vertical: flow item, collapse height
+        : "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 hidden lg:flex"; // Horizontal: absolute
+
+    // Position adjustments for horizontal arrows
+    const arrow1Pos = (isOutputVeryLong) ? "" : (hasProcess ? "left-[33%]" : "left-1/2");
+    const arrow2Pos = (isOutputVeryLong) ? "" : "left-[66%]";
 
     return (
         <div className="mb-8">
@@ -228,7 +357,7 @@ export const InputOutputBlock = ({ inputContent, processContent, outputContent }
                 )}
 
                 {/* Arrow 1: Input -> Next (Process or Output) */}
-                <div className={`hidden lg:flex absolute top-1/2 -translate-y-1/2 z-10 ${hasProcess ? 'left-[33%]' : 'left-1/2'} -translate-x-1/2`}>
+                <div className={`${arrowClass} ${arrow1Pos}`}>
                     <div className="bg-white rounded-full p-2 shadow-xl border-4 border-slate-100">
                         <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
@@ -254,7 +383,7 @@ export const InputOutputBlock = ({ inputContent, processContent, outputContent }
                         </div>
 
                         {/* Arrow 2: Process -> Output */}
-                        <div className="hidden lg:flex absolute left-[66%] top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                        <div className={`${arrowClass} ${arrow2Pos}`}>
                             <div className="bg-white rounded-full p-2 shadow-xl border-4 border-slate-100">
                                 <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
@@ -281,6 +410,26 @@ export const InputOutputBlock = ({ inputContent, processContent, outputContent }
                     </div>
                 )}
             </div>
+
+            {/* Extracted Footer */}
+            {footerText && (
+                <div className="mt-3 flex items-start gap-2 px-1 animate-in fade-in slide-in-from-top-2 duration-500">
+                    <div className="p-0.5 rounded-full bg-slate-100 text-slate-500 mt-0.5">
+                        <Info className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex-1 text-sm text-slate-600 font-medium whitespace-pre-wrap">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                p: ({ node, ...props }) => <span {...props} />,
+                                strong: ({ node, ...props }) => <span className="font-bold text-slate-800 bg-yellow-100 px-1 rounded mx-0.5" {...props} />
+                            }}
+                        >
+                            {footerText.replace(/^(?:👉|➡️|☞)\s*/, '')}
+                        </ReactMarkdown>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -635,11 +784,15 @@ export const ExampleBlock = ({ type, content }: { type: 'Input' | 'Process' | 'O
 };
 
 // Helper for tool URLs
-const getToolUrl = (name?: string, url?: string) => {
+const getToolUrl = (name?: string, url?: string): string | null => {
     if (url) return url;
-    if (!name) return 'https://chat.openai.com'; // Default
+    if (!name) return null; // No default if no name
 
     const lower = name.toLowerCase();
+
+    // Explicitly hide Run button for Developer Essentials (Git, Tools, etc.)
+    if (lower.includes('developer essentials')) return null;
+
     if (lower.includes('chatgpt') || lower.includes('gpt')) return 'https://chat.openai.com';
     if (lower.includes('claude')) return 'https://claude.ai';
     if (lower.includes('gemini')) return 'https://gemini.google.com';
@@ -647,7 +800,7 @@ const getToolUrl = (name?: string, url?: string) => {
     if (lower.includes('notion')) return 'https://www.notion.so';
     if (lower.includes('wrtn') || lower.includes('뤼튼')) return 'https://wrtn.ai';
 
-    return 'https://chat.openai.com'; // Fallback
+    return 'https://chat.openai.com'; // Fallback for unknown names
 };
 
 export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: string, toolName?: string, toolUrl?: string, title?: string }) => {
@@ -686,6 +839,44 @@ export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: stri
         }
     }
 
+    // 3. Checklist Detection & Processing
+    // Helper to remove common leading whitespace (dedent)
+    const dedent = (str: string) => {
+        const lines = str.split('\n');
+        // Find minimum indentation of non-empty lines, ignoring the first line if it's potentially on the same line as the opening fence (rare in this logic but possible)
+        // Usually copy block content starts after newline.
+        const indentLengths = lines
+            .filter(line => line.trim().length > 0)
+            .map(line => {
+                const match = line.match(/^(\s*)/);
+                return match ? match[1].length : 0;
+            });
+
+        if (indentLengths.length === 0) return str;
+
+        const minIndent = Math.min(...indentLengths);
+        if (minIndent === 0) return str;
+
+        return lines.map(line => line.length >= minIndent ? line.slice(minIndent) : line).join('\n');
+    };
+
+    const dedentedContent = dedent(mainContent);
+
+    // Pre-process content to ensure checklists are rendered correctly
+    let processedContent = dedentedContent
+        // 1. Convert plain "[ ]" to "- [ ]" (if not already bullets)
+        .replace(/^(\s*)\[ \]/gm, '$1- [ ]')
+        .replace(/^(\s*)\[x\]/gm, '$1- [x]')
+        // 2. Normalize existing bullets "- [ ]" to ensure space "- [ ] "
+        .replace(/^(\s*)-\s*\[ \]\s?/gm, '$1- [ ] ')
+        .replace(/^(\s*)-\s*\[x\]\s?/gm, '$1- [x] ')
+        // 3. Ensure blank line before list starts (fix for "Text\n- [ ]")
+        .replace(/([^\n])\n(\s*-\s\[[ x]\])/g, '$1\n\n$2');
+
+    const isChecklist = processedContent.includes('- [ ]') || processedContent.includes('- [x]');
+
+    const toolLink = getToolUrl(toolName, toolUrl);
+
     const handleCopy = async () => {
         try {
             await navigator.clipboard.writeText(mainContent);
@@ -698,10 +889,77 @@ export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: stri
 
     const handleRun = () => {
         handleCopy();
-        const url = getToolUrl(toolName, toolUrl);
-        window.open(url, '_blank');
+        if (toolLink) {
+            window.open(toolLink, '_blank');
+        }
     };
 
+    const isExplicitCopyBlock = title && (title.includes('복붙 블록') || title.toLowerCase().includes('copy block'));
+
+    // Render as Checklist UI (No Run/Copy buttons, Interactive Checkboxes)
+    // ONLY if it's NOT explicitly marked as a Copy Block
+    if (isChecklist && !isExplicitCopyBlock) {
+        return (
+            <div className="mb-8 group">
+                <div className="relative rounded-xl border border-purple-200 bg-white overflow-hidden shadow-sm transition-all hover:border-purple-300">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50/50">
+                        <div className="flex items-center gap-2">
+                            <div className="p-1 rounded bg-white border border-purple-100 shadow-sm text-purple-600">
+                                <CheckCircle2 className="w-3 h-3" />
+                            </div>
+                            <span className="font-bold text-sm text-slate-800">{title || "Checklist"}</span>
+                        </div>
+                        {/* No Buttons for Checklist */}
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6 text-sm text-slate-700 leading-snug font-sans">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                // Handle Checkboxes (Same as ActionList)
+                                input: (props) => {
+                                    if (props.type === "checkbox") {
+                                        const [checked, setChecked] = React.useState(props.checked);
+                                        return (
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => setChecked(!checked)}
+                                                className="appearance-none w-5 h-5 border-2 border-slate-300 rounded bg-white checked:bg-purple-500 checked:border-purple-500 cursor-pointer mr-2 align-text-bottom text-purple-600 focus:ring-purple-500 focus:ring-offset-2 transition-colors relative"
+                                                style={{
+                                                    backgroundImage: checked ? `url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e")` : 'none',
+                                                    backgroundSize: '100% 100%',
+                                                    backgroundPosition: 'center',
+                                                    backgroundRepeat: 'no-repeat'
+                                                }}
+                                            />
+                                        );
+                                    }
+                                    return <input {...props} />;
+                                },
+                                li: (props) => (
+                                    <li className="list-none flex items-start -ml-0 my-1 text-slate-700 leading-relaxed group">
+                                        <div className="flex-1">
+                                            {props.children}
+                                        </div>
+                                    </li>
+                                ),
+                                ul: (props) => <ul className="space-y-2 mb-4" {...props} />,
+                                ol: (props) => <ol className="space-y-2 mb-4" {...props} />,
+                                p: (props) => <span {...props} />,
+                            }}
+                        >
+                            {processedContent}
+                        </ReactMarkdown>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Default Code Block Render (Standard UI)
     return (
         <div className="mb-8 group">
             <div className="relative rounded-xl border border-slate-200 bg-slate-50 overflow-hidden transition-all hover:border-slate-300 hover:shadow-sm">
@@ -714,13 +972,15 @@ export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: stri
                         <span className="font-semibold text-sm text-slate-700">{title || "Copy Block"}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleRun}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md hover:opacity-90 transition-opacity shadow-sm"
-                        >
-                            <Terminal className="w-3.5 h-3.5" />
-                            <span>Run</span>
-                        </button>
+                        {toolLink && (
+                            <button
+                                onClick={handleRun}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md hover:opacity-90 transition-opacity shadow-sm"
+                            >
+                                <Terminal className="w-3.5 h-3.5" />
+                                <span>Run</span>
+                            </button>
+                        )}
                         <button
                             onClick={handleCopy}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
@@ -749,29 +1009,70 @@ export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: stri
                         remarkPlugins={[remarkGfm]}
                         components={{
                             code: ({ node, ...props }) => <span className="font-mono text-slate-800 bg-slate-200/60 px-1 py-0.5 rounded text-[13px]" {...props} />,
+                            input: (props) => {
+                                if (props.type === "checkbox") {
+                                    const [checked, setChecked] = React.useState(props.checked);
+                                    return (
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={() => setChecked(!checked)}
+                                            className="appearance-none w-5 h-5 border-2 border-slate-300 rounded bg-white checked:bg-purple-500 checked:border-purple-500 cursor-pointer mr-2 align-text-bottom text-purple-600 focus:ring-purple-500 focus:ring-offset-2 transition-colors relative"
+                                            style={{
+                                                backgroundImage: checked ? `url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e")` : 'none',
+                                                backgroundSize: '100% 100%',
+                                                backgroundPosition: 'center',
+                                                backgroundRepeat: 'no-repeat'
+                                            }}
+                                        />
+                                    );
+                                }
+                                return <input {...props} />;
+                            },
+                            li: (props) => (
+                                <li className="list-none flex items-start -ml-0 my-1 text-slate-700 leading-relaxed group">
+                                    <div className="flex-1">
+                                        {props.children}
+                                    </div>
+                                </li>
+                            ),
+                            ul: (props) => <ul className="space-y-2 mb-4" {...props} />,
+                            ol: (props) => <ol className="space-y-2 mb-4" {...props} />,
+                            p: (props) => <span {...props} />,
                             pre: ({ node, ...props }) => {
                                 const { ref, ...rest } = props as any;
                                 return <div className="not-prose" {...rest} />;
                             },
-                            p: ({ node, ...props }) => <div className="mb-1 last:mb-0" {...props} />,
-                            ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-0.5 my-1" {...props} />,
-                            ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-0.5 my-1" {...props} />,
                         }}
                     >
-                        {mainContent}
+                        {processedContent}
                     </ReactMarkdown>
                 </div>
 
             </div>
 
             {/* Footer (if exists) - Moved outside */}
-            {footerText && (
-                <div className="mt-2.5 flex items-start gap-1.5 px-1 text-xs text-slate-500 font-medium whitespace-pre-wrap">
-                    <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-slate-400" />
-                    <span>{footerText}</span>
-                </div>
-            )}
-        </div>
+            {
+                footerText && (
+                    <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex items-start gap-2 text-sm text-slate-600">
+                        <div className="flex-shrink-0 mt-0.5">
+                            <Info className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <div className="flex-1 whitespace-pre-wrap">
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                    p: (props) => <span {...props} />,
+                                    strong: (props) => <span className="font-bold text-slate-800 bg-yellow-100 px-1 rounded mx-0.5" {...props} />
+                                }}
+                            >
+                                {footerText}
+                            </ReactMarkdown>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
@@ -841,15 +1142,8 @@ export const TipsBlock = ({ content }: { content: string | null | undefined }) =
     );
 };
 
-export const ChecklistBlock = ({ content, guideId, stepId }: { content: string | null | undefined, guideId?: number, stepId?: number | string }) => {
+export const ChecklistBlock = ({ content, guideId, stepId }: { content: string | any[] | null | undefined, guideId?: number, stepId?: number | string }) => {
     const [items, setItems] = React.useState<{ id: string; text: string; checked: boolean }[]>([]);
-
-    // Default content if missing
-    const effectiveContent = content || `
-- [ ] 내용을 충분히 이해했나요?
-- [ ] 프롬프트를 직접 실행해 보았나요?
-- [ ] 결과물이 만족스러운지 확인했나요?
-`;
 
     // Initial parse
     React.useEffect(() => {
@@ -866,7 +1160,54 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
             }
         }
 
-        const lines = effectiveContent.split(/\r?\n/);
+        // Handle JSON array (from DB jsonb column)
+        if (Array.isArray(content)) {
+            const parsedItems = content.map((item: any, index: number) => {
+                const id = item.id || `item-${index}`;
+                const text = item.text || JSON.stringify(item);
+                const checked = storageKey && (id in savedState) ? savedState[id] : false;
+                return { id, text, checked };
+            });
+            setItems(parsedItems);
+            return;
+        }
+
+        // Handle String content
+        let stringContent = "";
+        if (typeof content === 'string') {
+            // Try parsing JSON string
+            try {
+                const parsedJson = JSON.parse(content);
+                if (Array.isArray(parsedJson)) {
+                    const parsedItems = parsedJson.map((item: any, index: number) => {
+                        const id = item.id || `item-${index}`;
+                        const text = item.text || JSON.stringify(item);
+                        const checked = storageKey && (id in savedState) ? savedState[id] : false;
+                        return { id, text, checked };
+                    });
+                    setItems(parsedItems);
+                    return;
+                }
+            } catch (e) {
+                // Not JSON, continue to Markdown parsing
+            }
+            stringContent = content;
+        }
+
+        // Default content if missing
+        if (!stringContent) {
+            if (!content) { // Only use default if specific content is null/undefined
+                stringContent = `
+- [ ] 내용을 충분히 이해했나요?
+- [ ] 프롬프트를 직접 실행해 보았나요?
+- [ ] 결과물이 만족스러운지 확인했나요?
+`;
+            } else {
+                return; // content exists but empty string or similar, do nothing
+            }
+        }
+
+        const lines = stringContent.split(/\r?\n/);
         const parsedItems = lines
             .map((line, index) => {
                 // Match "- [ ] text" or "- [x] text" or just "- text" with optional leading whitespace
@@ -885,7 +1226,7 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
             .filter((item): item is { id: string; text: string; checked: boolean } => item !== null);
 
         setItems(parsedItems);
-    }, [effectiveContent, guideId, stepId]);
+    }, [content, guideId, stepId]);
 
     const toggleItem = (itemId: string) => {
         setItems(prev => {

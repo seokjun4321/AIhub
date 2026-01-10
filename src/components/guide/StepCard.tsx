@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, InputOutputBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock, ComparisonBlock } from "./StepBlockComponents";
+import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, InputOutputBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock, ComparisonBlock, ImageDisplayBlock } from "./StepBlockComponents";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -55,8 +55,9 @@ interface CopyBlockData {
   content: string;
 }
 
-interface ParsedSections extends Record<string, string | CopyBlockData[] | any> {
+interface ParsedSections extends Record<string, string | CopyBlockData[] | { src: string, alt: string }[] | any> {
   copyBlocks?: CopyBlockData[];
+  images?: { src: string, alt: string }[];
 }
 
 const parseStepContent = (content: string | null): ParsedSections => {
@@ -66,6 +67,9 @@ const parseStepContent = (content: string | null): ParsedSections => {
   const lines = content.split(/\r?\n/);
   let currentKey = 'intro';
   let buffer: string[] = [];
+
+  // Image extraction
+  let images: { src: string, alt: string }[] = [];
 
   // For multi-block support
   let copyBlocks: CopyBlockData[] = [];
@@ -100,6 +104,19 @@ const parseStepContent = (content: string | null): ParsedSections => {
   };
 
   lines.forEach(line => {
+    // 1. Check for Image Markdown: ![alt](src)
+    // We only extract standalone image lines. Inline images might be tricky, assuming block for now.
+    const imageMatch = line.match(/^\s*!\[(.*?)\]\((.*?)\)\s*$/);
+    if (imageMatch) {
+      // It's an image line!
+      flush(); // Flush content before this image
+      images.push({
+        alt: imageMatch[1],
+        src: imageMatch[2]
+      });
+      return; // Skip adding this line to buffer
+    }
+
     // Only match markdown headers: #### Title
     const matchHash = line.match(/^\s*(#{2,6})\s+(.+)$/);
 
@@ -144,19 +161,24 @@ const parseStepContent = (content: string | null): ParsedSections => {
     sections['copyBlocks'] = copyBlocks;
   }
 
+  // Attach collected images
+  if (images.length > 0) {
+    sections['images'] = images;
+  }
+
   // Post-process: Split 'example' section into 'input', 'process', and 'output' parts
   if (sections.example && typeof sections.example === 'string' && !sections.input_example && !sections.output_example) {
     const exampleText = sections.example;
 
     // Regex to match sections
-    // Input: starts with **입력 or **Input, captures until **과정 or **Process or **출력 or **Output or end
-    const inputMatch = exampleText.match(/\*\*(?:입력|Input)[^*]*\*\*\s*:?\s*([^]*?)(?=\*\*(?:과정|Process|출력|Output)|\s*$)/i);
+    // Input: starts with **...입력... or **...Input..., captures until next block
+    const inputMatch = exampleText.match(/\*\*[^*]*(?:입력|Input)[^*]*\*\*\s*:?\s*([^]*?)(?=\*\*[^*]*(?:과정|Process|출력|Output|반환|결과|Result|Response)[^*]*\*\*|\s*$)/i);
 
-    // Process: starts with **과정 or **Process, captures until **출력 or **Output or end
-    const processMatch = exampleText.match(/\*\*(?:과정|Process)[^*]*\*\*\s*:?\s*([^]*?)(?=\*\*(?:출력|Output)|\s*$)/i);
+    // Process: starts with **...과정... or **...Process..., captures until next block
+    const processMatch = exampleText.match(/\*\*[^*]*(?:과정|Process)[^*]*\*\*\s*:?\s*([^]*?)(?=\*\*[^*]*(?:출력|Output|반환|결과|Result|Response)[^*]*\*\*|\s*$)/i);
 
-    // Output: starts with **출력 or **Output, captures until end
-    const outputMatch = exampleText.match(/\*\*(?:출력|Output)[^*]*\*\*\s*:?\s*([^]*?)$/i);
+    // Output: starts with **...출력... or **...Output... or **...반환..., captures until end
+    const outputMatch = exampleText.match(/\*\*[^*]*(?:출력|Output|반환|결과|Result|Response)[^*]*\*\*\s*:?\s*([^]*?)$/i);
 
     if (inputMatch) {
       sections.input_example = inputMatch[1].trim();
@@ -344,6 +366,13 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
               <ComparisonBlock content={parsedContent.comparison} />
 
               <ActionList content={actions} />
+
+              {/* Render extracted Images */}
+              {parsedContent.images && parsedContent.images.length > 0 && (
+                parsedContent.images.map((img, idx) => (
+                  <ImageDisplayBlock key={idx} src={img.src} alt={img.alt} />
+                ))
+              )}
 
               {/* Render multiple copy blocks if available, else fallback to single block */}
               {parsedContent.copyBlocks && parsedContent.copyBlocks.length > 0 ? (
