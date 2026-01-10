@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, InputOutputBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock } from "./StepBlockComponents";
+import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, InputOutputBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock, ComparisonBlock } from "./StepBlockComponents";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -50,20 +50,50 @@ export interface StepCardProps {
 }
 
 // Simple markdown splitter (Fallback)
-const parseStepContent = (content: string | null) => {
+interface CopyBlockData {
+  title: string;
+  content: string;
+}
+
+interface ParsedSections extends Record<string, string | CopyBlockData[] | any> {
+  copyBlocks?: CopyBlockData[];
+}
+
+const parseStepContent = (content: string | null): ParsedSections => {
   if (!content) return {};
 
-  const sections: Record<string, string> = {};
+  const sections: ParsedSections = {};
   const lines = content.split(/\r?\n/);
   let currentKey = 'intro';
   let buffer: string[] = [];
 
+  // For multi-block support
+  let copyBlocks: CopyBlockData[] = [];
+  let currentCopyBlockTitle = "Copy Block";
+
   const flush = () => {
     if (buffer.length > 0) {
-      if (sections[currentKey]) {
-        sections[currentKey] += '\n' + buffer.join('\n').trim();
+      const text = buffer.join('\n').trim();
+
+      if (currentKey === 'copyPrompt') {
+        // Add to array instead of overwriting
+        copyBlocks.push({
+          title: currentCopyBlockTitle,
+          content: text
+        });
+        // Also keep legacy field for backward compatibility if it's the first one
+        if (!sections['copyPrompt']) {
+          sections['copyPrompt'] = text;
+        }
       } else {
-        sections[currentKey] = buffer.join('\n').trim();
+        if (sections[currentKey]) {
+          // If string, append. If array/object, ignore for now (simplified)
+          if (typeof sections[currentKey] === 'string') {
+            sections[currentKey] += '\n' + text;
+          }
+        } else {
+          sections[currentKey] = text;
+        }
       }
     }
     buffer = [];
@@ -76,17 +106,23 @@ const parseStepContent = (content: string | null) => {
     if (matchHash) {
       flush();
 
-      const rawTitle = matchHash[2].trim().toLowerCase();
-
-      const t = rawTitle;
+      const rawTitle = matchHash[2].trim();
+      const lowerTitle = rawTitle.toLowerCase(); // Case-insensitive matching
+      const t = lowerTitle;
 
       // Extract marker patterns like (A), (B), (C), (D), (E) from the title
       const markerMatch = t.match(/\(([a-e])\)/i);
       const marker = markerMatch ? markerMatch[1].toLowerCase() : null;
       console.log('[PARSER] rawTitle:', rawTitle, '| marker:', marker);
 
-      if (marker === 'b' || t.includes('action') || t.includes('할 일') || t.includes('할일') || t.includes('실행') || t.includes('따라하기')) currentKey = 'actions';
-      else if (marker === 'c' || t.includes('복붙') || t.includes('copy') || t.includes('template') || t.includes('템플릿')) currentKey = 'copyPrompt';
+      if (t.includes('cmp') || t.includes('비교') || t.includes('comparison')) currentKey = 'comparison';
+      else if (marker === 'b' || t.includes('action') || t.includes('할 일') || t.includes('할일') || t.includes('실행') || t.includes('따라하기')) currentKey = 'actions';
+      else if (marker === 'c' || t.includes('복붙') || t.includes('copy') || t.includes('template') || t.includes('템플릿')) {
+        currentKey = 'copyPrompt';
+        // Use the raw title (without marker if possible, or just raw) as the block title
+        // e.g. "#### (C) 과학 분야 예시" -> "과학 분야 예시"
+        currentCopyBlockTitle = rawTitle.replace(/^\([a-e]\)\s*/i, '').trim() || "Copy Block";
+      }
       else if (marker === 'e' || t.includes('분기') || t.includes('branch') || t.includes('선택')) currentKey = 'branch';
       else if (marker === 'd' || t.includes('example') || t.includes('예시')) currentKey = 'example';
       else if (marker === 'a' || t.includes('goal') || t.includes('목표') || t.includes('핵심')) currentKey = 'goal';
@@ -103,8 +139,13 @@ const parseStepContent = (content: string | null) => {
   });
   flush();
 
+  // Attach collected copy blocks
+  if (copyBlocks.length > 0) {
+    sections['copyBlocks'] = copyBlocks;
+  }
+
   // Post-process: Split 'example' section into 'input', 'process', and 'output' parts
-  if (sections.example && !sections.input_example && !sections.output_example) {
+  if (sections.example && typeof sections.example === 'string' && !sections.input_example && !sections.output_example) {
     const exampleText = sections.example;
 
     // Regex to match sections
@@ -167,10 +208,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
 
   // Handle content that doesn't fit the strict schema (fallback)
   // detailed check: if we have any structured columns OR parsed sections beyond intro
-  console.log('RAW STEP CONTENT:', step.content);
-  console.log('PARSED CONTENT KEYS:', Object.keys(parsedContent));
-  console.log('PARSED BRANCH:', parsedContent.branch);
-  console.log('PARSED COPY PROMPT:', parsedContent.copyPrompt);
+
   const hasStructuredContent = Boolean(
     goal || doneWhen || whyMatters || tips || checklist ||
     actions || inputExample || processExample || outputExample || generalExample ||
@@ -303,9 +341,24 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
 
               <WhyThisMatters content={whyMatters} />
 
+              <ComparisonBlock content={parsedContent.comparison} />
+
               <ActionList content={actions} />
 
-              <CopyBlock content={copyPrompt} toolName={toolName} toolUrl={toolUrl} />
+              {/* Render multiple copy blocks if available, else fallback to single block */}
+              {parsedContent.copyBlocks && parsedContent.copyBlocks.length > 0 ? (
+                parsedContent.copyBlocks.map((block, index) => (
+                  <CopyBlock
+                    key={index}
+                    content={block.content}
+                    toolName={toolName}
+                    toolUrl={toolUrl}
+                    title={block.title}
+                  />
+                ))
+              ) : (
+                <CopyBlock content={copyPrompt} toolName={toolName} toolUrl={toolUrl} />
+              )}
 
               <BranchBlock content={branch} />
 

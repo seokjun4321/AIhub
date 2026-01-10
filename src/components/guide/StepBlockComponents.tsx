@@ -6,10 +6,11 @@ import remarkGfm from 'remark-gfm';
 
 interface MarkdownProps {
     content: string;
+    className?: string;
 }
 
-const MarkdownContent = ({ content }: MarkdownProps) => (
-    <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1">
+const MarkdownContent = ({ content, className }: MarkdownProps) => (
+    <div className={cn("prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1", className)}>
         <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
@@ -46,7 +47,12 @@ export const GoalBanner = ({ goal, doneWhen }: { goal?: string, doneWhen?: strin
                         </div>
                         <span className="font-bold text-xs uppercase tracking-wider">Done When</span>
                     </div>
-                    <MarkdownContent content={doneWhen} />
+                    {/* Replace plain newlines with "  \n" to force Markdown hard breaks */
+                    /* Also handle escaped newlines just in case */}
+                    <MarkdownContent
+                        content={doneWhen.replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
+                        className="[&_p]:whitespace-pre-line"
+                    />
                 </div>
             )}
         </div>
@@ -644,7 +650,7 @@ const getToolUrl = (name?: string, url?: string) => {
     return 'https://chat.openai.com'; // Fallback
 };
 
-export const CopyBlock = ({ content, toolName, toolUrl }: { content: string, toolName?: string, toolUrl?: string }) => {
+export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: string, toolName?: string, toolUrl?: string, title?: string }) => {
     if (!content) return null;
     const [copied, setCopied] = React.useState(false);
 
@@ -705,7 +711,7 @@ export const CopyBlock = ({ content, toolName, toolUrl }: { content: string, too
                         <div className="p-1 rounded bg-white border border-slate-200 shadow-sm">
                             <Terminal className="w-3 h-3 text-slate-500" />
                         </div>
-                        <span className="font-semibold text-sm text-slate-700">Copy Block</span>
+                        <span className="font-semibold text-sm text-slate-700">{title || "Copy Block"}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
@@ -927,6 +933,43 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
                         </span>
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+};
+
+// Comparison Block for tables
+export const ComparisonBlock = ({ content }: { content: string | null | undefined }) => {
+    if (!content) return null;
+
+    return (
+        <div className="mb-8 font-sans">
+            <div className="flex items-center gap-2 mb-3 text-slate-700">
+                <div className="p-1 rounded bg-slate-100 border border-slate-200">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                </div>
+                <h4 className="font-bold text-sm uppercase tracking-wide">Comparison</h4>
+            </div>
+            <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="markdown-table-wrapper overflow-x-auto">
+                    <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            table: ({ node, ...props }) => <table className="w-full text-sm text-left text-slate-600 font-sans" {...props} />,
+                            thead: ({ node, ...props }) => <thead className="text-sm text-slate-700 bg-slate-50 border-b border-slate-200" {...props} />,
+                            tbody: ({ node, ...props }) => <tbody className="bg-white divide-y divide-slate-100" {...props} />,
+                            tr: ({ node, ...props }) => <tr className="hover:bg-slate-50/50 transition-colors" {...props} />,
+                            th: ({ node, ...props }) => <th className="px-6 py-3 font-semibold text-slate-900 bg-slate-50" {...props} />,
+                            td: ({ node, ...props }) => <td className="px-6 py-4 whitespace-pre-wrap leading-relaxed align-top border-r last:border-r-0 border-slate-100" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
+                            p: ({ node, ...props }) => <p className="m-0" {...props} />,
+                        }}
+                    >
+                        {content}
+                    </ReactMarkdown>
+                </div>
             </div>
         </div>
     );
