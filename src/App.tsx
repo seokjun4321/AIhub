@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import ScrollToTop from './components/ui/ScrollToTop';
-import Index from './pages/Index';
+import NewHome from './pages/NewHome';
 import Guides from './pages/Guides';
 import GuideDetail from './pages/GuideDetail';
 import Community from './pages/Community';
@@ -31,7 +31,7 @@ function App() {
     <>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<NewHome />} />
         <Route path="/guides" element={<Guides />} />
         <Route path="/guides/:id" element={<GuideDetail />} />
         {/* Guidebook 라우팅 (Tools/ToolDetail/GuideDetail 재사용) */}
