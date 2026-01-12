@@ -26,6 +26,9 @@ import ToolProposals from "./pages/admin/ToolProposals";
 import MyTools from "./pages/MyTools";
 
 
+import WorkflowDetail from "./pages/WorkflowDetail";
+import SellPreset from "./pages/SellPreset";
+
 function App() {
   return (
     <>
@@ -41,6 +44,8 @@ function App() {
         {/* 새로운 가이드북 디자인 라우트 */}
 
         <Route path="/presets" element={<PresetStore />} />
+        <Route path="/workflows/:id" element={<WorkflowDetail />} />
+        <Route path="/sell-preset" element={<SellPreset />} />
         <Route path="/community" element={<Community />} />
         <Route path="/community/:id" element={<PostDetail />} />
         <Route path="/community/new" element={<ProtectedRoute><NewPost /></ProtectedRoute>} />
