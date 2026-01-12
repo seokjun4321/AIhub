@@ -740,8 +740,8 @@ function NewHome() {
                 {/* AI Tool Directory Section */}
                 <section id="tools" className="section reveal">
                     <div className="new-home-container text-center">
-                        <h2 className="section-title">AI 도구 디렉토리</h2>
-                        <p className="section-subtitle">필터로 찾고, 비교로 결정하세요</p>
+                        <h2 className="section-title">AI 도구</h2>
+                        <p className="section-subtitle">AI의 정보를 쉽게 찾고 비교하세요</p>
                     </div>
 
                     <div className="directory-marquee-wrapper">
