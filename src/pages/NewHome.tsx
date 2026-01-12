@@ -609,10 +609,61 @@ function NewHome() {
                             </svg>
                         </Link>
 
-                        <div className="features-row green">
-                            <span>⚡ 단계별로 따라하면 바로 결과물 완성</span>
-                            <span>⚙️ 실무에 바로 적용 가능한 실전 레시피</span>
-                            <span>💡 초보자도 쉽게 이해하는 상세 설명</span>
+
+
+                        {/* Process Steps for Guidebook */}
+                        <div className="process-steps" style={{ marginBottom: '2rem' }}>
+                            <div className="step-item">
+                                <div className="step-square">1</div>
+                                <div className="step-text">
+                                    <strong>선택</strong>
+                                    가이드북 고르기
+                                </div>
+                            </div>
+                            <div className="step-line"></div>
+                            <div className="step-item">
+                                <div className="step-square">2</div>
+                                <div className="step-text">
+                                    <strong>따라하기</strong>
+                                    Step-by-step
+                                    <br />
+                                    체크하며 진행
+                                </div>
+                            </div>
+                            <div className="step-line"></div>
+                            <div className="step-item" style={{ width: '120px' }}>
+                                <div className="step-square">3</div>
+                                <div className="step-text">
+                                    <strong>실행</strong>
+                                    프롬프트 복사
+                                    <br />
+                                    → 결과 완성
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Detailed Features Pills */}
+                        <div className="features-row" style={{ gap: '0.75rem', marginBottom: '4rem' }}>
+                            <span className="badge-green feature-badge">
+                                Step-by-step
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.5 }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" /></svg>
+                                <span className="custom-tooltip">체크하면서 따라하면 끝.</span>
+                            </span>
+                            <span className="badge-orange feature-badge">
+                                Prompt Pack
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.5 }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" /></svg>
+                                <span className="custom-tooltip">복사해서 바로 쓰는 프롬프트 묶음.</span>
+                            </span>
+                            <span className="badge-purple feature-badge">
+                                실수&팁
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.5 }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" /></svg>
+                                <span className="custom-tooltip">자주 틀리는 포인트를 미리 방지.</span>
+                            </span>
+                            <span className="badge-blue feature-badge">
+                                미니 체크리스트
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.5 }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" /></svg>
+                                <span className="custom-tooltip">완료 기준을 한눈에 확인.</span>
+                            </span>
                         </div>
                     </div>
 
@@ -636,39 +687,47 @@ function NewHome() {
                             </svg>
                         </Link>
 
-                        <div className="features-row purple">
-                            <span>🚀 복사 한 번으로 즉시 사용 가능</span>
-                            <span>🕒 시간 절약, 검증된 템플릿</span>
-                            <span>🎯 전문가가 만든 최적화 프리셋</span>
-                        </div>
-
-                        <div className="process-steps">
+                        {/* Process Steps for Presets */}
+                        <div className="process-steps" style={{ marginBottom: '2rem' }}>
                             <div className="step-item">
-                                <div className="step-circle">1</div>
+                                <div className="step-square">1</div>
                                 <div className="step-text">
                                     <strong>Copy</strong>
-                                    <br />
                                     프리셋 복사
                                 </div>
                             </div>
                             <div className="step-line"></div>
                             <div className="step-item">
-                                <div className="step-circle">2</div>
+                                <div className="step-square">2</div>
                                 <div className="step-text">
                                     <strong>Paste</strong>
-                                    <br />
                                     도구에 붙여넣기
                                 </div>
                             </div>
                             <div className="step-line"></div>
                             <div className="step-item">
-                                <div className="step-circle">3</div>
+                                <div className="step-square">3</div>
                                 <div className="step-text">
                                     <strong>Run</strong>
-                                    <br />
                                     실행하고 완료!
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Preset Features Badges */}
+                        <div className="features-row" style={{ gap: '0.75rem', marginBottom: '4rem' }}>
+                            <span className="badge-orange feature-badge">
+                                🚀 즉시 사용
+                                <span className="custom-tooltip">복사 한 번으로 즉시 사용 가능</span>
+                            </span>
+                            <span className="badge-blue feature-badge">
+                                🕒 시간 절약
+                                <span className="custom-tooltip">시간 절약, 검증된 템플릿</span>
+                            </span>
+                            <span className="badge-purple feature-badge">
+                                🎯 최적화 완료
+                                <span className="custom-tooltip">전문가가 만든 최적화 프리셋</span>
+                            </span>
                         </div>
                     </div>
 
