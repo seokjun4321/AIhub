@@ -50,7 +50,7 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] h-full p-0 flex flex-col gap-0 overflow-hidden">
+            <DialogContent className="max-w-7xl h-[750px] max-h-[90vh] p-0 flex flex-col gap-0 overflow-hidden">
                 {/* Header */}
                 <div className="p-6 border-b border-border bg-card">
                     <div className="flex items-center gap-3 mb-2">
@@ -100,46 +100,50 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
 
                         {/* Content Area */}
                         <ScrollArea className="flex-1 p-6 h-full">
-                            <TabsContent value="overview" className="mt-0 space-y-8">
-                                <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-semibold">변수 입력</h3>
-                                        <Button variant="outline" size="sm" onClick={fillExample}>
-                                            예시 채우기
-                                        </Button>
+                            <TabsContent value="overview" className="mt-0 h-full">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+                                    {/* Left: Input Variables */}
+                                    <div className="flex flex-col h-full">
+                                        <div className="flex items-center justify-between mb-4 shrink-0">
+                                            <h3 className="text-lg font-semibold">변수 입력</h3>
+                                            <Button variant="outline" size="sm" onClick={fillExample}>
+                                                예시 채우기
+                                            </Button>
+                                        </div>
+                                        <div className="grid gap-4 overflow-y-auto pr-2">
+                                            {item.variables.map((v) => (
+                                                <div key={v.name} className="space-y-1.5">
+                                                    <Label className="text-sm font-medium flex items-center gap-2">
+                                                        {v.name}
+                                                        <span className="text-xs text-muted-foreground font-normal">({v.placeholder})</span>
+                                                    </Label>
+                                                    <Input
+                                                        value={variables[v.name] || ""}
+                                                        onChange={(e) => handleVariableChange(v.name, e.target.value)}
+                                                        placeholder={v.example}
+                                                        className="bg-muted/20"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="grid gap-4">
-                                        {item.variables.map((v) => (
-                                            <div key={v.name} className="space-y-1.5">
-                                                <Label className="text-sm font-medium flex items-center gap-2">
-                                                    {v.name}
-                                                    <span className="text-xs text-muted-foreground font-normal">({v.placeholder})</span>
-                                                </Label>
-                                                <Input
-                                                    value={variables[v.name] || ""}
-                                                    onChange={(e) => handleVariableChange(v.name, e.target.value)}
-                                                    placeholder={v.example}
-                                                    className="bg-muted/20"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
 
-                                <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-semibold">프롬프트 미리보기</h3>
-                                        <Button size="sm" onClick={handleCopy} className={cn("gap-2", copied ? "bg-green-600 hover:bg-green-700" : "")}>
-                                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                            {copied ? "복사됨" : "프롬프트 복사"}
-                                        </Button>
-                                    </div>
-                                    <div className="relative">
-                                        <Textarea
-                                            readOnly
-                                            value={getCompletedPrompt()}
-                                            className="min-h-[300px] font-mono text-sm bg-muted/30 resize-none p-4 leading-relaxed"
-                                        />
+                                    {/* Right: Prompt Preview */}
+                                    <div className="flex flex-col h-full border-l border-slate-100 pl-8 -ml-8 lg:ml-0 lg:pl-0 lg:border-l-0">
+                                        <div className="flex items-center justify-between mb-4 shrink-0">
+                                            <h3 className="text-lg font-semibold">프롬프트 미리보기</h3>
+                                            <Button size="sm" onClick={handleCopy} className={cn("gap-2", copied ? "bg-green-600 hover:bg-green-700" : "")}>
+                                                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                                {copied ? "복사됨" : "프롬프트 복사"}
+                                            </Button>
+                                        </div>
+                                        <div className="relative flex-1">
+                                            <Textarea
+                                                readOnly
+                                                value={getCompletedPrompt()}
+                                                className="h-full min-h-[400px] font-mono text-sm bg-muted/30 resize-none p-6 leading-relaxed rounded-xl border-slate-200"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </TabsContent>
