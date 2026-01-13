@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, Menu, X, Search, Users, Zap, LogOut, User, UserCog, Bookmark, ShoppingBag, FolderOpen } from "lucide-react";
+import { Brain, Menu, X, Search, Users, Zap, LogOut, User, UserCog, Bookmark, ShoppingBag, FolderOpen, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { NotificationDropdown } from "@/components/ui/notifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
@@ -27,6 +28,7 @@ const fetchUserProfile = async (userId: string) => {
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
   const headerRef = useRef<HTMLElement>(null);
 
   // 사용자 프로필 데이터
@@ -108,6 +110,15 @@ const Navbar = () => {
               <Zap className="w-4 h-4" />
               도구 제안
             </Link>
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Shield className="w-4 h-4" />
+                Admin
+              </Link>
+            )}
           </div>
 
           {/* Desktop CTA */}

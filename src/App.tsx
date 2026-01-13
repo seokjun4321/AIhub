@@ -20,11 +20,13 @@ import Careers from './pages/Careers';
 import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ui/protected-route';
+import AdminRoute from './components/ui/admin-route';
 import PresetStore from "./pages/PresetStore";
 import SuggestTool from "./pages/SuggestTool";
 import ToolProposals from "./pages/admin/ToolProposals";
 import MyTools from "./pages/MyTools";
 import FeedbackDashboard from "./pages/admin/FeedbackDashboard";
+import AdminHub from "./pages/admin/AdminHub";
 
 
 import WorkflowDetail from "./pages/WorkflowDetail";
@@ -58,8 +60,9 @@ function App() {
         <Route path="/prompt-engineering" element={<PromptEngineering />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/tools/suggest" element={<ProtectedRoute><SuggestTool /></ProtectedRoute>} />
-        <Route path="/admin/proposals" element={<ProtectedRoute><ToolProposals /></ProtectedRoute>} />
-        <Route path="/admin/feedback" element={<ProtectedRoute><FeedbackDashboard /></ProtectedRoute>} />
+        <Route path="/admin" element={<AdminRoute><AdminHub /></AdminRoute>} />
+        <Route path="/admin/proposals" element={<AdminRoute><ToolProposals /></AdminRoute>} />
+        <Route path="/admin/feedback" element={<AdminRoute><FeedbackDashboard /></AdminRoute>} />
         <Route path="/my-tools" element={<ProtectedRoute><MyTools /></ProtectedRoute>} />
         <Route path="/tools/:id" element={<ToolDetail />} />
         <Route path="/tools/compare" element={<ToolCompare />} />
