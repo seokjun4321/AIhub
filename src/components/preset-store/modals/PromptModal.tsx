@@ -10,6 +10,11 @@ import { Copy, Check, FileText, FlaskConical, BookOpen, Lightbulb } from "lucide
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { ThumbsUp, ThumbsDown } from "lucide-react";
+
+import { supabase } from "@/integrations/supabase/client";
 
 interface PromptModalProps {
     item: PromptTemplate;
@@ -20,6 +25,7 @@ interface PromptModalProps {
 const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
     const [variables, setVariables] = useState<Record<string, string>>({});
     const [copied, setCopied] = useState(false);
+    const { toast } = useToast();
 
     const handleVariableChange = (name: string, value: string) => {
         setVariables(prev => ({ ...prev, [name]: value }));
@@ -46,6 +52,56 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
         navigator.clipboard.writeText(getCompletedPrompt());
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+
+        const submitMicroFeedback = async (rating: number) => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                await supabase.from('feedbacks').insert({
+                    trigger: 'preset_copy',
+                    entity_type: 'preset',
+                    entity_id: String(item.id),
+                    rating,
+                    user_id: user?.id,
+                    page_url: window.location.href,
+                    metadata: { userAgent: navigator.userAgent }
+                });
+                toast({ title: "피드백이 반영되었습니다.", duration: 2000 });
+            } catch (error) {
+                console.error("Feedback Error:", error);
+            }
+        };
+
+        // Frequency Capping Logic
+        const lastShown = localStorage.getItem('feedback_preset_last_shown');
+        const now = Date.now();
+        const ONE_DAY = 24 * 60 * 60 * 1000;
+
+        // Check if shown in last 24 hours (Aggressive dampening) or random chance (1/3)
+        // const shouldShow = !lastShown || (now - Number(lastShown) > ONE_DAY) || Math.random() < 0.33;
+        const shouldShow = true; // Debug: Always show for testing
+
+        if (shouldShow) {
+            // Determine Toast ID to allow manual dismissal
+            localStorage.setItem('feedback_preset_last_shown', String(now));
+
+            toast({
+                title: "복사 완료! 내용이 도움이 되셨나요?",
+                description: "솔직한 평가는 콘텐츠 개선에 큰 힘이 됩니다.",
+                duration: 5000,
+                action: (
+                    <div className="flex gap-2">
+                        <ToastAction altText="Good" onClick={() => submitMicroFeedback(1)} className="border-emerald-200 hover:bg-emerald-100 hover:text-emerald-700">
+                            <ThumbsUp className="w-4 h-4 mr-1" /> 좋음
+                        </ToastAction>
+                        <ToastAction altText="Bad" onClick={() => submitMicroFeedback(0)} className="border-red-200 hover:bg-red-100 hover:text-red-700">
+                            <ThumbsDown className="w-4 h-4 mr-1" /> 별로
+                        </ToastAction>
+                    </div>
+                ),
+            });
+        } else {
+            toast({ title: "복사되었습니다", duration: 2000 });
+        }
     };
 
     return (

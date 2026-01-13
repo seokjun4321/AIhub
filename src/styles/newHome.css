@@ -1000,32 +1000,7 @@ body {
     gap: 0.5rem;
 }
 
-/* Question Header Icon - Green Rounded Square */
-.question-header::before {
-    content: '';
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    border: 2px solid #10B981;
-    border-radius: 4px;
-    flex-shrink: 0;
-}
-
-/* Resolved Header Icon - Green Circle with Check */
-.resolved-header::before {
-    content: '\2713';
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    background: #10B981;
-    color: white;
-    border-radius: 50%;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-}
+/* Question Header & Resolved Header Icons removed to use inline SVGs */
 
 .list-cards {
     display: flex;

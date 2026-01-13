@@ -17,6 +17,7 @@ import {
     type Tool,
     type CommunityItem
 } from '../data/homeData';
+import { MessageCircleQuestion, BadgeCheck } from 'lucide-react';
 
 // Fetch recent guides from Supabase
 // Fetch recent guides from Supabase
@@ -762,7 +763,10 @@ function NewHome() {
                         <div className="community-grid">
                             {/* 최근 질문 */}
                             <div className="comm-col">
-                                <h3 className="col-header question-header">최근 질문</h3>
+                                <h3 className="col-header question-header flex items-center gap-2">
+                                    <MessageCircleQuestion className="w-5 h-5 text-emerald-500" />
+                                    최근 질문
+                                </h3>
                                 <div className="empty-state">
                                     아직 등록된 질문이 없습니다.
                                 </div>
@@ -770,7 +774,10 @@ function NewHome() {
 
                             {/* 최근 해결된 문제 */}
                             <div className="comm-col">
-                                <h3 className="col-header resolved-header">최근 해결된 문제</h3>
+                                <h3 className="col-header resolved-header flex items-center gap-2">
+                                    <BadgeCheck className="w-5 h-5 text-emerald-500" />
+                                    최근 해결된 문제
+                                </h3>
                                 {postsLoading ? (
                                     <div className="empty-state">로딩 중...</div>
                                 ) : resolvedPostsData && resolvedPostsData.length > 0 ? (

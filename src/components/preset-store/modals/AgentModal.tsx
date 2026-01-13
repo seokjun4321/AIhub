@@ -3,9 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Info, MessageSquare, AlertCircle, ExternalLink, Bot, User } from "lucide-react";
+import { Info, MessageSquare, AlertCircle, ExternalLink, Bot, User, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from "react";
 
 interface AgentModalProps {
     item: AgentItem;
@@ -14,6 +15,15 @@ interface AgentModalProps {
 }
 
 const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        const promptText = item.instructions.join('\n');
+        navigator.clipboard.writeText(promptText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-3xl max-h-[85vh] h-full p-0 flex flex-col gap-0 overflow-hidden">
@@ -61,6 +71,24 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
                                     <p className="text-muted-foreground leading-relaxed">
                                         {item.description}
                                     </p>
+                                </div>
+
+                                {/* Prompt Copy Section */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-lg font-semibold">프롬프트 미리보기</h3>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleCopy}
+                                            className={cn("gap-2 text-white", copied ? "bg-green-600 hover:bg-green-700" : "bg-slate-900 hover:bg-slate-800")}
+                                        >
+                                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                            {copied ? "복사됨" : "프롬프트 복사"}
+                                        </Button>
+                                    </div>
+                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-slate-800 font-mono text-sm leading-relaxed max-h-[300px] overflow-y-auto whitespace-pre-wrap">
+                                        {item.instructions.join('\n\n')}
+                                    </div>
                                 </div>
 
                                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">

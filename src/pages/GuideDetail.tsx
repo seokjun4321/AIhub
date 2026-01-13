@@ -21,6 +21,8 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { GuideFeedbackModal } from "@/components/feedback/GuideFeedbackModal";
+import confetti from 'canvas-confetti';
 
 // 단일 가이드를 불러오는 함수 (관련 데이터 포함)
 const fetchGuideById = async (id: string) => {
@@ -236,6 +238,8 @@ const GuideDetail = () => {
   const [activeStepIndex, setActiveStepIndex] = useState(0); // Focus Mode Index
   const [completedStepIds, setCompletedStepIds] = useState<(string | number)[]>([]);
   const [activeTab, setActiveTab] = useState<'curriculum' | 'prompts'>('curriculum');
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [successState, setSuccessState] = useState(false);
 
   // Queries
   const { data: guide, isLoading: isGuideLoading, error: guideError } = useQuery({
@@ -305,13 +309,26 @@ const GuideDetail = () => {
     }
   };
 
-  const handleFeedback = (isPositive: boolean) => {
-    setFeedbackGiven(true);
-    toast({
-      title: "피드백이 접수되었습니다.",
-      description: isPositive ? "도움이 되셨다니 기쁩니다!" : "더 나은 콘텐츠를 위해 노력하겠습니다.",
-      duration: 3000,
+  const handleSuccess = () => {
+    setSuccessState(true);
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
     });
+    toast({
+      title: "축하합니다! 가이드를 완료하셨어요! 🎉",
+      description: "멋진 결과물을 만드셨길 바랍니다.",
+      duration: 4000,
+    });
+    // Frequency Capping: Save that they completed this guide so we don't ask again immediately
+    if (guide?.id) {
+      localStorage.setItem(`feedback_guide_${guide.id}_completed`, 'true');
+    }
+  };
+
+  const handleFailure = () => {
+    setIsFeedbackModalOpen(true);
   };
 
   const handlePromptStepClick = (stepNumber: number) => {
@@ -611,20 +628,42 @@ const GuideDetail = () => {
 
                   {/* Feedback Section (Only show on last step?) */}
                   {activeStepIndex === stepsArray.length - 1 && (
-                    <section className="rounded-2xl border bg-card p-6 mt-12 animate-in fade-in duration-700">
-                      <h3 className="font-semibold mb-4">이 가이드가 도움이 되었나요?</h3>
-                      {!feedbackGiven ? (
-                        <div className="flex gap-3">
-                          <Button variant="outline" onClick={() => handleFeedback(true)} className="border-accent/50 hover:bg-accent/10">
-                            <ThumbsUp className="mr-2 h-4 w-4" /> 네, 매우 도움이 되었습니다
+                    <section className="rounded-3xl border border-slate-200 bg-white p-8 mt-16 animate-in fade-in duration-700 text-center shadow-sm">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">가이드를 모두 완료하셨나요?</h3>
+                        <p className="text-slate-500">여러분의 경험이 궁금합니다. 결과를 알려주세요!</p>
+                      </div>
+
+                      {!successState ? (
+                        <div className="flex flex-col sm:flex-row justify-center gap-4">
+                          <Button
+                            onClick={handleSuccess}
+                            className="h-12 px-8 text-base bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 transition-all hover:scale-105"
+                          >
+                            🎉 네, 성공했어요!
                           </Button>
-                          <Button variant="outline" onClick={() => handleFeedback(false)} className="border-border/50">
-                            <ThumbsDown className="mr-2 h-4 w-4" /> 개선이 필요합니다
+                          <Button
+                            variant="outline"
+                            onClick={handleFailure}
+                            className="h-12 px-8 text-base border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-all"
+                          >
+                            🤔 잘 안 되거나 막혔어요
                           </Button>
                         </div>
                       ) : (
-                        <div className="text-accent font-medium">피드백 감사합니다! 🙏</div>
+                        <div className="flex items-center justify-center gap-2 text-emerald-600 font-bold text-lg animate-in zoom-in duration-300">
+                          <CheckCircle2 className="w-6 h-6" />
+                          <span>완료되었습니다! 수고하셨어요 👏</span>
+                        </div>
                       )}
+
+                      <GuideFeedbackModal
+                        isOpen={isFeedbackModalOpen}
+                        onClose={() => setIsFeedbackModalOpen(false)}
+                        guideId={guide.id}
+                        guideTitle={guide.title}
+                        steps={stepsArray.map(s => ({ id: s.id, step_order: s.step_order, title: s.title }))}
+                      />
                     </section>
                   )}
                 </div>

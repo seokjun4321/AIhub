@@ -24,10 +24,13 @@ import PresetStore from "./pages/PresetStore";
 import SuggestTool from "./pages/SuggestTool";
 import ToolProposals from "./pages/admin/ToolProposals";
 import MyTools from "./pages/MyTools";
+import FeedbackDashboard from "./pages/admin/FeedbackDashboard";
 
 
 import WorkflowDetail from "./pages/WorkflowDetail";
 import SellPreset from "./pages/SellPreset";
+import { GlobalFeedbackWidget } from "./components/feedback/GlobalFeedbackWidget";
+import { Toaster } from "@/components/ui/toaster";
 
 function App() {
   return (
@@ -56,6 +59,7 @@ function App() {
         <Route path="/tools" element={<Tools />} />
         <Route path="/tools/suggest" element={<ProtectedRoute><SuggestTool /></ProtectedRoute>} />
         <Route path="/admin/proposals" element={<ProtectedRoute><ToolProposals /></ProtectedRoute>} />
+        <Route path="/admin/feedback" element={<ProtectedRoute><FeedbackDashboard /></ProtectedRoute>} />
         <Route path="/my-tools" element={<ProtectedRoute><MyTools /></ProtectedRoute>} />
         <Route path="/tools/:id" element={<ToolDetail />} />
         <Route path="/tools/compare" element={<ToolCompare />} />
@@ -67,6 +71,8 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <GlobalFeedbackWidget />
+      <Toaster />
     </>
   );
 }
