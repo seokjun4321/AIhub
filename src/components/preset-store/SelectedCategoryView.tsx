@@ -1,10 +1,10 @@
 import {
     CategoryDetails,
-    MOCK_AGENTS,
-    MOCK_WORKFLOWS,
-    MOCK_TEMPLATES,
-    MOCK_DESIGNS,
-    PromptTemplate
+    PromptTemplate,
+    AgentItem,
+    WorkflowItem,
+    TemplateItem,
+    DesignItem
 } from "@/data/mockData";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 requirements: item.requirements,
                 exampleConversation: item.example_conversation,
                 exampleConversation_en: item.example_conversation_en
-            })) as unknown as typeof MOCK_AGENTS;
+            })) as AgentItem[];
         }
     });
 
@@ -114,7 +114,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 requirements: item.requirements,
                 credentials: item.credentials,
                 warnings: item.warnings
-            })) as unknown as typeof MOCK_WORKFLOWS;
+            })) as WorkflowItem[];
         }
     });
 
@@ -122,7 +122,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
         queryKey: ['preset_templates'],
         queryFn: async () => {
             const { data, error } = await supabase
-                .from('preset_templates')
+                .from('preset_templates' as any)
                 .select('*');
 
             if (error) throw error;
@@ -142,7 +142,33 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 duplicateUrl: item.duplicate_url,
                 setupSteps: item.setup_steps,
                 date: new Date(item.created_at).toLocaleDateString()
-            })) as unknown as typeof MOCK_TEMPLATES;
+            })) as TemplateItem[];
+        }
+    });
+
+    const { data: dbDesigns = [] } = useQuery({
+        queryKey: ['preset_designs'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('preset_designs' as any)
+                .select('*');
+
+            if (error) throw error;
+
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                oneLiner: item.one_liner,
+                // description: item.description, // Not used in card/modal yet but good to have
+                tags: item.tags,
+                beforeImage: item.image_url,
+                afterImage: item.after_image_url || undefined, // Map null to undefined
+                author: item.author,
+                promptText: item.prompt_text,
+                params: item.params,
+                inputTips: item.input_tips,
+                date: new Date(item.created_at).toLocaleDateString()
+            })) as DesignItem[];
         }
     });
 
@@ -218,8 +244,8 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
             case "design":
                 return (
                     <>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {MOCK_DESIGNS.map((item) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {dbDesigns.map((item: any) => (
                                 <div key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer transition-transform hover:scale-[1.02]">
                                     <DesignCard item={item} />
                                 </div>

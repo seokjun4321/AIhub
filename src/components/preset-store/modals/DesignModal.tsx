@@ -90,41 +90,49 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
                     {/* Left: Image Comparison Slider (Padded Container) */}
                     <div className="w-[55%] h-full bg-slate-50 p-8 flex items-center justify-center">
                         <div
-                            className="relative w-full h-full max-h-[480px] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 select-none group bg-white"
+                            className={cn(
+                                "relative w-full h-full max-h-[480px] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white",
+                                item.afterImage ? "select-none group cursor-ew-resize" : ""
+                            )}
                             ref={containerRef}
-                            onMouseDown={onMouseDown}
+                            onMouseDown={item.afterImage ? onMouseDown : undefined}
                         >
-                            {/* Before Image (Background) */}
-                            <img src={item.beforeImage} alt="Original" className="absolute top-0 left-0 w-full h-full object-cover" />
+                            {/* Main/Before Image */}
+                            <img src={item.beforeImage} alt="Main" className="absolute top-0 left-0 w-full h-full object-cover" />
 
-                            {/* After Image (Foreground) - Clipped */}
-                            <div
-                                className="absolute top-0 left-0 w-full h-full overflow-hidden"
-                                style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
-                            >
-                                <img src={item.afterImage} alt="Generated" className="absolute top-0 left-0 w-full h-full object-cover" />
-                            </div>
-
-                            {/* Labels */}
-                            <div className="absolute top-4 left-4 text-white/90 text-xs font-bold drop-shadow-md select-none bg-black/20 backdrop-blur-[2px] px-2.5 py-1 rounded">Original</div>
-                            <div className="absolute top-4 right-4 text-white/90 text-xs font-bold drop-shadow-md select-none bg-black/20 backdrop-blur-[2px] px-2.5 py-1 rounded">Generated</div>
-
-                            {/* Draggable Handle Line */}
-                            <div
-                                className="absolute inset-y-0 w-[1.5px] bg-white cursor-ew-resize hover:shadow-[0_0_15px_rgba(255,255,255,0.8)] z-20 group"
-                                style={{ left: `${sliderPosition}%` }}
-                            >
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110 cursor-ew-resize">
-                                    <div className="flex gap-[3px]">
-                                        <div className="w-[2px] h-3.5 bg-slate-300 rounded-full" />
-                                        <div className="w-[2px] h-3.5 bg-slate-300 rounded-full" />
+                            {/* Comparison Slider Logic (Only if afterImage exists) */}
+                            {item.afterImage && (
+                                <>
+                                    {/* After Image - Clipped */}
+                                    <div
+                                        className="absolute top-0 left-0 w-full h-full overflow-hidden"
+                                        style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+                                    >
+                                        <img src={item.afterImage} alt="Generated" className="absolute top-0 left-0 w-full h-full object-cover" />
                                     </div>
-                                </div>
-                            </div>
 
-                            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 text-white/90 text-xs font-medium bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                드래그하여 비교하기
-                            </div>
+                                    {/* Labels */}
+                                    <div className="absolute top-4 left-4 text-white/90 text-xs font-bold drop-shadow-md select-none bg-black/20 backdrop-blur-[2px] px-2.5 py-1 rounded">Original</div>
+                                    <div className="absolute top-4 right-4 text-white/90 text-xs font-bold drop-shadow-md select-none bg-black/20 backdrop-blur-[2px] px-2.5 py-1 rounded">Generated</div>
+
+                                    {/* Draggable Handle Line */}
+                                    <div
+                                        className="absolute inset-y-0 w-[1.5px] bg-white hover:shadow-[0_0_15px_rgba(255,255,255,0.8)] z-20 group"
+                                        style={{ left: `${sliderPosition}%` }}
+                                    >
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110">
+                                            <div className="flex gap-[3px]">
+                                                <div className="w-[2px] h-3.5 bg-slate-300 rounded-full" />
+                                                <div className="w-[2px] h-3.5 bg-slate-300 rounded-full" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 text-white/90 text-xs font-medium bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        드래그하여 비교하기
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 

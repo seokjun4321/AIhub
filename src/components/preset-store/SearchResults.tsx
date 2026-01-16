@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-    MOCK_PROMPTS, MOCK_AGENTS, MOCK_WORKFLOWS, MOCK_TEMPLATES, MOCK_DESIGNS,
-    PromptTemplate, AgentItem, TemplateItem, DesignItem
+    PromptTemplate, AgentItem, TemplateItem, DesignItem, WorkflowItem
 } from "@/data/mockData";
 import PromptTemplateCard from "./cards/PromptTemplateCard";
 import AgentCard from "./cards/AgentCard";
@@ -99,11 +98,80 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
         }
     });
 
+    const { data: dbWorkflows = [] } = useQuery({
+        queryKey: ['preset_workflows'],
+        queryFn: async () => {
+            const { data, error } = await supabase.from('preset_workflows' as any).select('*');
+            if (error) throw error;
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                author: item.author,
+                date: new Date(item.created_at).toLocaleDateString(),
+                description: item.description,
+                complexity: item.complexity,
+                duration: item.duration,
+                apps: item.apps,
+                oneLiner: item.one_liner,
+                diagramUrl: item.diagram_url,
+                download_url: item.download_url,
+                steps: item.steps,
+                requirements: item.requirements,
+                credentials: item.credentials,
+                warnings: item.warnings
+            })) as WorkflowItem[];
+        }
+    });
+
+    const { data: dbTemplates = [] } = useQuery({
+        queryKey: ['preset_templates'],
+        queryFn: async () => {
+            const { data, error } = await supabase.from('preset_templates' as any).select('*');
+            if (error) throw error;
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                oneLiner: item.one_liner,
+                category: item.category,
+                price: item.price,
+                includes: item.includes,
+                imageUrl: item.image_url,
+                previewImages: item.preview_images,
+                tags: item.tags,
+                author: item.author,
+                previewUrl: item.preview_url,
+                duplicateUrl: item.duplicate_url,
+                setupSteps: item.setup_steps,
+                date: new Date(item.created_at).toLocaleDateString()
+            })) as TemplateItem[];
+        }
+    });
+
+    const { data: dbDesigns = [] } = useQuery({
+        queryKey: ['preset_designs'],
+        queryFn: async () => {
+            const { data, error } = await supabase.from('preset_designs' as any).select('*');
+            if (error) throw error;
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                oneLiner: item.one_liner,
+                tags: item.tags,
+                beforeImage: item.image_url,
+                afterImage: item.after_image_url || undefined,
+                author: item.author,
+                promptText: item.prompt_text,
+                params: item.params,
+                inputTips: item.input_tips
+            })) as DesignItem[];
+        }
+    });
+
     const prompts = filterItems(dbPrompts);
     const agents = filterItems(dbAgents);
-    const workflows = filterItems(MOCK_WORKFLOWS);
-    const templates = filterItems(MOCK_TEMPLATES);
-    const designs = filterItems(MOCK_DESIGNS);
+    const workflows = filterItems(dbWorkflows);
+    const templates = filterItems(dbTemplates);
+    const designs = filterItems(dbDesigns);
 
     const hasResults = prompts.length > 0 || agents.length > 0 || workflows.length > 0 || templates.length > 0 || designs.length > 0;
 
@@ -188,7 +256,7 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
                     <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">
                         <ImageIcon className="w-5 h-5 text-slate-500" /> AI 생성 디자인 ({designs.length})
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {designs.map(item => (
                             <div key={item.id} onClick={() => setSelectedDesign(item)} className="cursor-pointer transition-transform hover:scale-[1.02]">
                                 <DesignCard item={item} />

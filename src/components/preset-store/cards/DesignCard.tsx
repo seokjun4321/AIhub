@@ -16,23 +16,26 @@ const DesignCard = ({ item }: DesignCardProps) => {
             onMouseLeave={() => setIsHovered(false)}
         >
             <div className="aspect-square bg-muted relative overflow-hidden">
-                {/* Before Image (Always visible, behind) */}
+                {/* Main Image (Always visible) */}
                 <img
                     src={item.beforeImage}
-                    alt="Before"
+                    alt="Main"
                     className="w-full h-full object-cover absolute top-0 left-0"
                 />
 
-                {/* After Image (Visible on hover with transition) */}
-                <img
-                    src={item.afterImage}
-                    alt="After"
-                    className={`w-full h-full object-cover absolute top-0 left-0 transition-opacity duration-300 ease-in-out ${isHovered ? "opacity-100" : "opacity-0"}`}
-                />
-
-                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] font-medium z-10 pointer-events-none">
-                    {isHovered ? "After" : "Before"}
-                </div>
+                {/* Overlay Image (Only if afterImage exists) */}
+                {item.afterImage && (
+                    <>
+                        <img
+                            src={item.afterImage}
+                            alt="After"
+                            className={`w-full h-full object-cover absolute top-0 left-0 transition-opacity duration-300 ease-in-out ${isHovered ? "opacity-100" : "opacity-0"}`}
+                        />
+                        <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] font-medium z-10 pointer-events-none">
+                            {isHovered ? "After" : "Before"}
+                        </div>
+                    </>
+                )}
             </div>
 
             <div className="p-3">
