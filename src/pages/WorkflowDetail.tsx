@@ -1,19 +1,62 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { MOCK_WORKFLOWS } from "@/data/mockData";
+import { MOCK_WORKFLOWS, WorkflowItem } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, Activity, Download, AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const WorkflowDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const item = MOCK_WORKFLOWS.find(w => w.id === id);
+
+    const { data: item, isLoading } = useQuery({
+        queryKey: ['workflow', id],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('preset_workflows')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (error) throw error;
+
+            return {
+                id: data.id,
+                title: data.title,
+                author: data.author,
+                description: data.description,
+                complexity: data.complexity,
+                duration: data.duration,
+                apps: data.apps,
+                oneLiner: data.one_liner,
+                diagramUrl: data.diagram_url,
+                download_url: data.download_url,
+                steps: data.steps,
+                requirements: data.requirements,
+                credentials: data.credentials,
+                warnings: data.warnings
+            } as WorkflowItem;
+        }
+    });
+
+    if (isLoading) {
+        return <div className="min-h-screen flex items-center justify-center">로딩 중...</div>;
+    }
 
     if (!item) {
         return <div className="min-h-screen flex items-center justify-center">워크플로우를 찾을 수 없습니다.</div>;
     }
+
+    const handleDownload = () => {
+        if (item.download_url && item.download_url !== '#') {
+            window.open(item.download_url, '_blank');
+        } else {
+            alert("다운로드 링크가 준비되지 않았습니다.");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-background font-sans">
@@ -43,7 +86,7 @@ const WorkflowDetail = () => {
                                 <p className="text-xl text-muted-foreground">{item.oneLiner}</p>
                             </div>
 
-                            <Button size="lg" className="rounded-full px-8">
+                            <Button size="lg" className="rounded-full px-8" onClick={handleDownload}>
                                 <Download className="w-4 h-4 mr-2" />
                                 워크플로우 다운로드
                             </Button>

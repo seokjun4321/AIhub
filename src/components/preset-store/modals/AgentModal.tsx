@@ -15,31 +15,66 @@ interface AgentModalProps {
 }
 
 const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
+    const [language, setLanguage] = useState<'ko' | 'en'>('ko');
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
-        const promptText = item.instructions.join('\n');
+        const currentInstructions = language === 'en' && item.instructions_en ? item.instructions_en : item.instructions;
+        const promptText = currentInstructions.join('\n');
         navigator.clipboard.writeText(promptText);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
+
+    const description = language === 'en' && item.description_en ? item.description_en : item.description;
+    const instructions = language === 'en' && item.instructions_en ? item.instructions_en : item.instructions;
+    const conversation = language === 'en' && item.exampleConversation_en ? item.exampleConversation_en : item.exampleConversation;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-3xl max-h-[85vh] h-full p-0 flex flex-col gap-0 overflow-hidden">
                 {/* Header */}
                 <div className="p-6 border-b border-border bg-card">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Badge variant="outline" className={cn(
-                            "border-2 font-bold",
-                            item.platform === "GPT" && "border-green-500 text-green-600",
-                            item.platform === "Claude" && "border-orange-500 text-orange-600",
-                            item.platform === "Gemini" && "border-blue-500 text-blue-600",
-                            item.platform === "Perplexity" && "border-cyan-500 text-cyan-600",
-                        )}>
-                            {item.platform}
-                        </Badge>
-                        <DialogTitle className="text-2xl font-bold">{item.title}</DialogTitle>
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                            <Badge variant="outline" className={cn(
+                                "border-2 font-bold",
+                                item.platform === "GPT" && "border-green-500 text-green-600",
+                                item.platform === "Claude" && "border-orange-500 text-orange-600",
+                                item.platform === "Gemini" && "border-blue-500 text-blue-600",
+                                item.platform === "Perplexity" && "border-cyan-500 text-cyan-600",
+                            )}>
+                                {item.platform}
+                            </Badge>
+                            <DialogTitle className="text-2xl font-bold">{item.title}</DialogTitle>
+                        </div>
+                        {/* Language Toggle */}
+                        {(item.description_en || item.instructions_en) && (
+                            <div className="flex bg-muted/50 p-1 rounded-lg border border-border">
+                                <button
+                                    onClick={() => setLanguage('ko')}
+                                    className={cn(
+                                        "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
+                                        language === 'ko'
+                                            ? "bg-white text-primary shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    한국어
+                                </button>
+                                <button
+                                    onClick={() => setLanguage('en')}
+                                    className={cn(
+                                        "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
+                                        language === 'en'
+                                            ? "bg-white text-primary shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    English
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <DialogDescription className="text-base text-foreground/80">
                         {item.oneLiner}
@@ -69,7 +104,7 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
                                 <div>
                                     <h3 className="text-lg font-semibold mb-3">설명</h3>
                                     <p className="text-muted-foreground leading-relaxed">
-                                        {item.description}
+                                        {description}
                                     </p>
                                 </div>
 
@@ -87,7 +122,7 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
                                         </Button>
                                     </div>
                                     <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-slate-800 font-mono text-sm leading-relaxed max-h-[300px] overflow-y-auto whitespace-pre-wrap">
-                                        {item.instructions.join('\n\n')}
+                                        {instructions.join('\n\n')}
                                     </div>
                                 </div>
 
@@ -97,7 +132,7 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
                                         시스템 지침 (System Instructions)
                                     </h3>
                                     <ul className="list-disc list-inside space-y-1 text-sm text-slate-700">
-                                        {item.instructions.map((inst, idx) => (
+                                        {instructions.map((inst, idx) => (
                                             <li key={idx}>{inst}</li>
                                         ))}
                                     </ul>
@@ -117,7 +152,7 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
 
                             <TabsContent value="chat" className="mt-0">
                                 <div className="space-y-4 max-w-2xl mx-auto py-4">
-                                    {item.exampleConversation.map((msg, idx) => (
+                                    {conversation.map((msg, idx) => (
                                         <div key={idx} className={cn("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}>
                                             {msg.role === "assistant" && (
                                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

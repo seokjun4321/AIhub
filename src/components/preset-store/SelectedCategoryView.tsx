@@ -59,6 +59,65 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
         }
     });
 
+    const { data: dbAgents = [] } = useQuery({
+        queryKey: ['preset_agents_category'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('preset_agents' as any)
+                .select('*');
+
+            if (error) throw error;
+
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                author: item.author,
+                date: new Date(item.created_at).toLocaleDateString(),
+                description: item.description,
+                description_en: item.description_en,
+                platform: item.platform,
+                oneLiner: item.one_liner,
+                tags: item.tags,
+                exampleQuestions: item.example_questions,
+                url: item.url,
+                instructions: item.instructions,
+                instructions_en: item.instructions_en,
+                requirements: item.requirements,
+                exampleConversation: item.example_conversation,
+                exampleConversation_en: item.example_conversation_en
+            })) as unknown as typeof MOCK_AGENTS;
+        }
+    });
+
+    const { data: dbWorkflows = [] } = useQuery({
+        queryKey: ['preset_workflows'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('preset_workflows' as any)
+                .select('*');
+
+            if (error) throw error;
+
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                author: item.author,
+                date: new Date(item.created_at).toLocaleDateString(),
+                description: item.description,
+                complexity: item.complexity,
+                duration: item.duration,
+                apps: item.apps,
+                oneLiner: item.one_liner,
+                diagramUrl: item.diagram_url,
+                download_url: item.download_url,
+                steps: item.steps,
+                requirements: item.requirements,
+                credentials: item.credentials,
+                warnings: item.warnings
+            })) as unknown as typeof MOCK_WORKFLOWS;
+        }
+    });
+
     const renderContent = () => {
         switch (category.id) {
             case "prompt":
@@ -84,7 +143,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 return (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {MOCK_AGENTS.map((item) => (
+                            {dbAgents.map((item: any) => (
                                 <div key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer transition-transform hover:scale-[1.02]">
                                     <AgentCard item={item} />
                                 </div>
@@ -102,7 +161,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
             case "workflow":
                 return (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {MOCK_WORKFLOWS.map((item) => (
+                        {dbWorkflows.map((item: any) => (
                             <Link key={item.id} to={`/workflows/${item.id}`} className="block transition-transform hover:scale-[1.02]">
                                 <WorkflowCard item={item} />
                             </Link>

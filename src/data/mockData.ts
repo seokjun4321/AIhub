@@ -40,13 +40,16 @@ export interface PromptTemplate extends BaseItem {
 export interface AgentItem extends BaseItem {
     platform: "GPT" | "Claude" | "Gemini" | "Perplexity";
     description: string;
+    description_en?: string;
     exampleQuestions: string[];
     url: string;
     // Details
     oneLiner: string;
     instructions: string[];
+    instructions_en?: string[];
     requirements: string[];
     exampleConversation: { role: "user" | "assistant"; content: string }[];
+    exampleConversation_en?: { role: "user" | "assistant"; content: string }[];
     tags: string[];
 }
 
@@ -58,6 +61,7 @@ export interface WorkflowItem extends BaseItem {
     // Details
     oneLiner: string;
     diagramUrl: string;
+    download_url?: string;
     steps: { title: string; description: string }[];
     requirements: string[];
     credentials: string[];

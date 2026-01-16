@@ -69,8 +69,38 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
         }
     });
 
+    const { data: dbAgents = [] } = useQuery({
+        queryKey: ['preset_agents'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('preset_agents' as any)
+                .select('*');
+
+            if (error) throw error;
+
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                author: item.author,
+                date: new Date(item.created_at).toLocaleDateString(),
+                description: item.description,
+                description_en: item.description_en,
+                platform: item.platform,
+                oneLiner: item.one_liner,
+                tags: item.tags,
+                exampleQuestions: item.example_questions,
+                url: item.url,
+                instructions: item.instructions,
+                instructions_en: item.instructions_en,
+                requirements: item.requirements,
+                exampleConversation: item.example_conversation,
+                exampleConversation_en: item.example_conversation_en
+            })) as AgentItem[];
+        }
+    });
+
     const prompts = filterItems(dbPrompts);
-    const agents = filterItems(MOCK_AGENTS);
+    const agents = filterItems(dbAgents);
     const workflows = filterItems(MOCK_WORKFLOWS);
     const templates = filterItems(MOCK_TEMPLATES);
     const designs = filterItems(MOCK_DESIGNS);
