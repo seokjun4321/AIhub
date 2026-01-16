@@ -16,21 +16,16 @@ export const useAdmin = () => {
             }
 
             try {
-                console.log('Checking admin status for:', user.email);
                 const { data, error } = await supabase
                     .from('admin_users' as any)
                     .select('email')
                     .eq('email', user.email)
                     .maybeSingle();
 
-                console.log('Admin check result:', { data, error });
-
                 if (error || !data) {
                     setIsAdmin(false);
-                    console.log('User is NOT admin');
                 } else {
                     setIsAdmin(true);
-                    console.log('User IS admin');
                 }
             } catch (error) {
                 console.error('Error checking admin status:', error);

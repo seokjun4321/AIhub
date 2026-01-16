@@ -31,6 +31,7 @@ export interface PromptTemplate extends BaseItem {
     compatibleTools: string[];
     difficulty: "Beginner" | "Intermediate" | "Advanced";
     prompt: string;
+    prompt_en?: string;
     variables: { name: string; placeholder: string; example: string }[];
     exampleIO: { input: string; output: string };
     tips: string[];
@@ -103,6 +104,7 @@ export const MOCK_PROMPTS: PromptTemplate[] = [
         date: "2024.01.15",
         compatibleTools: ["ChatGPT", "Claude"],
         prompt: "당신은 전문 블로그 작가입니다. 다음 주제에 대해 SEO에 최적화된 블로그 포스트를 작성해주세요.\n\n주제: {topic}\n타겟 독자: {target_audience}\n키워드: {keywords}\n\n글의 구조:\n1. 독자의 흥미를 끄는 도입부\n2. 3~4개의 소제목을 포함한 본문\n3. 결론 및 행동 유도(CTA)\n\n톤앤매너: {tone}",
+        prompt_en: "You are a professional blog writer. Please write an SEO-optimized blog post on the following topic.\n\nTopic: {topic}\nTarget Audience: {target_audience}\nKeywords: {keywords}\n\nStructure:\n1. Introduction that hooks the reader\n2. Body with 3-4 subheadings\n3. Conclusion and Call to Action (CTA)\n\nTone & Manner: {tone}",
         variables: [
             { name: "topic", placeholder: "예: 재택근무의 장단점", example: "재택근무의 효율성을 높이는 방법" },
             { name: "target_audience", placeholder: "예: 직장인", example: "30대 직장인" },
@@ -131,6 +133,7 @@ export const MOCK_PROMPTS: PromptTemplate[] = [
         date: "2024.01.14",
         compatibleTools: ["ChatGPT", "Gemini"],
         prompt: "받은 이메일 내용에 대해 {attitude} 태도로 답장을 작성해주세요.\n\n받은 이메일:\n{email_content}\n\n답장 포인트:\n{key_points}",
+        prompt_en: "Please draft a reply to the received email with a {attitude} attitude.\n\nReceived Email:\n{email_content}\n\nReply Points:\n{key_points}",
         variables: [
             { name: "attitude", placeholder: "예: 정중한, 친근한", example: "정중하고 비즈니스적인" },
             { name: "email_content", placeholder: "받은 메일 붙여넣기", example: "프로젝트 마감 기한 연장 요청 메일..." },

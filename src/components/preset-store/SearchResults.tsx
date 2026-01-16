@@ -14,6 +14,8 @@ import AgentModal from "./modals/AgentModal";
 import TemplateModal from "./modals/TemplateModal";
 import DesignModal from "./modals/DesignModal";
 import { FileText, Sparkles, Link as LinkIcon, LayoutGrid, Image as ImageIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SearchResultsProps {
     query: string;
@@ -38,7 +40,36 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
         );
     };
 
-    const prompts = filterItems(MOCK_PROMPTS);
+    const { data: dbPrompts = [] } = useQuery({
+        queryKey: ['preset_prompt_templates'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('preset_prompt_templates' as any)
+                .select('*');
+
+            if (error) throw error;
+
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                author: item.author,
+                date: new Date(item.created_at).toLocaleDateString(),
+                description: item.description,
+                badges: item.badges as any,
+                tags: item.tags,
+                oneLiner: item.one_liner,
+                compatibleTools: item.compatible_tools,
+                difficulty: item.difficulty,
+                prompt: item.prompt,
+                prompt_en: item.prompt_en,
+                variables: item.variables as any,
+                exampleIO: item.example_io as any,
+                tips: item.tips
+            })) as PromptTemplate[];
+        }
+    });
+
+    const prompts = filterItems(dbPrompts);
     const agents = filterItems(MOCK_AGENTS);
     const workflows = filterItems(MOCK_WORKFLOWS);
     const templates = filterItems(MOCK_TEMPLATES);
@@ -65,7 +96,7 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {prompts.map(item => (
-                            <div key={item.id} onClick={() => setSelectedPrompt(item)} className="cursor-pointer transition-transform hover:scale-[1.02]">
+                            <div key={item.id} onClick={() => setSelectedPrompt(item)} className="cursor-pointer transition-transform hover:scale-[1.02] h-full">
                                 <PromptTemplateCard item={item} />
                             </div>
                         ))}

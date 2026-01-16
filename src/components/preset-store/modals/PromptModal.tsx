@@ -25,6 +25,7 @@ interface PromptModalProps {
 const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
     const [variables, setVariables] = useState<Record<string, string>>({});
     const [copied, setCopied] = useState(false);
+    const [language, setLanguage] = useState<'ko' | 'en'>('ko');
     const { toast } = useToast();
 
     const handleVariableChange = (name: string, value: string) => {
@@ -40,7 +41,7 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
     };
 
     const getCompletedPrompt = () => {
-        let prompt = item.prompt;
+        let prompt = language === 'en' && item.prompt_en ? item.prompt_en : item.prompt;
         item.variables.forEach(v => {
             const value = variables[v.name] || `{${v.name}}`;
             prompt = prompt.replace(new RegExp(`{${v.name}}`, 'g'), value);
@@ -157,9 +158,9 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                         {/* Content Area */}
                         <ScrollArea className="flex-1 p-6 h-full">
                             <TabsContent value="overview" className="mt-0 h-full">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
                                     {/* Left: Input Variables */}
-                                    <div className="flex flex-col h-full">
+                                    <div className="flex flex-col h-full lg:col-span-5">
                                         <div className="flex items-center justify-between mb-4 shrink-0">
                                             <h3 className="text-lg font-semibold">변수 입력</h3>
                                             <Button variant="outline" size="sm" onClick={fillExample}>
@@ -185,9 +186,37 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                                     </div>
 
                                     {/* Right: Prompt Preview */}
-                                    <div className="flex flex-col h-full border-l border-slate-100 pl-8 -ml-8 lg:ml-0 lg:pl-0 lg:border-l-0">
+                                    <div className="flex flex-col h-full border-l border-slate-100 pl-8 -ml-8 lg:ml-0 lg:pl-0 lg:border-l-0 lg:col-span-7">
                                         <div className="flex items-center justify-between mb-4 shrink-0">
-                                            <h3 className="text-lg font-semibold">프롬프트 미리보기</h3>
+                                            <div className="flex items-center gap-3">
+                                                <h3 className="text-lg font-semibold">프롬프트 미리보기</h3>
+                                                {item.prompt_en && (
+                                                    <div className="flex bg-muted rounded-lg p-1 h-8">
+                                                        <button
+                                                            onClick={() => setLanguage('ko')}
+                                                            className={cn(
+                                                                "px-3 text-xs font-medium rounded-md transition-all",
+                                                                language === 'ko'
+                                                                    ? "bg-white text-primary shadow-sm"
+                                                                    : "text-muted-foreground hover:text-foreground"
+                                                            )}
+                                                        >
+                                                            한국어
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setLanguage('en')}
+                                                            className={cn(
+                                                                "px-3 text-xs font-medium rounded-md transition-all",
+                                                                language === 'en'
+                                                                    ? "bg-white text-primary shadow-sm"
+                                                                    : "text-muted-foreground hover:text-foreground"
+                                                            )}
+                                                        >
+                                                            English
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <Button size="sm" onClick={handleCopy} className={cn("gap-2", copied ? "bg-green-600 hover:bg-green-700" : "")}>
                                                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                                 {copied ? "복사됨" : "프롬프트 복사"}

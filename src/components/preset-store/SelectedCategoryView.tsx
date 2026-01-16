@@ -1,10 +1,10 @@
 import {
     CategoryDetails,
-    MOCK_PROMPTS,
     MOCK_AGENTS,
     MOCK_WORKFLOWS,
     MOCK_TEMPLATES,
-    MOCK_DESIGNS
+    MOCK_DESIGNS,
+    PromptTemplate
 } from "@/data/mockData";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import TemplateCard from "./cards/TemplateCard";
 import DesignCard from "./cards/DesignCard";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import PromptModal from "./modals/PromptModal";
 import AgentModal from "./modals/AgentModal";
 import DesignModal from "./modals/DesignModal";
@@ -28,14 +30,43 @@ interface SelectedCategoryViewProps {
 const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) => {
     const [selectedItem, setSelectedItem] = useState<any>(null);
 
+    const { data: dbPrompts = [] } = useQuery({
+        queryKey: ['preset_prompt_templates_category'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('preset_prompt_templates' as any)
+                .select('*');
+
+            if (error) throw error;
+
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                author: item.author,
+                date: new Date(item.created_at).toLocaleDateString(),
+                description: item.description,
+                badges: item.badges as any,
+                tags: item.tags,
+                oneLiner: item.one_liner,
+                compatibleTools: item.compatible_tools,
+                difficulty: item.difficulty,
+                prompt: item.prompt,
+                prompt_en: item.prompt_en,
+                variables: item.variables as any,
+                exampleIO: item.example_io as any,
+                tips: item.tips
+            })) as PromptTemplate[];
+        }
+    });
+
     const renderContent = () => {
         switch (category.id) {
             case "prompt":
                 return (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {MOCK_PROMPTS.map((item) => (
-                                <div key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer transition-transform hover:scale-[1.02]">
+                            {dbPrompts.map((item) => (
+                                <div key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer transition-transform hover:scale-[1.02] h-full">
                                     <PromptTemplateCard item={item} />
                                 </div>
                             ))}
