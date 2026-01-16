@@ -54,7 +54,8 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 prompt_en: item.prompt_en,
                 variables: item.variables as any,
                 exampleIO: item.example_io as any,
-                tips: item.tips
+                tips: item.tips,
+                price: item.price || 0
             })) as PromptTemplate[];
         }
     });
@@ -84,7 +85,8 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 instructions_en: item.instructions_en,
                 requirements: item.requirements,
                 exampleConversation: item.example_conversation,
-                exampleConversation_en: item.example_conversation_en
+                exampleConversation_en: item.example_conversation_en,
+                price: item.price || 0
             })) as AgentItem[];
         }
     });
@@ -113,7 +115,8 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 steps: item.steps,
                 requirements: item.requirements,
                 credentials: item.credentials,
-                warnings: item.warnings
+                warnings: item.warnings,
+                price: item.price || 0
             })) as WorkflowItem[];
         }
     });
@@ -167,7 +170,8 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 promptText: item.prompt_text,
                 params: item.params,
                 inputTips: item.input_tips,
-                date: new Date(item.created_at).toLocaleDateString()
+                date: new Date(item.created_at).toLocaleDateString(),
+                price: item.price || 0
             })) as DesignItem[];
         }
     });

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/ui/navbar";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, MessageSquare, Shield } from "lucide-react";
+import { FileText, MessageSquare, Shield, Inbox } from "lucide-react";
 
 const AdminHub = () => {
     const navigate = useNavigate();
@@ -44,6 +44,21 @@ const AdminHub = () => {
                             </div>
                             <CardDescription>
                                 사용자 피드백 통계, 이슈 리포트, 건의사항을 한눈에 확인합니다.
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+                    {/* Submission Management Card */}
+                    <Card
+                        className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-purple-500"
+                        onClick={() => navigate('/admin/submissions')}
+                    >
+                        <CardHeader>
+                            <div className="flex items-center gap-3 mb-2">
+                                <Inbox className="w-6 h-6 text-purple-500" />
+                                <CardTitle>제출 관리</CardTitle>
+                            </div>
+                            <CardDescription>
+                                사용자가 판매 등록한 프롬프트/템플릿을 검토하고 승인합니다.
                             </CardDescription>
                         </CardHeader>
                     </Card>

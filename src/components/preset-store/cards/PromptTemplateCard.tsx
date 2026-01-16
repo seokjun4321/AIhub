@@ -13,22 +13,8 @@ interface PromptTemplateCardProps {
 }
 
 const PromptTemplateCard = ({ item }: PromptTemplateCardProps) => {
-    const [copied, setCopied] = useState(false);
-    // const { toast } = useToast();
 
-    const handleCopy = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(item.title + " - " + item.description); // Mock copy content
-        setCopied(true);
-
-        // toast({
-        //   title: "프롬프트가 복사되었습니다",
-        //   duration: 3000,
-        // });
-
-        setTimeout(() => setCopied(false), 2000);
-    };
-
+    // Helper for badge colors
     const getBadgeColor = (color: string) => {
         switch (color) {
             case "green": return "bg-emerald-100 text-emerald-700";
@@ -49,15 +35,10 @@ const PromptTemplateCard = ({ item }: PromptTemplateCardProps) => {
                         </span>
                     ))}
                 </div>
-                <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-foreground"
-                    onClick={handleCopy}
-                    title="프롬프트 복사"
-                >
-                    {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                </Button>
+                {/* Top Right: Show Price if Paid */}
+                {item.price && item.price > 0 ? (
+                    <span className="font-bold text-lg text-slate-900">{item.price.toLocaleString()}원</span>
+                ) : null}
             </div>
 
             <h3 className="font-bold text-lg leading-tight mb-2 group-hover:text-primary transition-colors">
@@ -77,7 +58,14 @@ const PromptTemplateCard = ({ item }: PromptTemplateCardProps) => {
 
             <div className="flex items-center justify-between pt-3 border-t border-border/50 mt-auto">
                 <span className="text-xs text-muted-foreground">{item.author}</span>
-                <span className="text-xs text-muted-foreground">{item.date}</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{item.date}</span>
+                    {(!item.price || item.price === 0) ? (
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">무료</span>
+                    ) : (
+                        <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">유료</span>
+                    )}
+                </div>
             </div>
         </div>
     );

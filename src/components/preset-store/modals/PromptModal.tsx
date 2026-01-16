@@ -15,6 +15,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 interface PromptModalProps {
     item: PromptTemplate;
@@ -128,6 +129,18 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                     <DialogDescription className="text-base text-foreground/80 mb-4">
                         {item.oneLiner}
                     </DialogDescription>
+
+                    <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
+                        <span>Created by</span>
+                        {item.user_id ? (
+                            <Link to={`/profile/${item.user_id}`} className="font-medium text-primary hover:underline flex items-center gap-1">
+                                {item.author}
+                            </Link>
+                        ) : (
+                            <span className="font-medium text-foreground">{item.author}</span>
+                        )}
+                    </div>
+
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">호환:</span>
                         {item.compatibleTools.map((tool, i) => (
@@ -135,6 +148,13 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                                 {tool}
                             </Badge>
                         ))}
+                        <div className="ml-auto flex items-center">
+                            {(!item.price || item.price === 0) ? (
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 font-bold px-3 py-1">무료</Badge>
+                            ) : (
+                                <span className="text-xl font-bold text-slate-900">{item.price.toLocaleString()}원</span>
+                            )}
+                        </div>
                     </div>
                 </div>
 

@@ -63,7 +63,8 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
                 prompt_en: item.prompt_en,
                 variables: item.variables as any,
                 exampleIO: item.example_io as any,
-                tips: item.tips
+                tips: item.tips,
+                price: item.price || 0
             })) as PromptTemplate[];
         }
     });
@@ -89,6 +90,7 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
                 tags: item.tags,
                 exampleQuestions: item.example_questions,
                 url: item.url,
+                price: item.price || 0,
                 instructions: item.instructions,
                 instructions_en: item.instructions_en,
                 requirements: item.requirements,
@@ -115,6 +117,7 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
                 oneLiner: item.one_liner,
                 diagramUrl: item.diagram_url,
                 download_url: item.download_url,
+                price: item.price || 0,
                 steps: item.steps,
                 requirements: item.requirements,
                 credentials: item.credentials,
@@ -162,7 +165,8 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
                 author: item.author,
                 promptText: item.prompt_text,
                 params: item.params,
-                inputTips: item.input_tips
+                inputTips: item.input_tips,
+                price: item.price || 0
             })) as DesignItem[];
         }
     });

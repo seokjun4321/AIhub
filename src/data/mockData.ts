@@ -19,6 +19,8 @@ export interface BaseItem {
     id: string;
     title: string;
     author: string;
+    user_id?: string;
+    price?: number;
     date?: string;
 }
 

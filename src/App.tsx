@@ -26,9 +26,10 @@ import SuggestTool from "./pages/SuggestTool";
 import ToolProposals from "./pages/admin/ToolProposals";
 import MyTools from "./pages/MyTools";
 import FeedbackDashboard from "./pages/admin/FeedbackDashboard";
+import SubmissionList from "./pages/admin/SubmissionList";
+import SubmissionDetail from "./pages/admin/SubmissionDetail"; // Import added
+
 import AdminHub from "./pages/admin/AdminHub";
-
-
 import WorkflowDetail from "./pages/WorkflowDetail";
 import SellPreset from "./pages/SellPreset";
 import { GlobalFeedbackWidget } from "./components/feedback/GlobalFeedbackWidget";
@@ -63,6 +64,8 @@ function App() {
         <Route path="/admin" element={<AdminRoute><AdminHub /></AdminRoute>} />
         <Route path="/admin/proposals" element={<AdminRoute><ToolProposals /></AdminRoute>} />
         <Route path="/admin/feedback" element={<AdminRoute><FeedbackDashboard /></AdminRoute>} />
+        <Route path="/admin/submissions" element={<AdminRoute><SubmissionList /></AdminRoute>} />
+        <Route path="/admin/submissions/:id" element={<AdminRoute><SubmissionDetail /></AdminRoute>} /> {/* Route added */}
         <Route path="/my-tools" element={<ProtectedRoute><MyTools /></ProtectedRoute>} />
         <Route path="/tools/:id" element={<ToolDetail />} />
         <Route path="/tools/compare" element={<ToolCompare />} />
