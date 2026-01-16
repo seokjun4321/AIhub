@@ -118,6 +118,34 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
         }
     });
 
+    const { data: dbTemplates = [] } = useQuery({
+        queryKey: ['preset_templates'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('preset_templates')
+                .select('*');
+
+            if (error) throw error;
+
+            return (data as any[]).map(item => ({
+                id: item.id,
+                title: item.title,
+                oneLiner: item.one_liner,
+                category: item.category,
+                price: item.price,
+                includes: item.includes,
+                imageUrl: item.image_url,
+                previewImages: item.preview_images,
+                tags: item.tags,
+                author: item.author,
+                previewUrl: item.preview_url,
+                duplicateUrl: item.duplicate_url,
+                setupSteps: item.setup_steps,
+                date: new Date(item.created_at).toLocaleDateString()
+            })) as unknown as typeof MOCK_TEMPLATES;
+        }
+    });
+
     const renderContent = () => {
         switch (category.id) {
             case "prompt":
@@ -172,7 +200,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 return (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {MOCK_TEMPLATES.map((item) => (
+                            {dbTemplates.map((item: any) => (
                                 <div key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer transition-transform hover:scale-[1.02]">
                                     <TemplateCard item={item} />
                                 </div>
@@ -212,7 +240,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
     };
 
     return (
-        <section className="py-12 bg-background animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <section className="py-12 bg-background animate-in fade-in slide-in-from-bottom-2 duration-300" >
             <div className="max-w-6xl mx-auto px-4">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -226,7 +254,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
 
                 {renderContent()}
             </div>
-        </section>
+        </section >
     );
 };
 
