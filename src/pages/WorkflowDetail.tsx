@@ -1,5 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { MOCK_WORKFLOWS, WorkflowItem } from "@/data/mockData";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { WorkflowItem } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, Activity, Download, AlertTriangle, CheckCircle2, Lock } from "lucide-react";
@@ -16,28 +18,32 @@ const WorkflowDetail = () => {
         queryKey: ['workflow', id],
         queryFn: async () => {
             const { data, error } = await supabase
-                .from('preset_workflows')
+                .from('preset_workflows' as any)
                 .select('*')
                 .eq('id', id)
                 .single();
 
             if (error) throw error;
 
+            const workflowData = data as any;
+
             return {
-                id: data.id,
-                title: data.title,
-                author: data.author,
-                description: data.description,
-                complexity: data.complexity,
-                duration: data.duration,
-                apps: data.apps,
-                oneLiner: data.one_liner,
-                diagramUrl: data.diagram_url,
-                download_url: data.download_url,
-                steps: data.steps,
-                requirements: data.requirements,
-                credentials: data.credentials,
-                warnings: data.warnings
+                id: workflowData.id,
+                title: workflowData.title,
+                author: workflowData.author,
+                description: workflowData.description,
+                complexity: workflowData.complexity,
+                duration: workflowData.duration,
+                apps: workflowData.apps,
+                oneLiner: workflowData.one_liner,
+                diagramUrl: workflowData.diagram_url,
+                download_url: workflowData.download_url,
+                steps: workflowData.steps,
+                requirements: workflowData.requirements,
+                credentials: undefined, // Removed from schema
+                warnings: workflowData.warnings,
+                platform: workflowData.platform,
+                importInfo: workflowData.import_info
             } as WorkflowItem;
         }
     });
@@ -75,8 +81,13 @@ const WorkflowDetail = () => {
                             <div>
                                 <div className="flex items-center gap-3 mb-3">
                                     <Badge variant={item.complexity === "Simple" ? "secondary" : item.complexity === "Medium" ? "default" : "destructive"}>
-                                        {item.complexity} Complexity
+                                        {item.complexity === "Simple" ? "초급" : item.complexity === "Medium" ? "중급" : item.complexity === "Complex" ? "고급" : item.complexity}
                                     </Badge>
+                                    {item.platform && (
+                                        <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary">
+                                            {item.platform}
+                                        </Badge>
+                                    )}
                                     <div className="flex items-center text-sm text-muted-foreground">
                                         <Clock className="w-3.5 h-3.5 mr-1" />
                                         {item.duration}
@@ -98,6 +109,36 @@ const WorkflowDetail = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                         {/* Main Content */}
                         <div className="lg:col-span-2 space-y-12">
+                            {/* Overview Section */}
+                            <section>
+                                <h2 className="text-2xl font-bold mb-6">개요</h2>
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ node, ...props }) => <p className="mb-4 text-muted-foreground leading-relaxed transition-colors" {...props} />,
+                                        ul: ({ node, ...props }) => <ul className="grid gap-4 mb-6 list-none pl-0" {...props} />,
+                                        li: ({ node, ...props }) => (
+                                            <li className="bg-card border border-border/60 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200" {...props} />
+                                        ),
+                                        strong: ({ node, ...props }) => {
+                                            const text = String(props.children);
+                                            const isProblem = text.includes('문제');
+                                            const isSolution = text.includes('해결책');
+
+                                            if (isProblem) {
+                                                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-700 mr-2">{props.children}</span>
+                                            }
+                                            if (isSolution) {
+                                                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 mr-2">{props.children}</span>
+                                            }
+                                            return <span className="font-bold text-foreground mr-1">{props.children}</span>
+                                        }
+                                    }}
+                                >
+                                    {item.description}
+                                </ReactMarkdown>
+                            </section>
+
                             {/* Diagram Section */}
                             <section>
                                 <h2 className="text-2xl font-bold mb-6">워크플로우 다이어그램</h2>
@@ -112,15 +153,15 @@ const WorkflowDetail = () => {
                                     <Activity className="w-6 h-6 text-primary" />
                                     작동 원리
                                 </h2>
-                                <div className="space-y-6 relative before:absolute before:left-4 before:top-4 before:h-full before:w-0.5 before:bg-border/50">
+                                <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:h-full before:w-0.5 before:bg-border/50">
                                     {item.steps.map((step, idx) => (
-                                        <div key={idx} className="relative pl-12">
-                                            <div className="absolute left-0 top-0 w-8 h-8 rounded-full bg-background border-2 border-primary text-primary flex items-center justify-center font-bold z-10">
+                                        <div key={idx} className="relative pl-10">
+                                            <div className="absolute left-0 top-0 w-7 h-7 rounded-full bg-background border-2 border-primary text-primary flex items-center justify-center font-bold text-sm z-10">
                                                 {idx + 1}
                                             </div>
-                                            <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                                                <h3 className="text-lg font-bold mb-2">{step.title}</h3>
-                                                <p className="text-muted-foreground leading-relaxed">{step.description}</p>
+                                            <div className="bg-card border border-border rounded-lg p-4 shadow-sm hover:border-primary/50 transition-colors">
+                                                <h3 className="font-semibold text-base mb-1">{step.title}</h3>
+                                                <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -145,17 +186,34 @@ const WorkflowDetail = () => {
                                 </div>
                             </div>
 
-                            {/* Credentials */}
+
+
+                            {/* Import Method */}
+                            {item.importInfo && (
+                                <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+                                    <h3 className="font-bold mb-4 flex items-center gap-2">
+                                        <Download className="w-4 h-4 text-muted-foreground" />
+                                        가져오는 방법
+                                    </h3>
+                                    <div className="text-sm text-muted-foreground leading-relaxed prose prose-sm max-w-none prose-a:text-primary prose-a:underline hover:prose-a:text-primary/80">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {item.importInfo}
+                                        </ReactMarkdown>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Requirements */}
                             <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
                                 <h3 className="font-bold mb-4 flex items-center gap-2">
                                     <Lock className="w-4 h-4 text-muted-foreground" />
                                     필요한 권한/계정
                                 </h3>
                                 <ul className="space-y-3">
-                                    {item.credentials.map((cred, idx) => (
+                                    {item.requirements.map((req, idx) => (
                                         <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                                            {cred}
+                                            {req}
                                         </li>
                                     ))}
                                 </ul>
@@ -180,10 +238,10 @@ const WorkflowDetail = () => {
                         </div>
                     </div>
                 </div>
-            </main>
+            </main >
 
             <Footer />
-        </div>
+        </div >
     );
 };
 

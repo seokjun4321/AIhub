@@ -66,8 +66,9 @@ export interface WorkflowItem extends BaseItem {
     download_url?: string;
     steps: { title: string; description: string }[];
     requirements: string[];
-    credentials: string[];
     warnings?: string[];
+    platform?: string;
+    importInfo?: string;
 }
 
 export interface TemplateItem extends BaseItem {

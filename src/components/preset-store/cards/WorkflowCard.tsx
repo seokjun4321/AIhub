@@ -25,17 +25,21 @@ const WorkflowCard = ({ item }: WorkflowCardProps) => {
 
             <div className="flex gap-2 p-3 bg-muted/30 border-b border-border/50 text-xs">
                 <span className={cn("px-2 py-1 rounded flex items-center gap-1 font-medium", getComplexityColor(item.complexity))}>
-                    <Layers className="w-3 h-3" /> {item.complexity}
+                    <Layers className="w-3 h-3" />
+                    {item.complexity === "Simple" ? "초급" : item.complexity === "Medium" ? "중급" : item.complexity === "Complex" ? "고급" : item.complexity}
                 </span>
                 <span className="px-2 py-1 rounded flex items-center gap-1 bg-background border border-border/50 text-muted-foreground">
                     <Clock className="w-3 h-3" /> {item.duration}
+                </span>
+                <span className="ml-auto text-xs font-semibold text-foreground">
+                    {item.price ? `${item.price.toLocaleString()}원` : "무료"}
                 </span>
             </div>
 
             <div className="p-4 flex flex-col flex-1">
                 <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">{item.title}</h3>
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {item.description}
+                    {item.oneLiner}
                 </p>
 
                 <div className="flex flex-wrap gap-2 mb-3 mt-auto">

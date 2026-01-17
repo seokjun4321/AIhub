@@ -169,17 +169,17 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
                                     <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden">
                                         {item.params.map((param, idx) => (
                                             <div key={idx} className={cn(
-                                                "flex items-center justify-between p-4 group hover:bg-slate-100/50 transition-colors",
+                                                "flex items-start justify-between p-4 group hover:bg-slate-100/50 transition-colors",
                                                 idx !== item.params.length - 1 && "border-b border-slate-100/60"
                                             )}>
-                                                <div className="flex gap-4 items-center overflow-hidden">
-                                                    <span className="text-xs font-medium text-slate-500 w-24 shrink-0">{param.key}</span>
-                                                    <span className="text-xs font-medium text-slate-900 font-mono truncate">{param.value}</span>
+                                                <div className="flex gap-4 items-start flex-1 min-w-0">
+                                                    <span className="text-xs font-medium text-slate-500 w-24 shrink-0 pt-0.5">{param.key}</span>
+                                                    <span className="text-xs font-medium text-slate-900 font-mono break-words whitespace-pre-wrap">{param.value}</span>
                                                 </div>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600"
+                                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 shrink-0"
                                                     onClick={() => handleCopyParam(param.key, param.value)}
                                                 >
                                                     {copiedParams === param.key ?

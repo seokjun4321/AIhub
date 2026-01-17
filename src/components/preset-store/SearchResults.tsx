@@ -120,8 +120,9 @@ const SearchResults = ({ query, selectedCategory }: SearchResultsProps) => {
                 price: item.price || 0,
                 steps: item.steps,
                 requirements: item.requirements,
-                credentials: item.credentials,
-                warnings: item.warnings
+                warnings: item.warnings,
+                platform: item.platform,
+                importInfo: item.import_info
             })) as WorkflowItem[];
         }
     });
