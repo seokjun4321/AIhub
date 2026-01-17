@@ -53,7 +53,8 @@ export const FeedbackModal = ({
         try {
             const { data: { user } } = await supabase.auth.getUser();
 
-            const { error } = await supabase.from('feedbacks').insert({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error } = await supabase.from('feedbacks' as any).insert({
                 trigger, // 'global_widget' etc
                 entity_type: defaultValues?.entityType,
                 entity_id: defaultValues?.entityId,
@@ -78,7 +79,7 @@ export const FeedbackModal = ({
             onClose();
             resetForm();
 
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("Feedback submission error:", error);
             toast({
                 title: "전송 실패",

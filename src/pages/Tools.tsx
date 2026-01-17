@@ -253,18 +253,6 @@ const Tools = () => {
               <span>{model.pricing_info || '가격 정보 없음'}</span>
             </div>
             <div className="flex gap-2">
-              {model.website_url && (
-                <Button
-                  size="sm"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.open(model.website_url, '_blank', 'noopener,noreferrer');
-                  }}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-              )}
             </div>
           </div>
         </CardContent>

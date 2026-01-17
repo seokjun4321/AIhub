@@ -18,7 +18,7 @@ export interface FeedbackData {
     rating: number;
     message: string;
     page_url: string;
-    metadata: any;
+    metadata: Record<string, unknown> | null;
     user_id: string;
 }
 
@@ -33,14 +33,15 @@ export const FeedbackDashboard = () => {
     const fetchFeedbacks = async () => {
         setIsLoading(true);
         try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data, error } = await supabase
-                .from('feedbacks')
+                .from('feedbacks' as any)
                 .select('*')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setFeedbacks(data || []);
-        } catch (error) {
+            setFeedbacks((data || []) as unknown as FeedbackData[]);
+        } catch (error: unknown) {
             console.error('Error fetching feedbacks:', error);
         } finally {
             setIsLoading(false);
