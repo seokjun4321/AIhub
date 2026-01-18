@@ -677,9 +677,9 @@ function NewHome() {
                                         </div>
                                         <div className={`demo - content ${demoExpanded ? 'expanded' : ''} `}>
                                             <div className="result-chips">
-                                                <span className="result-chip tool">도구: Claude</span>
-                                                <span className="result-chip guide">가이드북: AI 블로그 자동화</span>
-                                                <span className="result-chip preset">프리셋: 블로그 글 프롬프트</span>
+                                                {/* <span className="result-chip tool">Claude</span>
+                                                <span className="result-chip guide">AI 블로그 자동화</span>
+                                                <span className="result-chip preset">블로그 글 프롬프트</span> */}
                                             </div>
                                         </div>
                                     </div>
