@@ -68,7 +68,8 @@ const Tools = () => {
       // 기본 정렬을 먼저 걸지 않습니다. 사용자가 선택한 정렬 기준만 적용합니다.
       let query = supabase
         .from('ai_models')
-        .select('*');
+        .select('*')
+        .not('provider', 'is', null);
 
       // 검색 필터
       if (searchQuery) {

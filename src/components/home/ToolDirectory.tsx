@@ -44,7 +44,8 @@ const ToolDirectory = () => {
             // 여기서는 간단하게 모든 모델의 category_id를 가져와서 계산
             const { data: modelsData, error: modelsError } = await supabase
                 .from('ai_models')
-                .select('category_id');
+                .select('category_id')
+                .not('provider', 'is', null);
 
             if (modelsError) throw modelsError;
 
