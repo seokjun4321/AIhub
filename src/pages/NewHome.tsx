@@ -468,14 +468,7 @@ function NewHome() {
                 <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.5rem;">${presetItem.title}</h3>
                 <p style="font-size:0.9rem; color:#4B5563; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${presetItem.desc}</p>
                 </div>
-                <div class="preset-actions" style="margin-top:auto;">
-                <button class="btn-copy">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    복사
-                </button>
-                <button class="btn-preview">보기</button>
-                </div>
-            `;
+                `;
             }
         }
 
@@ -495,8 +488,8 @@ function NewHome() {
                 ? `<img src="${item.icon}" alt="${item.name}" style="width:2rem; height:2rem; object-fit:contain; border-radius:0.25rem;" />`
                 : `<span style="font-size:1.2rem;">${item.icon}</span>`
             }
-      <span style="font-weight:700; font-size:0.9rem; margin-left: 0.5rem;">${item.name}</span>
-    `;
+                <span style="font-weight:700; font-size:0.9rem; margin-left: 0.5rem;">${item.name}</span>
+                `;
         return div;
     };
 
@@ -507,11 +500,11 @@ function NewHome() {
         div.style.gap = '1rem';
 
         const tagsHtml = item.tags
-            .map((t) => `<span style="background:#F3F4F6; padding:2px 6px; border-radius:4px; font-size:0.75rem; color:#4B5563;">${t}</span>`)
+            .map((t) => `< span style = "background:#F3F4F6; padding:2px 6px; border-radius:4px; font-size:0.75rem; color:#4B5563;" > ${t}</span > `)
             .join('');
 
         div.innerHTML = `
-      <div style="font-size:2rem; padding-top:4px;">${item.icon}</div>
+                    < div style = "font-size:2rem; padding-top:4px;" > ${item.icon}</div >
       <div style="flex:1;">
         <div style="display:flex; gap:0.5rem; font-size:0.8rem; color:#6B7280; margin-bottom:0.25rem;">
           <span style="font-weight:600; color:#374151;">${item.title}</span>
@@ -525,7 +518,7 @@ function NewHome() {
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         ${item.comments}
       </div>
-    `;
+                `;
         return div;
     };
 
@@ -682,7 +675,7 @@ function NewHome() {
                                             <span className="demo-text">💡 예시: "블로그 글 자동화하고 싶어요"</span>
                                             <button className="demo-toggle">{demoExpanded ? '접기' : '보기'}</button>
                                         </div>
-                                        <div className={`demo-content ${demoExpanded ? 'expanded' : ''}`}>
+                                        <div className={`demo - content ${demoExpanded ? 'expanded' : ''} `}>
                                             <div className="result-chips">
                                                 <span className="result-chip tool">도구: Claude</span>
                                                 <span className="result-chip guide">가이드북: AI 블로그 자동화</span>
@@ -844,7 +837,7 @@ function NewHome() {
                                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activePresetCategory === category.id
                                         ? 'bg-primary text-primary-foreground shadow-md'
                                         : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                                        }`}
+                                        } `}
                                 >
                                     <span className="mr-2">{category.icon}</span>
                                     {category.label}
@@ -998,7 +991,7 @@ function NewHome() {
                             </div>
                             <div className="modal-body">
                                 {modalMessages.map((msg, idx) => (
-                                    <div key={idx} className={`message ${msg.type}`}>
+                                    <div key={idx} className={`message ${msg.type} `}>
                                         {msg.text}
                                     </div>
                                 ))}
