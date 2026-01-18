@@ -131,6 +131,7 @@ const ToolDetail = () => {
   const [uiAverage, setUiAverage] = useState<number | null>(null);
   const [uiCount, setUiCount] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activePresetCategory, setActivePresetCategory] = useState("ALL");
 
   const { data: aiModel, isLoading: modelLoading } = useQuery({
     queryKey: ['aiModel', id],
@@ -239,6 +240,95 @@ const ToolDetail = () => {
       setIsSubmittingReview(false);
     },
   });
+
+  // Fetch Related Presets (Prompts)
+  const { data: presetPrompts = [] } = useQuery({
+    queryKey: ['presetPrompts', id],
+    queryFn: async () => {
+      const toolId = parseInt(id!);
+      const { data, error } = await supabase
+        .from('preset_prompt_templates' as any)
+        .select('*')
+        .contains('related_ai_model_ids', [toolId]);
+
+      if (error) throw error;
+      return (data || []).map((item: any) => ({ ...item, type: 'prompt' }));
+    },
+    enabled: !!id,
+  });
+
+  // Fetch Related Presets (Designs)
+  const { data: presetDesigns = [] } = useQuery({
+    queryKey: ['presetDesigns', id],
+    queryFn: async () => {
+      const toolId = parseInt(id!);
+      const { data, error } = await supabase
+        .from('preset_designs' as any)
+        .select('*')
+        .contains('related_ai_model_ids', [toolId]);
+
+      if (error) throw error;
+      return (data || []).map((item: any) => ({ ...item, type: 'design' }));
+    },
+    enabled: !!id,
+  });
+
+  // Fetch Related Presets (Workflows)
+  const { data: presetWorkflows = [] } = useQuery({
+    queryKey: ['presetWorkflows', id],
+    queryFn: async () => {
+      const toolId = parseInt(id!);
+      const { data, error } = await supabase
+        .from('preset_workflows' as any)
+        .select('*')
+        .contains('related_ai_model_ids', [toolId]);
+
+      if (error) throw error;
+      return (data || []).map((item: any) => ({ ...item, type: 'workflow' }));
+    },
+    enabled: !!id,
+  });
+
+  // Fetch Related Presets (Agents)
+  const { data: presetAgents = [] } = useQuery({
+    queryKey: ['presetAgents', id],
+    queryFn: async () => {
+      const toolId = parseInt(id!);
+      const { data, error } = await supabase
+        .from('preset_agents' as any)
+        .select('*')
+        .contains('related_ai_model_ids', [toolId]);
+
+      if (error) throw error;
+      return (data || []).map((item: any) => ({ ...item, type: 'agent' }));
+    },
+    enabled: !!id,
+  });
+
+  // Fetch Related Presets (Templates)
+  const { data: presetTemplates = [] } = useQuery({
+    queryKey: ['presetTemplates', id],
+    queryFn: async () => {
+      const toolId = parseInt(id!);
+      const { data, error } = await supabase
+        .from('preset_templates' as any)
+        .select('*')
+        .contains('related_ai_model_ids', [toolId]);
+
+      if (error) throw error;
+      return (data || []).map((item: any) => ({ ...item, type: 'template' }));
+    },
+    enabled: !!id,
+  });
+
+  const allPresets = [
+    ...presetPrompts,
+    ...presetDesigns,
+    ...presetWorkflows,
+    ...presetAgents,
+    ...presetTemplates
+  ];
+
 
   useEffect(() => {
     if (aiModel) {
@@ -646,13 +736,82 @@ const ToolDetail = () => {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="presets" className="mt-6">
-                  <Card className="border-gray-200 shadow-sm bg-white h-64 flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <div className="text-lg font-medium mb-1">등록된 프리셋이 없습니다</div>
-                      <p className="text-sm">이 도구와 관련된 프리셋 워크플로우가 곧 추가될 예정입니다.</p>
+
+                <TabsContent value="presets" className="mt-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-bold">관련 프리셋 ({allPresets.length})</h3>
                     </div>
-                  </Card>
+
+                    {/* Category Filter Pills */}
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: 'ALL', label: '전체' },
+                        { id: 'prompt', label: '프롬프트' },
+                        { id: 'agent', label: '에이전트' },
+                        { id: 'workflow', label: '워크플로우' },
+                        { id: 'design', label: '디자인' },
+                        { id: 'template', label: '템플릿' }
+                      ].map(category => (
+                        <button
+                          key={category.id}
+                          onClick={() => setActivePresetCategory(category.id)}
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activePresetCategory === category.id
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                        >
+                          {category.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {allPresets.filter(p => activePresetCategory === 'ALL' || p.type === activePresetCategory).length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {allPresets
+                        .filter(p => activePresetCategory === 'ALL' || p.type === activePresetCategory)
+                        .map((preset: any) => (
+                          <Card key={`${preset.type}-${preset.id}`} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer border-gray-200" onClick={() => window.open('/presets', '_blank')}>
+                            {preset.type === 'design' && preset.image_url ? (
+                              <div className="relative h-40 w-full">
+                                <img src={preset.image_url} alt={preset.title} className="w-full h-full object-cover" />
+                                <Badge className="absolute top-2 right-2 bg-black/60 hover:bg-black/70 border-none text-white">
+                                  {preset.type.toUpperCase()}
+                                </Badge>
+                              </div>
+                            ) : null}
+                            <CardHeader className="p-4 pb-2">
+                              <div className="flex justify-between items-start">
+                                <Badge variant="outline" className={`mb-2 uppercase text-[10px] tracking-wider ${preset.type === 'prompt' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                  preset.type === 'workflow' ? 'bg-purple-50 text-purple-600 border-purple-200' :
+                                    preset.type === 'agent' ? 'bg-green-50 text-green-600 border-green-200' :
+                                      preset.type === 'design' ? 'bg-pink-50 text-pink-600 border-pink-200' :
+                                        'bg-gray-50 text-gray-600 border-gray-200'
+                                  }`}>
+                                  {preset.type}
+                                </Badge>
+                              </div>
+                              <CardTitle className="text-lg line-clamp-1">{preset.title}</CardTitle>
+                              <CardDescription className="line-clamp-2 mt-1">
+                                {preset.description || preset.one_liner}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0 text-sm text-gray-500">
+                              By {preset.author || 'AIHub User'}
+                            </CardContent>
+                          </Card>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed text-gray-500">
+                      <div className="text-lg font-medium mb-1">등록된 프리셋이 없습니다</div>
+                      <p className="text-sm">선택한 카테고리에 해당하는 프리셋이 없습니다.</p>
+                      <Button variant="link" className="mt-2" asChild>
+                        <Link to="/presets">프리셋 스토어 구경하기</Link>
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="qna" className="mt-6 space-y-6">
