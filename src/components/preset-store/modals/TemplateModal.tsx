@@ -26,7 +26,7 @@ const TemplateModal = ({ item, isOpen, onClose }: TemplateModalProps) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-5xl h-[60vh] p-0 flex flex-col gap-0 overflow-hidden">
+            <DialogContent className="max-w-5xl h-[85vh] p-0 flex flex-col gap-0 overflow-hidden">
                 {/* Header */}
                 <div className="p-6 border-b border-border bg-card">
                     <div className="flex items-center gap-3 mb-2">
