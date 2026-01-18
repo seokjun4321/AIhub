@@ -45,7 +45,18 @@ const fetchRecentGuides = async () => {
     }
 
     console.log('✅ 가이드북 데이터 수신 성공:', data);
-    return data || [];
+
+    // Transform data to match Guidebook interface
+    // Transform data to match Guidebook interface
+    return data?.map((item: any) => ({
+        ...item,
+        id: item.id,
+        title: item.title,
+        desc: item.description, // Map DB description to UI desc
+        tags: [getLevelTag(item.difficulty_level)], // Create tags from difficulty
+        icon: '📚', // Default icon
+        likes: item.view_count
+    })) || [];
 };
 
 // Fetch AI tools from Supabase
@@ -61,7 +72,14 @@ const fetchAITools = async () => {
         return [];
     }
 
-    return data || [];
+    // Map DB columns to Tool interface
+    return data?.map((tool: any) => ({
+        id: tool.id,
+        name: tool.name,
+        desc: tool.description,
+        icon: tool.logo_url || 'https://via.placeholder.com/40', // Use logo_url as icon
+        tags: [] // Default empty tags
+    })) || [];
 };
 
 // Fetch resolved community posts from Supabase
@@ -191,71 +209,133 @@ const formatTimeAgo = (dateString: string): string => {
 
 
 function NewHome() {
-    const [demoExpanded, setDemoExpanded] = useState(false);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [userMessage, setUserMessage] = useState('');
-    const [modalMessages, setModalMessages] = useState<Array<{ type: 'ai' | 'user'; text: string }>>([
-        { type: 'ai', text: '안녕하세요! 무엇을 도와드릴까요?' }
-    ]);
-
     const heroTextAreaRef = useRef<HTMLTextAreaElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalMessages, setModalMessages] = useState<{ type: 'user' | 'bot'; text: string }[]>([]);
+    const [userMessage, setUserMessage] = useState('');
+    const [demoExpanded, setDemoExpanded] = useState(false);
 
-    // Fetch guides from Supabase
-    const { data: guidesData, isLoading: guidesLoading } = useQuery({
-        queryKey: ['recentGuides'],
+    // State for preset category
+    const [activePresetCategory, setActivePresetCategory] = useState<'design' | 'prompt' | 'agent' | 'workflow' | 'template'>('design');
+
+    const { data: guidebooks = dummyGuidebooks } = useQuery({
+        queryKey: ['home-guides'],
         queryFn: fetchRecentGuides
     });
 
-    // Fetch AI tools from Supabase
-    const { data: aiToolsData, isLoading: toolsLoading } = useQuery({
-        queryKey: ['aiTools'],
+    const { data: tools = dummyTools } = useQuery({
+        queryKey: ['home-tools'],
         queryFn: fetchAITools
     });
 
-    // Fetch resolved community posts from Supabase
     const { data: resolvedPostsData, isLoading: postsLoading } = useQuery({
-        queryKey: ['resolvedPosts'],
+        queryKey: ['home-resolved-posts'],
         queryFn: fetchResolvedPosts
     });
 
+    // Unified Preset Interface
+    interface UnifiedPreset {
+        id: string;
+        title: string;
+        desc: string;
+        type: 'design' | 'prompt' | 'agent' | 'workflow' | 'template';
+        icon?: string;
+        imageUrl?: string;
+        tool?: string;
+        platform?: string;
+    }
 
-    // Map Supabase data to Guidebook format
-    const guidebooks: Guidebook[] = guidesData?.map((guide: any) => {
-        const categoryName = (guide.categories as any)?.name || '기타';
-        const icon = getCategoryIcon(categoryName);
+    // Fetch presets based on category
+    const { data: presetsData } = useQuery({
+        queryKey: ['home-presets', activePresetCategory],
+        queryFn: async () => {
+            let query;
+            let data: any[] = [];
+            let error;
 
-        // Debug: log category and icon
-        console.log('Guide:', guide.title, '| Category:', categoryName, '| Icon:', icon);
+            console.log('Fetching presets for category:', activePresetCategory);
 
-        return {
-            id: guide.id,
-            title: guide.title,
-            desc: guide.description || '',
-            icon: icon,
-            tags: [
-                categoryName,
-                getLevelTag(guide.difficulty_level)
-            ].filter(Boolean)
-        };
-    }) || dummyGuidebooks;
+            switch (activePresetCategory) {
+                case 'design':
+                    const designRes = await (supabase as any).from('preset_designs').select('*').limit(10);
+                    if (designRes.error) throw designRes.error;
+                    return designRes.data.map((item: any) => {
+                        const modelParam = item.params?.find((p: any) => p.key === 'Model' || p.key === 'model');
+                        return {
+                            id: item.id,
+                            title: item.title,
+                            desc: item.one_liner,
+                            type: 'design',
+                            imageUrl: item.image_url,
+                            tool: modelParam ? modelParam.value : 'Midjourney/SD'
+                        };
+                    }) as UnifiedPreset[];
 
-    // Map AI tools data to Tool format
-    const tools: Tool[] = aiToolsData?.map((model: any) => ({
-        name: model.name,
-        desc: '', // 상세설명 제거
-        icon: model.logo_url || getToolIcon(model.name) // 실제 로고 URL 사용
-    })) || dummyTools;
+                case 'prompt':
+                    // User confirmed table name is 'preset_prompt_templates'
+                    const promptRes = await (supabase as any).from('preset_prompt_templates').select('*').limit(10);
+                    if (promptRes.error) throw promptRes.error;
+                    return promptRes.data.map((item: any) => ({
+                        id: item.id,
+                        title: item.title,
+                        desc: item.one_liner,
+                        type: 'prompt',
+                        icon: '📝',
+                        tool: item.compatible_tools?.[0] || 'AI Tool'
+                    })) as UnifiedPreset[];
 
-    // Debug: log the number of tools
-    console.log('🔧 Total AI tools loaded:', tools.length, tools);
+                case 'agent':
+                    const agentRes = await (supabase as any).from('preset_agents').select('*').limit(10);
+                    if (agentRes.error) throw agentRes.error;
+                    return agentRes.data.map((item: any) => ({
+                        id: item.id,
+                        title: item.title,
+                        desc: item.one_liner,
+                        type: 'agent',
+                        icon: '🤖',
+                        platform: item.platform
+                    })) as UnifiedPreset[];
 
+                case 'workflow':
+                    const workflowRes = await (supabase as any).from('preset_workflows').select('*').limit(10);
+                    if (workflowRes.error) throw workflowRes.error;
+                    return workflowRes.data.map((item: any) => {
+                        const appNames = item.apps?.map((a: any) => a.name).join(', ') || 'Automations';
+                        return {
+                            id: item.id,
+                            title: item.title,
+                            desc: item.one_liner,
+                            type: 'workflow',
+                            icon: '⚡',
+                            tool: appNames.length > 25 ? appNames.substring(0, 25) + '...' : appNames
+                        };
+                    }) as UnifiedPreset[];
 
+                case 'template':
+                    const templateRes = await (supabase as any).from('preset_templates').select('*').limit(10);
+                    if (templateRes.error) throw templateRes.error;
+                    return templateRes.data.map((item: any) => ({
+                        id: item.id,
+                        title: item.title,
+                        desc: item.one_liner,
+                        type: 'template',
+                        icon: item.category === 'Notion' ? '📓' : '📊',
+                        imageUrl: item.image_url, // Some templates might have images
+                        tool: item.category
+                    })) as UnifiedPreset[];
 
-    // Initialize particles on component mount
+                default:
+                    return [];
+            }
+        }
+    });
+
+    // Particle initialization
     useEffect(() => {
-        if (canvasRef.current) {
-            initParticles(canvasRef.current);
+        const canvas = canvasRef.current;
+        if (canvas) {
+            initParticles(canvas);
         }
     }, []);
 
@@ -272,7 +352,8 @@ function NewHome() {
             { threshold: 0.1 }
         );
 
-        document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+        const reveals = document.querySelectorAll('.reveal');
+        reveals.forEach((el) => observer.observe(el));
 
         return () => observer.disconnect();
     }, []);
@@ -282,17 +363,30 @@ function NewHome() {
         fillTrack('logo-marquee', [...logos, ...logos, ...logos], renderLogo);
         fillTrack('guidebook-track', guidebooks, (item) => renderCard(item, 'guidebook'));
         fillTrack('guidebook-track-2', guidebooks, (item) => renderCard(item, 'guidebook'));
-        fillTrack('preset-track', presets, (item) => renderCard(item, 'preset'));
-        fillTrack('preset-track-2', presets, (item) => renderCard(item, 'preset'));
 
-        // AI 도구 마키 효과 - 두 개의 열로 분리
+        // Dynamic Preset Marquee
+        if (presetsData && presetsData.length > 0) {
+            // Duplicate data to create seamless loop if not enough items
+            const marqueeData = presetsData.length < 10 ? [...presetsData, ...presetsData, ...presetsData] : [...presetsData, ...presetsData];
+            fillTrack('preset-track', marqueeData, (item) => renderCard(item, 'preset'));
+            fillTrack('preset-track-2', marqueeData, (item) => renderCard(item, 'preset'));
+        } else {
+            // Fallback or empty state handling if needed, but for marquee we might show dummy if loading? 
+            // For now, let's just clear if no data
+            const track1 = document.getElementById('preset-track');
+            const track2 = document.getElementById('preset-track-2');
+            if (track1) track1.innerHTML = '';
+            if (track2) track2.innerHTML = '';
+        }
+
+        // AI 도구 마키 효과 - 두 개의 열로 분리 (remains same)
         const halfLength = Math.ceil(tools.length / 2);
         const topRowTools = tools.slice(0, halfLength);
         const bottomRowTools = tools.slice(halfLength);
 
         fillTrack('tool-track-1', [...topRowTools, ...topRowTools], renderToolPill);
         fillTrack('tool-track-2', [...bottomRowTools, ...bottomRowTools], renderToolPill);
-    }, [guidebooks, tools]);
+    }, [guidebooks, tools, presetsData]); // Added presetsData dependency
 
     const fillTrack = (trackId: string, items: any[], renderer: (item: any) => HTMLElement) => {
         const track = document.getElementById(trackId);
@@ -311,66 +405,78 @@ function NewHome() {
         return div;
     };
 
-    const renderCard = (item: Guidebook | Preset, type: 'guidebook' | 'preset'): HTMLElement => {
+    const renderCard = (item: any, type: 'guidebook' | 'preset'): HTMLElement => {
         const div = document.createElement('div');
         div.className = 'info-card';
 
         let html = '';
         if (type === 'guidebook') {
+            // ... (Guidebook rendering logic remains mostly same, ensuring types are safe)
             const guidebookItem = item as Guidebook & { id?: string };
-            // Find level tag (초급, 중급, 고급) or use the first tag
             const levelTags = ['초급', '중급', '고급'];
-            const levelTag = guidebookItem.tags.find(t => levelTags.includes(t)) || guidebookItem.tags[0] || '초급';
+            const levelTag = guidebookItem.tags?.find(t => levelTags.includes(t)) || guidebookItem.tags?.[0] || '초급';
 
             html = `
         <div style="flex:1; display:flex; flex-direction:column; height:100%;">
-          <!-- Header: Icon Left, Tag Right -->
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
             <div style="width:40px; height:40px; background:#F3F4F6; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#374151;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                ${guidebookItem.icon ? `<span style="font-size:1.2rem;">${guidebookItem.icon}</span>` :
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>`}
             </div>
             <span class="card-badge badge-green" style="margin:0;">${levelTag}</span>
           </div>
-          
-          <!-- Body: Title & Desc -->
           <div style="flex:1; margin-bottom:1rem;">
             <h3 style="font-size:1.1rem; font-weight:700; line-height:1.4; margin:0 0 0.5rem 0; word-break: keep-all; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${guidebookItem.title}</h3>
             <p class="guide-desc" style="-webkit-line-clamp: 3;">${guidebookItem.desc || '단계별로 따라하며 배우는 실전 AI 가이드입니다.'}</p>
           </div>
-          
-          <!-- Footer: Read Count (Dummy) -->
           <div style="border-top:1px solid #F3F4F6; padding-top:0.75rem; margin-top:auto; font-size:0.8rem; color:#9CA3AF; display:flex; align-items:center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
             <span>${Math.floor(Math.random() * 500)}명이 읽었어요</span>
           </div>
         </div>
       `;
-
-            // Add click event to navigate to guide detail page
             if (guidebookItem.id) {
                 div.style.cursor = 'pointer';
                 div.addEventListener('click', () => {
                     window.location.href = `/guides/${guidebookItem.id}`;
                 });
             }
+
         } else if (type === 'preset') {
-            const presetItem = item as Preset;
-            html = `
-        <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <span class="card-badge badge-yellow" style="font-size:0.85rem;">${presetItem.tool}과 함께</span>
-          </div>
-          <h3>${presetItem.title}</h3>
-          <p>${presetItem.desc}</p>
-        </div>
-        <div class="preset-actions">
-          <button class="btn-copy">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            복사하고 툴 열기
-          </button>
-          <button class="btn-preview">미리보기</button>
-        </div>
-      `;
+            const presetItem = item as UnifiedPreset;
+
+            // Special rendering for Design presets with images
+            if (presetItem.type === 'design' && presetItem.imageUrl) {
+                html = `
+                    <div style="position:relative; height:100%; border-radius:12px; overflow:hidden;">
+                        <img src="${presetItem.imageUrl}" alt="${presetItem.title}" style="width:100%; height:140px; object-fit:cover; border-radius:12px; margin-bottom:12px;" />
+                        <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.25rem;">${presetItem.title}</h3>
+                        <p style="font-size:0.85rem; color:#6B7280; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${presetItem.desc}</p>
+                         <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+                            <span class="card-badge badge-purple" style="font-size:0.75rem;">${presetItem.tool || 'AI Design'}</span>
+                        </div>
+                    </div>
+                 `;
+            } else {
+                // Standard rendering for other presets
+                html = `
+                <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <span class="card-badge badge-yellow" style="font-size:0.85rem;">${presetItem.tool || presetItem.platform || 'AI Tool'}</span>
+                    ${presetItem.icon ? `<span style="font-size:1.2rem;">${presetItem.icon}</span>` : ''}
+                </div>
+                <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.5rem;">${presetItem.title}</h3>
+                <p style="font-size:0.9rem; color:#4B5563; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${presetItem.desc}</p>
+                </div>
+                <div class="preset-actions" style="margin-top:auto;">
+                <button class="btn-copy">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    복사
+                </button>
+                <button class="btn-preview">보기</button>
+                </div>
+            `;
+            }
         }
 
         div.innerHTML = html;
@@ -680,14 +786,6 @@ function NewHome() {
                         <h2 className="section-title">프리셋</h2>
                         <p className="section-subtitle">복사해서 바로 쓰는 프롬프트·자동화·템플릿</p>
 
-                        <Link to="/presets" className="view-all-btn">
-                            프리셋 전체 보기
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M5 12h14"></path>
-                                <path d="M12 5l7 7-7 7"></path>
-                            </svg>
-                        </Link>
-
                         {/* Process Steps for Presets */}
                         <div className="process-steps" style={{ marginBottom: '2rem' }}>
                             <div className="step-item">
@@ -716,7 +814,7 @@ function NewHome() {
                         </div>
 
                         {/* Preset Features Badges */}
-                        <div className="features-row" style={{ gap: '0.75rem', marginBottom: '4rem' }}>
+                        <div className="features-row" style={{ gap: '0.75rem', marginBottom: '2rem' }}>
                             <span className="badge-orange feature-badge">
                                 🚀 즉시 사용
                                 <span className="custom-tooltip">복사 한 번으로 즉시 사용 가능</span>
@@ -730,11 +828,44 @@ function NewHome() {
                                 <span className="custom-tooltip">전문가가 만든 최적화 프리셋</span>
                             </span>
                         </div>
+
+                        {/* Category Selection Buttons */}
+                        <div className="flex justify-center flex-wrap gap-2 mb-8">
+                            {[
+                                { id: 'design', label: 'AI 생성 디자인', icon: '🎨' },
+                                { id: 'prompt', label: '프롬프트 템플릿', icon: '📝' },
+                                { id: 'agent', label: 'Gem / GPT / Artifact', icon: '🤖' },
+                                { id: 'workflow', label: '자동화 워크플로우', icon: '⚡' },
+                                { id: 'template', label: 'Notion / Sheets 템플릿', icon: '📊' }
+                            ].map((category) => (
+                                <button
+                                    key={category.id}
+                                    onClick={() => setActivePresetCategory(category.id as any)}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activePresetCategory === category.id
+                                        ? 'bg-primary text-primary-foreground shadow-md'
+                                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                                        }`}
+                                >
+                                    <span className="mr-2">{category.icon}</span>
+                                    {category.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="marquee-container right-scroll">
                         <div className="card-track" id="preset-track"></div>
                         <div className="card-track" id="preset-track-2" aria-hidden="true"></div>
+                    </div>
+
+                    <div className="text-center mt-8">
+                        <Link to="/presets" className="view-all-btn inline-flex items-center gap-2 text-primary hover:underline">
+                            프리셋 전체 보기
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12h14"></path>
+                                <path d="M12 5l7 7-7 7"></path>
+                            </svg>
+                        </Link>
                     </div>
                 </section>
 
