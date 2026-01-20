@@ -73,8 +73,19 @@ interface AIModel {
   model_type: string | null;
   pricing_info: string | null;
   features: string[] | null;
-  use_cases: string[] | null;
-  limitations: string[] | null;
+
+  // New Schema Fields
+  pricing_model: string | null;
+  free_tier_note: string | null;
+  pros: string[] | null;
+  cons: string[] | null;
+  difficulty_level: string | null;
+  learning_curve: string | null;
+
+  // Deprecated/Removed from View
+  // use_cases: string[] | null;
+  // limitations: string[] | null;
+
   website_url: string | null;
   api_documentation_url: string | null;
   average_rating: number;
@@ -401,9 +412,11 @@ const ToolCompare = () => {
 
     const Row = ({ label, icon: Icon, render }: { label: string, icon?: any, render: (tool: AIModel, index: number) => React.ReactNode }) => (
       <tr className="border-b hover:bg-muted/50 transition-colors">
-        <td className="p-4 font-medium w-40 sticky left-0 bg-background z-10 border-r flex items-center gap-2">
-          {Icon && <Icon className="w-4 h-4 text-muted-foreground" />}
-          {label}
+        <td className="p-4 font-medium sticky left-0 bg-background z-10 border-r" style={{ width: '10rem', minWidth: '10rem' }}>
+          <div className="flex items-center gap-2">
+            {Icon && <Icon className="w-4 h-4 text-muted-foreground" />}
+            {label}
+          </div>
         </td>
         {selectedToolsData.map((tool, index) => (
           <td key={tool.id} className="p-4 align-top" style={{ width: `calc((100% - 10rem) / ${selectedToolsData.length})` }}>
@@ -417,8 +430,8 @@ const ToolCompare = () => {
       <div className="overflow-x-auto relative rounded-lg border">
         <table className="w-full border-collapse table-fixed min-w-[800px]">
           <thead>
-            <tr className="border-b bg-muted/30">
-              <th className="text-left p-4 font-semibold w-40 sticky left-0 bg-background z-20 border-r">
+            <tr className="border-b bg-muted/30" style={{ display: 'table-row' }}>
+              <td className="text-left p-4 font-semibold border-r" style={{ width: '10rem', minWidth: '10rem', display: 'table-cell' }}>
                 <div className="flex flex-col gap-2">
                   <span>비교 항목</span>
                   <div className="flex items-center space-x-2">
@@ -434,10 +447,14 @@ const ToolCompare = () => {
                     </label>
                   </div>
                 </div>
-              </th>
+              </td>
               {selectedToolsData.map((tool, index) => (
-                <th key={tool.id} className="text-center p-4 sticky top-0 bg-background z-10">
-                  <div className="flex flex-col items-center gap-3">
+                <td
+                  key={tool.id}
+                  className="text-center p-4 border-b"
+                  style={{ display: 'table-cell' }}
+                >
+                  <div className="flex flex-row items-center justify-center gap-3">
                     <div className="relative group">
                       <div className="w-12 h-12 bg-transparent rounded-xl flex items-center justify-center text-foreground font-bold text-lg">
                         {tool.logo_url ? (
@@ -459,7 +476,7 @@ const ToolCompare = () => {
                       {tool.name}
                     </Link>
                   </div>
-                </th>
+                </td>
               ))}
             </tr>
           </thead>
@@ -471,7 +488,58 @@ const ToolCompare = () => {
                 {tool.average_rating.toFixed(1)} <span className="text-sm text-muted-foreground font-normal">/ 5.0</span>
               </div>
             )} />
-            <Row label="가격" icon={Zap} render={(tool) => <span className="text-sm font-medium">{tool.pricing_info}</span>} />
+
+            {/* New Schema Row: Pricing Model */}
+            <Row label="요금 모델" icon={Zap} render={(tool) => (
+              <span className="text-sm font-medium">{tool.pricing_model || '-'}</span>
+            )} />
+
+            <Row label="가격 정보" icon={Zap} render={(tool) => <span className="text-sm font-medium">{tool.pricing_info}</span>} />
+
+            {/* New Schema Row: Free Tier */}
+            <Row label="무료 플랜" icon={CheckCircle} render={(tool) => (
+              <span className="text-sm text-muted-foreground">{tool.free_tier_note || '-'}</span>
+            )} />
+
+            {/* Pros */}
+            <Row label="장점" icon={CheckCircle} render={(tool) => (
+              <div className="space-y-1">
+                {tool.pros?.map((p, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm text-blue-600">
+                    <span className="mt-1">+</span>
+                    <span>{p}</span>
+                  </div>
+                ))}
+                {!tool.pros && <span className="text-sm text-muted-foreground">-</span>}
+              </div>
+            )} />
+
+            {/* Cons */}
+            <Row label="단점" icon={AlertTriangle} render={(tool) => (
+              <div className="space-y-1">
+                {tool.cons?.map((c, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm text-red-500">
+                    <span className="mt-1">-</span>
+                    <span>{c}</span>
+                  </div>
+                ))}
+                {!tool.cons && <span className="text-sm text-muted-foreground">-</span>}
+              </div>
+            )} />
+
+            {/* Difficulty & Learning Curve */}
+            <Row label="난이도/학습" icon={Zap} render={(tool) => (
+              <div className="flex flex-col gap-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">난이도:</span>
+                  <span className="font-medium">{tool.difficulty_level || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">학습 곡선:</span>
+                  <span className="font-medium">{tool.learning_curve || '-'}</span>
+                </div>
+              </div>
+            )} />
 
             <Row label="한국어 품질" icon={CheckCircle} render={(tool, index) => (
               <div className="space-y-1">
@@ -507,17 +575,6 @@ const ToolCompare = () => {
               </div>
             )} />
 
-            <Row label="사용 사례" icon={Lightbulb} render={(tool) => (
-              <div className="space-y-1">
-                {tool.use_cases?.slice(0, 4).map((u, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <CheckCircle className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
-                    <span>{u}</span>
-                  </div>
-                ))}
-              </div>
-            )} />
-
             <Row label="연동/자동화" icon={LinkIcon} render={(tool) => (
               <div className="flex flex-wrap gap-1">
                 {tool.comparison_data?.integrations?.map((int, i) => (
@@ -532,17 +589,6 @@ const ToolCompare = () => {
                   <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                     <Shield className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
                     <span>{s}</span>
-                  </div>
-                ))}
-              </div>
-            )} />
-
-            <Row label="제한사항" icon={AlertTriangle} render={(tool) => (
-              <div className="space-y-1">
-                {tool.limitations?.slice(0, 3).map((l, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <XCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
-                    <span>{l}</span>
                   </div>
                 ))}
               </div>

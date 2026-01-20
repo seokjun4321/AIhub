@@ -18,6 +18,10 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
     const [sliderPosition, setSliderPosition] = useState(50);
     const [isDragging, setIsDragging] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const dragStartPos = useRef<number>(0);
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
     const [copiedPrompt, setCopiedPrompt] = useState(false);
     const [copiedParams, setCopiedParams] = useState<string | null>(null);
 
@@ -28,8 +32,43 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
         setSliderPosition((x / rect.width) * 100);
     };
 
-    const onMouseDown = () => setIsDragging(true);
-    const onMouseUp = () => setIsDragging(false);
+    const onMouseDown = (e: React.MouseEvent) => {
+        dragStartPos.current = e.clientX;
+        if (item.afterImage) {
+            setIsDragging(true);
+        }
+    };
+
+    const onContainerMouseUp = (e: React.MouseEvent) => {
+        // Handle local drag stop immediately
+        if (isDragging) setIsDragging(false);
+
+        // Detect Click (vs Drag) - threshold of 5px
+        const delta = Math.abs(e.clientX - dragStartPos.current);
+        if (delta < 5) {
+            if (!containerRef.current) return;
+
+            // Single Image Case
+            if (!item.afterImage) {
+                setLightboxSrc(item.beforeImage);
+                setIsLightboxOpen(true);
+                return;
+            }
+
+            // Comparison Case - Split Click
+            const rect = containerRef.current.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickPercent = (clickX / rect.width) * 100;
+
+            // Updated Logic: Left side is now BeforeImage (Original), Right side is AfterImage (Generated)
+            if (clickPercent < sliderPosition) {
+                setLightboxSrc(item.beforeImage);
+            } else {
+                setLightboxSrc(item.afterImage);
+            }
+            setIsLightboxOpen(true);
+        }
+    };
 
     // Global mouse event handling
     useEffect(() => {
@@ -91,33 +130,38 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
                     <div className="w-[55%] h-full bg-slate-50 p-8 flex items-center justify-center">
                         <div
                             className={cn(
-                                "relative w-full h-full max-h-[480px] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white",
-                                item.afterImage ? "select-none group cursor-ew-resize" : ""
+                                "relative w-full h-full max-h-[480px] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white cursor-zoom-in",
+                                item.afterImage ? "select-none group" : ""
                             )}
                             ref={containerRef}
-                            onMouseDown={item.afterImage ? onMouseDown : undefined}
+                            onMouseDown={onMouseDown}
+                            onMouseUp={onContainerMouseUp}
                         >
-                            {/* Main/Before Image */}
-                            <img src={item.beforeImage} alt="Main" className="absolute top-0 left-0 w-full h-full object-cover" />
+                            {/* Background Image: If Comparison, show After (Right Side), else Before (Full) */}
+                            <img
+                                src={item.afterImage ? item.afterImage : item.beforeImage}
+                                alt="Main"
+                                className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
+                            />
 
                             {/* Comparison Slider Logic (Only if afterImage exists) */}
                             {item.afterImage && (
                                 <>
-                                    {/* After Image - Clipped */}
+                                    {/* Overlay Image (Before/Original) - Clipped Left Side */}
                                     <div
-                                        className="absolute top-0 left-0 w-full h-full overflow-hidden"
+                                        className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none"
                                         style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
                                     >
-                                        <img src={item.afterImage} alt="Generated" className="absolute top-0 left-0 w-full h-full object-cover" />
+                                        <img src={item.beforeImage} alt="Original" className="absolute top-0 left-0 w-full h-full object-cover" />
                                     </div>
 
                                     {/* Labels */}
-                                    <div className="absolute top-4 left-4 text-white/90 text-xs font-bold drop-shadow-md select-none bg-black/20 backdrop-blur-[2px] px-2.5 py-1 rounded">Original</div>
-                                    <div className="absolute top-4 right-4 text-white/90 text-xs font-bold drop-shadow-md select-none bg-black/20 backdrop-blur-[2px] px-2.5 py-1 rounded">Generated</div>
+                                    <div className="absolute top-4 left-4 text-white/90 text-xs font-bold drop-shadow-md select-none bg-black/20 backdrop-blur-[2px] px-2.5 py-1 rounded pointer-events-none">Original</div>
+                                    <div className="absolute top-4 right-4 text-white/90 text-xs font-bold drop-shadow-md select-none bg-black/20 backdrop-blur-[2px] px-2.5 py-1 rounded pointer-events-none">Generated</div>
 
                                     {/* Draggable Handle Line */}
                                     <div
-                                        className="absolute inset-y-0 w-[1.5px] bg-white hover:shadow-[0_0_15px_rgba(255,255,255,0.8)] z-20 group"
+                                        className="absolute inset-y-0 w-[1.5px] bg-white hover:shadow-[0_0_15px_rgba(255,255,255,0.8)] z-20 group cursor-ew-resize"
                                         style={{ left: `${sliderPosition}%` }}
                                     >
                                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110">
@@ -129,7 +173,7 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
                                     </div>
 
                                     <div className="absolute bottom-5 left-1/2 -translate-x-1/2 text-white/90 text-xs font-medium bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                        드래그하여 비교하기
+                                        드래그하여 비교 / 클릭하여 확대
                                     </div>
                                 </>
                             )}
@@ -235,6 +279,27 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
                         </ul>
                     </div>
                 </div>
+
+                {/* Lightbox Overlay */}
+                {isLightboxOpen && lightboxSrc && (
+                    <div
+                        className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-8 transition-opacity duration-300 animate-in fade-in"
+                        onClick={() => setIsLightboxOpen(false)}
+                    >
+                        <button
+                            className="absolute top-6 right-6 p-2 rounded-full bg-black/50 text-white/70 hover:text-white hover:bg-white/20 transition-all"
+                            onClick={() => setIsLightboxOpen(false)}
+                        >
+                            <X className="w-8 h-8" />
+                        </button>
+                        <img
+                            src={lightboxSrc}
+                            alt="Full view"
+                            className="max-w-full max-h-full object-contain shadow-2xl rounded-sm"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );
