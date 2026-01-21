@@ -106,6 +106,15 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
                                     <p className="text-muted-foreground leading-relaxed">
                                         {description}
                                     </p>
+                                    {item.capabilities && item.capabilities.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {item.capabilities.map((cap, i) => (
+                                                <Badge key={i} variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                                                    {cap}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Prompt Copy Section */}

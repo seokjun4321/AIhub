@@ -53,6 +53,7 @@ export interface AgentItem extends BaseItem {
     exampleConversation: { role: "user" | "assistant"; content: string }[];
     exampleConversation_en?: { role: "user" | "assistant"; content: string }[];
     tags: string[];
+    capabilities?: string[];
 }
 
 export interface WorkflowItem extends BaseItem {

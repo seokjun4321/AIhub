@@ -77,6 +77,7 @@ const SelectedCategoryView = ({ category, onClose }: SelectedCategoryViewProps) 
                 description: item.description,
                 description_en: item.description_en,
                 platform: item.platform,
+                capabilities: item.capabilities,
                 oneLiner: item.one_liner,
                 tags: item.tags,
                 exampleQuestions: item.example_questions,

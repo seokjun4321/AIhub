@@ -67,13 +67,13 @@ const SubmissionDetail = () => {
                 title: submission.title,
                 one_liner: content.one_liner,
                 price: content.price || 0,
-                tags: content.tags || [],
                 author: authorName, // Use nickname instead of UUID
                 user_id: submission.user_id, // Link to actual user profile
                 created_at: new Date().toISOString()
             };
 
             let insertError = null;
+
 
             // 1. Insert into target table based on type
             if (submission.type === 'prompt') {
@@ -99,42 +99,104 @@ const SubmissionDetail = () => {
                 insertError = error;
             }
             else if (submission.type === 'agent') {
+                // IMPORTANT: Map platform name to strictly match DB constraint (GPT, Claude, Gemini, Perplexity)
+                let platformName = content.platform || 'GPT';
+                if (platformName === 'ChatGPT') platformName = 'GPT';
+                if (platformName === 'ChatGPT (GPTs)') platformName = 'GPT';
+                if (platformName === 'Gemini (Gems)') platformName = 'Gemini';
+
+                // Fetch related AI Model ID
+                let relatedModelIds = [];
+                // Map platform to search query for AI Model ID
+                const modelQueryName = platformName === 'GPT' ? 'ChatGPT' : platformName;
+
+                const { data: aiModel } = await supabase
+                    .from('ai_models')
+                    .select('id')
+                    .ilike('name', `%${modelQueryName}%`)
+                    .limit(1)
+                    .single();
+
+                if (aiModel) {
+                    relatedModelIds.push(aiModel.id);
+                }
+
                 const { error } = await supabase.from('preset_agents' as any).insert({
                     ...commonFields,
                     description: content.one_liner,
                     url: content.url,
                     instructions: content.instructions,
-                    platform: 'GPT' // Default
+                    capabilities: content.capabilities,
+                    requirements: content.requirements,
+                    example_questions: content.example_questions,
+                    example_conversation: content.example_conversation,
+                    platform: platformName,
+                    related_ai_model_ids: relatedModelIds
                 });
                 insertError = error;
             }
             else if (submission.type === 'workflow') {
                 const { error } = await supabase.from('preset_workflows' as any).insert({
                     ...commonFields,
-                    description: content.one_liner,
-                    tool_icon: 'Link',
-                    url: content.url,
-                    setup_steps: content.setup_steps
+                    description: content.description || content.one_liner,
+                    complexity: content.complexity,
+                    duration: content.duration,
+                    apps: content.apps, // Already mapped in frontend
+                    diagram_url: content.diagram_url,
+                    download_url: content.download_url,
+                    steps: content.steps,
+                    requirements: content.requirements,
+                    warnings: content.warnings,
+                    platform: content.platform, // Added platform
+                    import_info: content.import_info, // Added import info
+                    related_ai_model_ids: content.related_ai_model_id ? [content.related_ai_model_id] : []
                 });
                 insertError = error;
             }
             else if (submission.type === 'template') {
                 const { error } = await supabase.from('preset_templates' as any).insert({
                     ...commonFields,
-                    category: 'Productivity',
+                    category: (content.format === 'Google Sheets') ? 'Sheets' : (content.format || 'Other'),
                     duplicate_url: content.url,
                     setup_steps: content.setup_steps,
-                    preview_images: submission.images
+                    includes: content.includes || [], // Map includes
+                    description: content.description || content.one_liner, // Detailed description
+                    image_url: submission.images && submission.images.length > 0 ? submission.images[0] : null, // First image as main
+                    preview_images: submission.images, // All images for preview slider
+                    related_ai_model_ids: content.related_ai_model_id ? [content.related_ai_model_id] : []
                 });
                 insertError = error;
             }
             else if (submission.type === 'design') {
+                // Determine images based on Generation Type
+                // Text-to-Image: image_url = After Image (Result), after_image_url = NULL
+                // Image-to-Image: image_url = Before Image (Source), after_image_url = After Image (Result)
+
+                let mainImageUrl = content.after_image;
+                let afterImageUrl = null;
+
+                if (content.generation_type === 'image-to-image') {
+                    mainImageUrl = content.before_image;
+                    afterImageUrl = content.after_image;
+                }
+
+                // ALSO: Check if we have params to find related Model ID like we did for Agent
+                // For now, defaulting tool to 'Midjourney' as placeholder or extracting from params? 
+                // The user didn't ask for Model ID linking here yet, but good to keep in mind.
+
                 const { error } = await supabase.from('preset_designs' as any).insert({
                     ...commonFields,
-                    prompt: content.prompt_text,
-                    image_url: content.after_image, // Main image
-                    original_image_url: content.before_image,
-                    tool: 'Midjourney' // Default
+                    prompt_text: content.prompt_text,
+                    image_url: mainImageUrl,
+                    after_image_url: afterImageUrl,
+                    description: content.description || content.one_liner, // Use detailed description
+                    input_tips: content.input_tips, // Map input_tips
+                    related_ai_model_ids: content.related_ai_model_id ? [content.related_ai_model_id] : [], // Map related AI model
+                    params: [
+                        { key: "Generation Type", value: content.generation_type === 'image-to-image' ? 'Image-to-Image' : 'Text-to-Image' },
+                        { key: "Model Info", value: content.model_info },
+                        { key: "Aspect Ratio", value: content.aspect_ratio }
+                    ].filter(item => item.value) // Filter out empty values
                 });
                 insertError = error;
             }
