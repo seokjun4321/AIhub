@@ -43,7 +43,8 @@ const WorkflowDetail = () => {
                 credentials: undefined, // Removed from schema
                 warnings: workflowData.warnings,
                 platform: workflowData.platform,
-                importInfo: workflowData.import_info
+                importInfo: workflowData.import_info,
+                price: workflowData.price || 0
             } as WorkflowItem;
         }
     });
@@ -92,15 +93,26 @@ const WorkflowDetail = () => {
                                         <Clock className="w-3.5 h-3.5 mr-1" />
                                         {item.duration}
                                     </div>
+                                    {item.price > 0 && (
+                                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                                            {item.price.toLocaleString()}원
+                                        </Badge>
+                                    )}
                                 </div>
                                 <h1 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">{item.title}</h1>
                                 <p className="text-xl text-muted-foreground">{item.oneLiner}</p>
                             </div>
 
-                            <Button size="lg" className="rounded-full px-8" onClick={handleDownload}>
-                                <Download className="w-4 h-4 mr-2" />
-                                워크플로우 다운로드
-                            </Button>
+                            {item.price > 0 ? (
+                                <Button size="lg" className="rounded-full px-8 bg-blue-600 hover:bg-blue-700 mt-4 md:mt-0">
+                                    구매하기 ({item.price.toLocaleString()}원)
+                                </Button>
+                            ) : (
+                                <Button size="lg" className="rounded-full px-8" onClick={handleDownload}>
+                                    <Download className="w-4 h-4 mr-2" />
+                                    워크플로우 다운로드
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -153,19 +165,29 @@ const WorkflowDetail = () => {
                                     <Activity className="w-6 h-6 text-primary" />
                                     작동 원리
                                 </h2>
-                                <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:h-full before:w-0.5 before:bg-border/50">
-                                    {item.steps.map((step, idx) => (
-                                        <div key={idx} className="relative pl-10">
-                                            <div className="absolute left-0 top-0 w-7 h-7 rounded-full bg-background border-2 border-primary text-primary flex items-center justify-center font-bold text-sm z-10">
-                                                {idx + 1}
-                                            </div>
-                                            <div className="bg-card border border-border rounded-lg p-4 shadow-sm hover:border-primary/50 transition-colors">
-                                                <h3 className="font-semibold text-base mb-1">{step.title}</h3>
-                                                <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
-                                            </div>
+                                {item.price > 0 ? (
+                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-slate-500">
+                                        <div className="mb-3 p-2 bg-slate-200 inline-block rounded-full text-slate-600">
+                                            <Lock className="w-6 h-6" />
                                         </div>
-                                    ))}
-                                </div>
+                                        <p className="font-medium text-slate-900 mb-1">상세 단계가 잠겨있습니다</p>
+                                        <p className="text-xs">구매 후 전체 작동 원리를 확인하세요.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:h-full before:w-0.5 before:bg-border/50">
+                                        {item.steps.map((step, idx) => (
+                                            <div key={idx} className="relative pl-10">
+                                                <div className="absolute left-0 top-0 w-7 h-7 rounded-full bg-background border-2 border-primary text-primary flex items-center justify-center font-bold text-sm z-10">
+                                                    {idx + 1}
+                                                </div>
+                                                <div className="bg-card border border-border rounded-lg p-4 shadow-sm hover:border-primary/50 transition-colors">
+                                                    <h3 className="font-semibold text-base mb-1">{step.title}</h3>
+                                                    <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </section>
                         </div>
 
@@ -195,11 +217,17 @@ const WorkflowDetail = () => {
                                         <Download className="w-4 h-4 text-muted-foreground" />
                                         가져오는 방법
                                     </h3>
-                                    <div className="text-sm text-muted-foreground leading-relaxed prose prose-sm max-w-none prose-a:text-primary prose-a:underline hover:prose-a:text-primary/80">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {item.importInfo}
-                                        </ReactMarkdown>
-                                    </div>
+                                    {item.price > 0 ? (
+                                        <div className="text-sm text-slate-500 text-center py-4 bg-slate-50 rounded-lg">
+                                            구매 후 확인 가능합니다.
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-muted-foreground leading-relaxed prose prose-sm max-w-none prose-a:text-primary prose-a:underline hover:prose-a:text-primary/80">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {item.importInfo}
+                                            </ReactMarkdown>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

@@ -94,6 +94,7 @@ const SubmissionDetail = () => {
                     tips: content.tips,
                     prompt_en: content.prompt_en,
                     variables: content.variables,
+                    tags: content.tags, // Added tags mapping
                     badges: badges.length > 0 ? badges : null
                 });
                 insertError = error;

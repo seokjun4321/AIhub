@@ -190,18 +190,33 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
                                         <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
                                             프롬프트
                                         </h3>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-                                            onClick={handleCopyPrompt}
-                                        >
-                                            {copiedPrompt ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-                                        </Button>
+                                        {!item.price && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                                                onClick={handleCopyPrompt}
+                                            >
+                                                {copiedPrompt ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                            </Button>
+                                        )}
                                     </div>
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 text-[13px] leading-relaxed text-slate-600 font-mono relative transition-colors hover:border-slate-200">
-                                        {item.promptText}
-                                    </div>
+                                    {item.price > 0 ? (
+                                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-8 flex flex-col items-center justify-center text-center text-slate-500">
+                                            <div className="bg-slate-200 p-2 rounded-full mb-3 text-slate-600">
+                                                <Wand2 className="w-5 h-5" />
+                                            </div>
+                                            <p className="font-medium text-slate-900 mb-1">프롬프트가 잠겨있습니다</p>
+                                            <p className="text-xs mb-4">구매 후 전체 프롬프트를 확인하세요.</p>
+                                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 w-full max-w-[120px]">
+                                                구매하기
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 text-[13px] leading-relaxed text-slate-600 font-mono relative transition-colors hover:border-slate-200">
+                                            {item.promptText}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Parameters Section */}
@@ -210,30 +225,36 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
                                         <Wand2 className="w-3.5 h-3.5" />
                                         파라미터
                                     </h3>
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden">
-                                        {item.params.map((param, idx) => (
-                                            <div key={idx} className={cn(
-                                                "flex items-start justify-between p-4 group hover:bg-slate-100/50 transition-colors",
-                                                idx !== item.params.length - 1 && "border-b border-slate-100/60"
-                                            )}>
-                                                <div className="flex gap-4 items-start flex-1 min-w-0">
-                                                    <span className="text-xs font-medium text-slate-500 w-24 shrink-0 pt-0.5">{param.key}</span>
-                                                    <span className="text-xs font-medium text-slate-900 font-mono break-words whitespace-pre-wrap">{param.value}</span>
+                                    {item.price > 0 ? (
+                                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-6 text-center text-sm text-slate-500">
+                                            구매 후 파라미터 설정을 볼 수 있습니다.
+                                        </div>
+                                    ) : (
+                                        <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden">
+                                            {item.params.map((param, idx) => (
+                                                <div key={idx} className={cn(
+                                                    "flex items-start justify-between p-4 group hover:bg-slate-100/50 transition-colors",
+                                                    idx !== item.params.length - 1 && "border-b border-slate-100/60"
+                                                )}>
+                                                    <div className="flex gap-4 items-start flex-1 min-w-0">
+                                                        <span className="text-xs font-medium text-slate-500 w-24 shrink-0 pt-0.5">{param.key}</span>
+                                                        <span className="text-xs font-medium text-slate-900 font-mono break-words whitespace-pre-wrap">{param.value}</span>
+                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 shrink-0"
+                                                        onClick={() => handleCopyParam(param.key, param.value)}
+                                                    >
+                                                        {copiedParams === param.key ?
+                                                            <Check className="w-3 h-3 text-green-600" /> :
+                                                            <Copy className="w-3 h-3" />
+                                                        }
+                                                    </Button>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 shrink-0"
-                                                    onClick={() => handleCopyParam(param.key, param.value)}
-                                                >
-                                                    {copiedParams === param.key ?
-                                                        <Check className="w-3 h-3 text-green-600" /> :
-                                                        <Copy className="w-3 h-3" />
-                                                    }
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Padding for bottom scroll */}
@@ -243,21 +264,30 @@ const DesignModal = ({ item, isOpen, onClose }: DesignModalProps) => {
 
                         {/* Floating Copy Button Area (Bottom of Right Col) */}
                         <div className="p-6 border-t border-slate-100 bg-white">
-                            <Button
-                                size="lg"
-                                className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white rounded-xl h-12 text-sm font-semibold shadow-lg shadow-slate-200 transition-all hover:shadow-xl hover:-translate-y-0.5"
-                                onClick={handleCopyPrompt}
-                            >
-                                {copiedPrompt ? (
-                                    <>
-                                        <Check className="w-4 h-4 mr-2" /> 복사되었습니다
-                                    </>
-                                ) : (
-                                    <>
-                                        <Copy className="w-4 h-4 mr-2" /> 프롬프트 복사
-                                    </>
-                                )}
-                            </Button>
+                            {item.price > 0 ? (
+                                <Button
+                                    size="lg"
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 text-sm font-semibold shadow-lg shadow-blue-200 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                                >
+                                    구매하기 ({item.price.toLocaleString()}원)
+                                </Button>
+                            ) : (
+                                <Button
+                                    size="lg"
+                                    className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white rounded-xl h-12 text-sm font-semibold shadow-lg shadow-slate-200 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                                    onClick={handleCopyPrompt}
+                                >
+                                    {copiedPrompt ? (
+                                        <>
+                                            <Check className="w-4 h-4 mr-2" /> 복사되었습니다
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="w-4 h-4 mr-2" /> 프롬프트 복사
+                                        </>
+                                    )}
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -105,16 +105,24 @@ const TemplateModal = ({ item, isOpen, onClose }: TemplateModalProps) => {
 
                                     <div>
                                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Setup</h3>
-                                        <div className="space-y-4">
-                                            {item.setupSteps.map((step, idx) => (
-                                                <div key={idx} className="flex gap-3">
-                                                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold text-xs">
-                                                        {idx + 1}
+                                        {item.price > 0 ? (
+                                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-center">
+                                                <p className="text-sm text-slate-500">
+                                                    구매 후 설정 가이드를 확인하실 수 있습니다.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {item.setupSteps.map((step, idx) => (
+                                                    <div key={idx} className="flex gap-3">
+                                                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold text-xs">
+                                                            {idx + 1}
+                                                        </div>
+                                                        <p className="text-sm leading-relaxed text-muted-foreground">{step}</p>
                                                     </div>
-                                                    <p className="text-sm leading-relaxed text-muted-foreground">{step}</p>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div>
@@ -131,12 +139,20 @@ const TemplateModal = ({ item, isOpen, onClose }: TemplateModalProps) => {
                             </ScrollArea>
 
                             <div className="p-4 border-t border-border space-y-2">
-                                <Button className="w-full" size="lg" onClick={() => window.open(item.duplicateUrl, '_blank')}>
-                                    사용하기 (Duplicate)
-                                </Button>
-                                <Button variant="outline" className="w-full" onClick={() => window.open(item.previewUrl, '_blank')}>
-                                    웹에서 미리보기
-                                </Button>
+                                {item.price > 0 ? (
+                                    <Button className="w-full bg-blue-600 hover:bg-blue-700" size="lg">
+                                        구매하기 ({item.price.toLocaleString()}원)
+                                    </Button>
+                                ) : (
+                                    <>
+                                        <Button className="w-full" size="lg" onClick={() => window.open(item.duplicateUrl, '_blank')}>
+                                            사용하기 (Duplicate)
+                                        </Button>
+                                        <Button variant="outline" className="w-full" onClick={() => window.open(item.previewUrl, '_blank')}>
+                                            웹에서 미리보기
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

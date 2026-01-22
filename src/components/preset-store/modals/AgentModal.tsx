@@ -121,31 +121,56 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="text-lg font-semibold">프롬프트 미리보기</h3>
-                                        <Button
-                                            size="sm"
-                                            onClick={handleCopy}
-                                            className={cn("gap-2 text-white", copied ? "bg-green-600 hover:bg-green-700" : "bg-slate-900 hover:bg-slate-800")}
-                                        >
-                                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                            {copied ? "복사됨" : "프롬프트 복사"}
-                                        </Button>
+                                        {item.price === 0 && (
+                                            <Button
+                                                size="sm"
+                                                onClick={handleCopy}
+                                                className={cn("gap-2 text-white", copied ? "bg-green-600 hover:bg-green-700" : "bg-slate-900 hover:bg-slate-800")}
+                                            >
+                                                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                                {copied ? "복사됨" : "프롬프트 복사"}
+                                            </Button>
+                                        )}
                                     </div>
-                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-slate-800 font-mono text-sm leading-relaxed max-h-[300px] overflow-y-auto whitespace-pre-wrap">
-                                        {instructions.join('\n\n')}
-                                    </div>
+                                    {item.price > 0 ? (
+                                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 flex flex-col items-center justify-center text-center min-h-[200px]">
+                                            <div className="mb-3 p-2 bg-slate-200 text-slate-600 rounded-full">
+                                                <Bot className="w-6 h-6" />
+                                            </div>
+                                            <h4 className="font-bold text-slate-800 mb-1">프롬프트 잠금</h4>
+                                            <p className="text-sm text-slate-500 mb-4">구매 후 전체 지침을 확인할 수 있습니다.</p>
+                                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                                                구매하기 ({item.price.toLocaleString()}원)
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-slate-800 font-mono text-sm leading-relaxed max-h-[300px] overflow-y-auto whitespace-pre-wrap">
+                                            {instructions.join('\n\n')}
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                                        <Bot className="w-4 h-4 text-primary" />
-                                        시스템 지침 (System Instructions)
-                                    </h3>
-                                    <ul className="list-disc list-inside space-y-1 text-sm text-slate-700">
-                                        {instructions.map((inst, idx) => (
-                                            <li key={idx}>{inst}</li>
-                                        ))}
-                                    </ul>
-                                </div>
+                                {item.price > 0 ? (
+                                    <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 flex flex-col items-center justify-center text-center min-h-[150px]">
+                                        <h3 className="font-semibold mb-2 flex items-center gap-2 text-slate-400">
+                                            <Bot className="w-4 h-4" />
+                                            시스템 지침 (System Instructions)
+                                        </h3>
+                                        <p className="text-sm text-slate-400">이 내용은 구매 후 공개됩니다.</p>
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                                        <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                            <Bot className="w-4 h-4 text-primary" />
+                                            시스템 지침 (System Instructions)
+                                        </h3>
+                                        <ul className="list-disc list-inside space-y-1 text-sm text-slate-700">
+                                            {instructions.map((inst, idx) => (
+                                                <li key={idx}>{inst}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
 
                                 <div>
                                     <h3 className="font-semibold mb-3">추천 질문 예시</h3>
@@ -160,30 +185,45 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
                             </TabsContent>
 
                             <TabsContent value="chat" className="mt-0">
-                                <div className="space-y-4 max-w-2xl mx-auto py-4">
-                                    {conversation.map((msg, idx) => (
-                                        <div key={idx} className={cn("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}>
-                                            {msg.role === "assistant" && (
-                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                    <Bot className="w-4 h-4 text-primary" />
-                                                </div>
-                                            )}
-                                            <div className={cn(
-                                                "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed",
-                                                msg.role === "user"
-                                                    ? "bg-primary text-primary-foreground rounded-tr-none"
-                                                    : "bg-muted rounded-tl-none"
-                                            )}>
-                                                {msg.content}
-                                            </div>
-                                            {msg.role === "user" && (
-                                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                                    <User className="w-4 h-4 text-muted-foreground" />
-                                                </div>
-                                            )}
+                                {item.price > 0 ? (
+                                    <div className="space-y-4 max-w-2xl mx-auto py-12 flex flex-col items-center justify-center text-center">
+                                        <div className="mb-4 p-4 bg-blue-50 text-blue-500 rounded-full">
+                                            <MessageSquare className="w-8 h-8" />
                                         </div>
-                                    ))}
-                                </div>
+                                        <h3 className="text-xl font-bold text-slate-900">예시 대화 잠금</h3>
+                                        <p className="text-slate-500 max-w-sm">
+                                            에이전트와의 실제 대화 예시를 보시려면 구매가 필요합니다.
+                                        </p>
+                                        <Button className="mt-4 bg-blue-600 hover:bg-blue-700">
+                                            구매하기 ({item.price.toLocaleString()}원)
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 max-w-2xl mx-auto py-4">
+                                        {conversation.map((msg, idx) => (
+                                            <div key={idx} className={cn("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}>
+                                                {msg.role === "assistant" && (
+                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                        <Bot className="w-4 h-4 text-primary" />
+                                                    </div>
+                                                )}
+                                                <div className={cn(
+                                                    "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed",
+                                                    msg.role === "user"
+                                                        ? "bg-primary text-primary-foreground rounded-tr-none"
+                                                        : "bg-muted rounded-tl-none"
+                                                )}>
+                                                    {msg.content}
+                                                </div>
+                                                {msg.role === "user" && (
+                                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                                        <User className="w-4 h-4 text-muted-foreground" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </TabsContent>
 
                             <TabsContent value="requirements" className="mt-0">
@@ -202,14 +242,23 @@ const AgentModal = ({ item, isOpen, onClose }: AgentModalProps) => {
                 </div>
 
                 <DialogFooter className="p-4 border-t border-border bg-muted/20">
-                    <Button
-                        size="lg"
-                        className="w-full gap-2"
-                        onClick={() => window.open(item.url, '_blank')}
-                    >
-                        <ExternalLink className="w-4 h-4" />
-                        {item.platform}에서 열기
-                    </Button>
+                    {item.price > 0 ? (
+                        <Button
+                            size="lg"
+                            className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                            구매하기 ({item.price.toLocaleString()}원)
+                        </Button>
+                    ) : (
+                        <Button
+                            size="lg"
+                            className="w-full gap-2"
+                            onClick={() => window.open(item.url, '_blank')}
+                        >
+                            <ExternalLink className="w-4 h-4" />
+                            {item.platform}에서 열기
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

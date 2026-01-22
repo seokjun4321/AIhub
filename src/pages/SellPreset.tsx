@@ -78,7 +78,10 @@ const SellPreset = () => {
     const [compatibleTools, setCompatibleTools] = useState("");
     const [tips, setTips] = useState("");
     const [promptEn, setPromptEn] = useState("");
-    const [variables, setVariables] = useState("");
+
+    // Replaced single string state with array of objects for variables
+    const [promptVariables, setPromptVariables] = useState<{ name: string; label: string; example: string }[]>([]);
+    const [tags, setTags] = useState("");
 
     // New fields for Agent type
     const [agentPlatform, setAgentPlatform] = useState("ChatGPT");
@@ -194,6 +197,17 @@ const SellPreset = () => {
         setIsSubmitting(true);
 
         try {
+            // Validation for Tags (Prompt)
+            if (selectedCategory === 'prompt' && !tags.trim()) {
+                toast({
+                    title: "태그 입력 필수",
+                    description: "최소 1개 이상의 태그를 입력해주세요.",
+                    variant: "destructive"
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
             // Validation for Template Images
             if (selectedCategory === 'template' && templateImages.length === 0) {
                 toast({
@@ -244,7 +258,14 @@ const SellPreset = () => {
                     compatible_tools: compatibleTools.split(',').map(t => t.trim()).filter(Boolean),
                     tips: tips.split(',').map(t => t.trim()).filter(Boolean),
                     prompt_en: promptEn,
-                    variables: variables ? JSON.parse(variables) : []
+                    prompt_en: promptEn,
+                    // Map local state to schema format: {name, placeholder, example}
+                    variables: promptVariables.map(v => ({
+                        name: v.name,
+                        placeholder: v.label,
+                        example: v.example
+                    })),
+                    tags: tags.split(',').map(t => t.trim()).filter(Boolean)
                 };
             } else if (selectedCategory === 'agent') {
                 contentData = {
@@ -465,19 +486,88 @@ const SellPreset = () => {
                                         <Textarea value={promptEn} onChange={e => setPromptEn(e.target.value)} placeholder="영문 버전이 있다면 입력해주세요." className="min-h-[150px] font-mono text-sm leading-relaxed" />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label>변수 설정 (JSON 형식) - 선택사항</Label>
-                                        <Textarea
-                                            value={variables}
-                                            onChange={e => setVariables(e.target.value)}
-                                            placeholder='예: [{"name": "topic", "placeholder": "주제", "example": "마케팅"}]'
-                                            className="font-mono text-sm h-24"
-                                        />
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <Label>변수 설정 (선택사항)</Label>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setPromptVariables([...promptVariables, { name: "", label: "", example: "" }])}
+                                            >
+                                                + 변수 추가
+                                            </Button>
+                                        </div>
+                                        {promptVariables.length === 0 && (
+                                            <p className="text-sm text-slate-500 bg-slate-50 p-4 rounded-lg text-center border border-dashed border-slate-200">
+                                                설정된 변수가 없습니다. 프롬프트에 사용된 변수가 있다면 추가해주세요.
+                                            </p>
+                                        )}
+                                        {promptVariables.map((variable, index) => (
+                                            <div key={index} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-start p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-slate-500">변수명 (영어)</Label>
+                                                    <Input
+                                                        value={variable.name}
+                                                        onChange={e => {
+                                                            const newVars = [...promptVariables];
+                                                            newVars[index].name = e.target.value;
+                                                            setPromptVariables(newVars);
+                                                        }}
+                                                        placeholder="topic"
+                                                        className="h-8 text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-slate-500">표시 이름 (한글)</Label>
+                                                    <Input
+                                                        value={variable.label}
+                                                        onChange={e => {
+                                                            const newVars = [...promptVariables];
+                                                            newVars[index].label = e.target.value;
+                                                            setPromptVariables(newVars);
+                                                        }}
+                                                        placeholder="주제"
+                                                        className="h-8 text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-slate-500">예시 값</Label>
+                                                    <Input
+                                                        value={variable.example}
+                                                        onChange={e => {
+                                                            const newVars = [...promptVariables];
+                                                            newVars[index].example = e.target.value;
+                                                            setPromptVariables(newVars);
+                                                        }}
+                                                        placeholder="마케팅"
+                                                        className="h-8 text-sm"
+                                                    />
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="mt-6 h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                    onClick={() => {
+                                                        const newVars = promptVariables.filter((_, i) => i !== index);
+                                                        setPromptVariables(newVars);
+                                                    }}
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
                                     </div>
 
                                     <div className="space-y-2">
                                         <Label>사용 팁 (쉼표로 구분)</Label>
                                         <Textarea value={tips} onChange={e => setTips(e.target.value)} placeholder="예: 구체적인 상황을 입력하면 더 좋습니다, 영어로 입력하면 정확도가 올라갑니다" className="h-20" />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>태그 (쉼표로 구분) <span className="text-red-500">*</span></Label>
+                                        <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="예: 마케팅, 비즈니스, 스타트업" required />
                                     </div>
 
                                     <div className="space-y-2">

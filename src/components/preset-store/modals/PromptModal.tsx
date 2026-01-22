@@ -237,47 +237,96 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                                                     </div>
                                                 )}
                                             </div>
-                                            <Button size="sm" onClick={handleCopy} className={cn("gap-2", copied ? "bg-green-600 hover:bg-green-700" : "")}>
-                                                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                                {copied ? "복사됨" : "프롬프트 복사"}
-                                            </Button>
+                                            {item.price > 0 ? (
+                                                <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700">
+                                                    구매하기 ({item.price.toLocaleString()}원)
+                                                </Button>
+                                            ) : (
+                                                <Button size="sm" onClick={handleCopy} className={cn("gap-2", copied ? "bg-green-600 hover:bg-green-700" : "")}>
+                                                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                                    {copied ? "복사됨" : "프롬프트 복사"}
+                                                </Button>
+                                            )}
                                         </div>
                                         <div className="relative flex-1">
-                                            <Textarea
-                                                readOnly
-                                                value={getCompletedPrompt()}
-                                                className="h-full min-h-[400px] font-mono text-sm bg-muted/30 resize-none p-6 leading-relaxed rounded-xl border-slate-200"
-                                            />
+                                            {item.price > 0 ? (
+                                                <div className="h-full min-h-[400px] flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                                                    <div className="mb-4 p-3 bg-blue-100 text-blue-600 rounded-full">
+                                                        <BookOpen className="w-8 h-8" />
+                                                    </div>
+                                                    <h3 className="text-lg font-bold text-slate-900 mb-2">유료 콘텐츠입니다</h3>
+                                                    <p className="text-slate-500 mb-6 max-w-sm">
+                                                        전체 프롬프트와 상세 가이드를 보시려면 구매가 필요합니다.
+                                                    </p>
+                                                    <Button className="w-full max-w-xs bg-blue-600 hover:bg-blue-700">
+                                                        지금 구매하고 내용 보기
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <Textarea
+                                                    readOnly
+                                                    value={getCompletedPrompt()}
+                                                    className="h-full min-h-[400px] font-mono text-sm bg-muted/30 resize-none p-6 leading-relaxed rounded-xl border-slate-200"
+                                                />
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                             </TabsContent>
 
                             <TabsContent value="example" className="mt-0 space-y-6">
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-3">입력 값</h3>
-                                    <div className="bg-muted/30 p-4 rounded-lg border border-border whitespace-pre-wrap font-mono text-sm">
-                                        {item.exampleIO.input}
+                                {item.price > 0 ? (
+                                    <div className="flex flex-col items-center justify-center min-h-[300px] bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                                        <div className="mb-4 p-3 bg-blue-100 text-blue-600 rounded-full">
+                                            <FlaskConical className="w-8 h-8" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-900 mb-2">예시 결과 잠금</h3>
+                                        <p className="text-slate-500 mb-6 max-w-sm">
+                                            구매 후 상세한 예시 입출력 데이터를 확인하실 수 있습니다.
+                                        </p>
                                     </div>
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-3">생성 결과</h3>
-                                    <div className="bg-primary/5 p-6 rounded-lg border border-primary/20 whitespace-pre-wrap leading-relaxed shadow-sm">
-                                        {item.exampleIO.output}
-                                    </div>
-                                </div>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-3">입력 값</h3>
+                                            <div className="bg-muted/30 p-4 rounded-lg border border-border whitespace-pre-wrap font-mono text-sm">
+                                                {item.exampleIO.input}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-3">생성 결과</h3>
+                                            <div className="bg-primary/5 p-6 rounded-lg border border-primary/20 whitespace-pre-wrap leading-relaxed shadow-sm">
+                                                {item.exampleIO.output}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </TabsContent>
 
                             <TabsContent value="tips" className="mt-0">
-                                <h3 className="text-lg font-semibold mb-4">💡 효과적인 사용 팁</h3>
-                                <div className="grid gap-3">
-                                    {item.tips.map((tip, idx) => (
-                                        <div key={idx} className="flex gap-3 p-4 bg-amber-50 rounded-lg border border-amber-100 text-amber-900">
-                                            <Lightbulb className="w-5 h-5 flex-shrink-0 text-amber-600 mt-0.5" />
-                                            <p className="leading-relaxed">{tip}</p>
+                                {item.price > 0 ? (
+                                    <div className="flex flex-col items-center justify-center min-h-[300px] bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                                        <div className="mb-4 p-3 bg-blue-100 text-blue-600 rounded-full">
+                                            <Lightbulb className="w-8 h-8" />
                                         </div>
-                                    ))}
-                                </div>
+                                        <h3 className="text-lg font-bold text-slate-900 mb-2">사용 팁 잠금</h3>
+                                        <p className="text-slate-500 mb-6 max-w-sm">
+                                            구매 후 프롬프트 마스터의 꿀팁을 확인하실 수 있습니다.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <h3 className="text-lg font-semibold mb-4">💡 효과적인 사용 팁</h3>
+                                        <div className="grid gap-3">
+                                            {item.tips.map((tip, idx) => (
+                                                <div key={idx} className="flex gap-3 p-4 bg-amber-50 rounded-lg border border-amber-100 text-amber-900">
+                                                    <Lightbulb className="w-5 h-5 flex-shrink-0 text-amber-600 mt-0.5" />
+                                                    <p className="leading-relaxed">{tip}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </TabsContent>
                         </ScrollArea>
                     </Tabs>
