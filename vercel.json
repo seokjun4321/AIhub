@@ -1,7 +1,12 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/n8n/:path*",
+      "destination": "https://semiformal-uncaptiously-lyman.ngrok-free.dev/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
-
-
