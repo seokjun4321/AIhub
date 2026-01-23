@@ -30,15 +30,32 @@ export const sendMessageToN8n = async (userId: string, userQuery: string) => {
             throw new Error(`Network response was not ok: ${res.status} ${errorText}`);
         }
 
-        let data = await res.json();
+        const text = await res.text();
+        console.log('🤖 n8n Raw Response:', text);
+
+        if (!text || text.trim() === '') {
+            return { answer: "n8n에서 내용 없는 응답(Empty Body)이 왔습니다. 'Respond to Webhook' 노드 설정을 확인해주세요." };
+        }
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('❌ Failed to parse n8n response:', e);
+            // If n8n returns plain text (common in default webhook setup), use it as answer
+            if (text && !text.startsWith('{') && !text.startsWith('[')) {
+                return { answer: text };
+            }
+            throw new Error('Invalid JSON response from n8n');
+        }
 
         // Safety check: n8n might return stringified JSON
         if (typeof data === 'string') {
             try {
                 data = JSON.parse(data);
             } catch (e) {
-                // If parsing fails, it might be just a string response, keep as is or log
-                console.warn('Failed to parse double-encoded JSON', e);
+                // If parsing fails, it might be just a string response, use as answer
+                return { answer: data };
             }
         }
 

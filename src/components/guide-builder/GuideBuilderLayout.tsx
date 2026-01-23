@@ -24,8 +24,9 @@ import { BuilderBlock } from './BuilderBlock';
 import { GuideOverview } from './GuideOverview';
 import Navbar from '@/components/ui/navbar';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { GuidePreview } from './GuidePreview';
 
 export type BlockType =
     // Basic
@@ -45,6 +46,14 @@ export interface GuideBlock {
     type: BlockType;
     content: any;
     children?: GuideBlock[]; // For recursive nesting (e.g. Step > Action/Tips)
+}
+
+export interface GuideMetadata {
+    title: string;
+    summary: string;
+    targetAudience: string;
+    requirements: string;
+    corePrinciples: string;
 }
 
 const defaultDropAnimation: DropAnimation = {
@@ -75,12 +84,26 @@ export default function GuideBuilderLayout() {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeType, setActiveType] = useState<BlockType | null>(null);
 
+    const [metadata, setMetadata] = useState<GuideMetadata>({
+        title: '',
+        summary: '',
+        targetAudience: '',
+        requirements: '',
+        corePrinciples: ''
+    });
+
+    const updateMetadata = (key: keyof GuideMetadata, value: string) => {
+        setMetadata(prev => ({ ...prev, [key]: value }));
+    };
+
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+    // ... (drag handlers) ...
+
 
     const handleDragStart = (event: DragStartEvent) => {
         const { active } = event;
@@ -192,10 +215,31 @@ export default function GuideBuilderLayout() {
     };
 
     const updateBlockContent = (id: string, content: any) => {
-        setBlocks(items => items.map(item =>
-            item.id === id ? { ...item, content: { ...item.content, ...content } } : item
-        ));
+        setBlocks(items => items.map(item => {
+            // 1. Check if the item itself matches
+            if (item.id === id) {
+                return { ...item, content: { ...item.content, ...content } };
+            }
+            // 2. Check if any children match
+            if (item.children) {
+                return {
+                    ...item,
+                    children: item.children.map(child =>
+                        child.id === id
+                            ? { ...child, content: { ...child.content, ...content } }
+                            : child
+                    )
+                };
+            }
+            return item;
+        }));
     };
+
+    const [isPreview, setIsPreview] = useState(false);
+
+    if (isPreview) {
+        return <GuidePreview blocks={blocks} metadata={metadata} onExit={() => setIsPreview(false)} />;
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -210,7 +254,14 @@ export default function GuideBuilderLayout() {
                     <span className="text-sm text-slate-500">초안 작성 중...</span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" className="text-slate-600">미리보기</Button>
+                    <Button
+                        variant="outline"
+                        className="text-slate-600 gap-2"
+                        onClick={() => setIsPreview(true)}
+                    >
+                        <Eye className="w-4 h-4" />
+                        미리보기
+                    </Button>
                     <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">게시하기</Button>
                 </div>
             </header>
@@ -227,7 +278,7 @@ export default function GuideBuilderLayout() {
                     {/* Left: Canvas */}
                     <main className="flex-1 bg-slate-50/50 p-8 flex justify-center">
                         <div className="w-full max-w-3xl pb-24">
-                            <GuideOverview />
+                            <GuideOverview metadata={metadata} onChange={updateMetadata} />
                             <BuilderCanvas
                                 blocks={blocks}
                                 onRemove={removeBlock}

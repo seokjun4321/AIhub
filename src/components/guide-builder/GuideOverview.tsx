@@ -1,10 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { FileText, Users, Package, Lightbulb, Type } from "lucide-react";
+import { GuideMetadata } from "./GuideBuilderLayout";
 
-export function GuideOverview() {
+interface GuideOverviewProps {
+    metadata: GuideMetadata;
+    onChange: (key: keyof GuideMetadata, value: string) => void;
+}
+
+export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
     return (
         <div className="space-y-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="text-center mb-8">
@@ -22,6 +27,8 @@ export function GuideOverview() {
                     <Input
                         placeholder="매력적인 가이드북 제목을 입력하세요 (예: 3시간 만에 끝내는 AI 창업)"
                         className="text-lg font-bold h-12 border-emerald-100 focus:border-emerald-500 bg-emerald-50/30"
+                        value={metadata.title}
+                        onChange={(e) => onChange('title', e.target.value)}
                     />
                 </CardContent>
             </Card>
@@ -37,6 +44,8 @@ export function GuideOverview() {
                         <Textarea
                             placeholder="이 가이드북은 어떤 문제를 해결해주나요?"
                             className="min-h-[120px] resize-none border-emerald-100 focus:border-emerald-500 bg-emerald-50/30"
+                            value={metadata.summary}
+                            onChange={(e) => onChange('summary', e.target.value)}
                         />
                     </CardContent>
                 </Card>
@@ -51,6 +60,8 @@ export function GuideOverview() {
                         <Textarea
                             placeholder="• AI 창업을 준비하는 대학생&#13;&#10;• 과제 시간을 단축하고 싶은 분"
                             className="min-h-[120px] resize-none border-emerald-100 focus:border-emerald-500 bg-emerald-50/30"
+                            value={metadata.targetAudience}
+                            onChange={(e) => onChange('targetAudience', e.target.value)}
                         />
                     </CardContent>
                 </Card>
@@ -65,6 +76,8 @@ export function GuideOverview() {
                         <Textarea
                             placeholder="• ChatGPT Plus 계정&#13;&#10;• 인터넷이 가능한 PC"
                             className="min-h-[120px] resize-none border-emerald-100 focus:border-emerald-500 bg-emerald-50/30"
+                            value={metadata.requirements}
+                            onChange={(e) => onChange('requirements', e.target.value)}
                         />
                     </CardContent>
                 </Card>
@@ -79,6 +92,8 @@ export function GuideOverview() {
                         <Textarea
                             placeholder="• 구체성이 답이다&#13;&#10;• 대화로 다듬기"
                             className="min-h-[120px] resize-none border-emerald-100 focus:border-emerald-500 bg-emerald-50/30"
+                            value={metadata.corePrinciples}
+                            onChange={(e) => onChange('corePrinciples', e.target.value)}
                         />
                     </CardContent>
                 </Card>

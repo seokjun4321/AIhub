@@ -5,7 +5,7 @@ import { GuideBlock } from './GuideBuilderLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { GripVertical, Trash2, X, Lightbulb } from 'lucide-react';
+import { GripVertical, Trash2, X, Lightbulb, CheckSquare, TerminalSquare, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 
@@ -192,14 +192,87 @@ export function BuilderBlock({ block, onRemove, onUpdate }: BuilderBlockProps) {
                                                         </Button>
                                                     </div>
 
-                                                    {/* Child Input Area */}
+                                                    {/* Child Content Rendering */}
                                                     <div className="w-full">
-                                                        {(child.type === 'action' || child.type === 'tips' || child.type === 'warning') ? (
-                                                            <Textarea
-                                                                placeholder={`${child.type} 내용을 입력하세요...`}
-                                                                className="border-0 bg-transparent p-0 focus-visible:ring-0 min-h-[40px] resize-none text-sm"
-                                                            />
-                                                        ) : (
+                                                        {child.type === 'action' && (
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center gap-2 text-violet-600 font-bold text-xs uppercase tracking-wider mb-1">
+                                                                    <TerminalSquare className="w-3 h-3" />
+                                                                    Action & Content
+                                                                </div>
+                                                                <Textarea
+                                                                    placeholder="구체적인 행동 지침을 입력하세요 (예: 1. 웹 브라우저 주소창에...)"
+                                                                    className="border-violet-100 bg-violet-50/30 focus:bg-white min-h-[80px] text-sm resize-none"
+                                                                    value={child.content?.text || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, text: e.target.value })}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {child.type === 'tips' && (
+                                                            <div className="space-y-2 bg-amber-50 rounded-lg p-3 border border-amber-100">
+                                                                <div className="flex items-center gap-2 text-amber-700 font-bold text-xs uppercase tracking-wider">
+                                                                    <Lightbulb className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                                                    자주하는 실수 & 팁
+                                                                </div>
+                                                                <Textarea
+                                                                    placeholder="유용한 팁이나 주의할 점을 적어주세요."
+                                                                    className="border-none bg-transparent focus-visible:ring-0 min-h-[60px] text-sm p-0 placeholder:text-amber-700/40"
+                                                                    value={child.content?.text || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, text: e.target.value })}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {child.type === 'warning' && (
+                                                            <div className="space-y-2 bg-red-50 rounded-lg p-3 border border-red-100">
+                                                                <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase tracking-wider">
+                                                                    <AlertTriangle className="w-3 h-3" />
+                                                                    주의사항
+                                                                </div>
+                                                                <Textarea
+                                                                    placeholder="사용자가 꼭 주의해야 할 사항을 적어주세요."
+                                                                    className="border-none bg-transparent focus-visible:ring-0 min-h-[60px] text-sm p-0 placeholder:text-red-700/40"
+                                                                    value={child.content?.text || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, text: e.target.value })}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {child.type === 'prompt' && (
+                                                            <div className="space-y-2 bg-slate-900 rounded-lg p-3 border border-slate-700">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-slate-400 font-mono text-xs">AI PROMPT</span>
+                                                                    <Button size="sm" variant="secondary" className="h-6 text-xs bg-slate-800 text-slate-300 border-none">
+                                                                        Copy
+                                                                    </Button>
+                                                                </div>
+                                                                <Textarea
+                                                                    placeholder="/imagine prompt..."
+                                                                    className="border-none bg-transparent focus-visible:ring-0 min-h-[80px] font-mono text-sm text-slate-100 p-0 placeholder:text-slate-600"
+                                                                    value={child.content?.text || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, text: e.target.value })}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {child.type === 'checklist' && (
+                                                            <div className="space-y-2 bg-slate-50 rounded-lg p-3 border border-slate-200">
+                                                                <div className="flex items-center gap-2 text-slate-600 font-bold text-xs uppercase tracking-wider">
+                                                                    <CheckSquare className="w-3 h-3" />
+                                                                    Checklist
+                                                                </div>
+                                                                <Textarea
+                                                                    placeholder="체크리스트 항목을 입력하세요 (엔터로 구분)"
+                                                                    className="border-none bg-transparent focus-visible:ring-0 min-h-[60px] text-sm p-0"
+                                                                    value={child.content?.text || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, text: e.target.value })}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Fallback for other types */}
+                                                        {!['action', 'tips', 'warning', 'prompt', 'checklist'].includes(child.type) && (
                                                             <div className="p-2 bg-slate-100 rounded text-xs text-slate-500 text-center">
                                                                 {child.type} 설정 폼
                                                             </div>

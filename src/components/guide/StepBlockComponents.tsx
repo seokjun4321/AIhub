@@ -1133,12 +1133,9 @@ export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: stri
 
 
 export const TipsBlock = ({ content }: { content: string | null | undefined }) => {
-    // Default tips if specific content is missing
-    const displayContent = content || `
-- (X) AI의 답변을 맹신하지 않기
-- (V) 답변이 이상하면 프롬프트를 수정해서 다시 질문하기
-- (V) 중요한 정보는 반드시 교차 검증하기
-`;
+    if (!content || !content.trim()) return null;
+
+    const displayContent = content;
 
     return (
         <div className="mb-6 rounded-xl border border-yellow-200 bg-[#FFFBE6] p-5">
@@ -1201,6 +1198,7 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
 
     // Initial parse
     React.useEffect(() => {
+        // ... (existing logic) ...
         // Storage key for persistence
         const storageKey = (guideId && stepId) ? `checklist_${guideId}_${stepId}` : null;
         let savedState: Record<string, boolean> = {};
@@ -1248,17 +1246,10 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
             stringContent = content;
         }
 
-        // Default content if missing
-        if (!stringContent) {
-            if (!content) { // Only use default if specific content is null/undefined
-                stringContent = `
-- [ ] 내용을 충분히 이해했나요?
-- [ ] 프롬프트를 직접 실행해 보았나요?
-- [ ] 결과물이 만족스러운지 확인했나요?
-`;
-            } else {
-                return; // content exists but empty string or similar, do nothing
-            }
+        // Default content check (removed fallback)
+        if (!stringContent || !stringContent.trim()) {
+            setItems([]);
+            return;
         }
 
         const lines = stringContent.split(/\r?\n/);
@@ -1301,6 +1292,13 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
             return newItems;
         });
     };
+
+    // Render Logic
+    // 1. If content prop is basically empty, don't render
+    const isEmptyProp = !content || (typeof content === 'string' && !content.trim()) || (Array.isArray(content) && content.length === 0);
+
+    // 2. If items are empty (parsing failed or no items found), don't render
+    if (isEmptyProp || items.length === 0) return null;
 
     return (
         <div className="mb-6 rounded-xl border border-emerald-200 bg-white p-5 shadow-sm">

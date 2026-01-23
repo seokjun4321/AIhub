@@ -24,6 +24,7 @@ interface Step {
   why_matters?: string | null;
   tips?: string | null;
   checklist?: string | null;
+  actions?: string | null; // Direct injection for Builder
 
   guide_prompts?: Array<{
     id: number;
@@ -218,7 +219,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
   // If we have 'other' content (unclassified), use that.
   // DO NOT fallback to step.content if we are using the structured layout, 
   // as step.content contains the raw full markdown which would cause duplication.
-  const actions = parsedContent.actions || parsedContent.other || "";
+  const actions = step.actions || parsedContent.actions || parsedContent.other || "";
   const copyPrompt = step.guide_prompts?.[0]?.text || parsedContent.copyPrompt; // use DB prompt only if not in content? Actually let's trust content more as it's newer, or both. Let's use content > db for now as DB might be empty.
   const branch = parsedContent.branch;
 
