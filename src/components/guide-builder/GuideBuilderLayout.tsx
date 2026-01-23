@@ -181,7 +181,14 @@ export default function GuideBuilderLayout() {
     };
 
     const removeBlock = (id: string) => {
-        setBlocks(items => items.filter(item => item.id !== id));
+        setBlocks(items =>
+            items
+                .filter(item => item.id !== id) // Top-level remove
+                .map(item => ({                 // Nested remove
+                    ...item,
+                    children: item.children ? item.children.filter(child => child.id !== id) : undefined
+                }))
+        );
     };
 
     const updateBlockContent = (id: string, content: any) => {
