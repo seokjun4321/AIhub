@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from "@/hooks/useAuth";
+import { sendMessageToN8n } from "@/lib/n8n";
 import Navbar from '@/components/ui/navbar';
 import Footer from '@/components/ui/footer';
 import '../styles/newHome.css';
@@ -607,10 +609,37 @@ function NewHome() {
         setModalOpen(false);
     };
 
-    const handleSendMessage = () => {
-        if (userMessage.trim()) {
-            setModalMessages((prev) => [...prev, { type: 'user', text: userMessage }]);
-            setUserMessage('');
+    const [isLoading, setIsLoading] = useState(false);
+    const { user } = useAuth(); // Assuming useAuth is available from existing imports or needs to be imported if not present. 
+    // Wait, useAuth is not imported in the original file I viewed in step 65.
+    // I need to check imports. Step 65 shows `import { useQuery } from '@tanstack/react-query';` but NOT `useAuth`.
+    // However, `PromptEngineering.tsx` used `import { useAuth } from "@/hooks/useAuth";`. I should add that import.
+
+    const handleSendMessage = async () => {
+        if (!userMessage.trim() || isLoading) return;
+
+        const currentMessage = userMessage;
+        setUserMessage(''); // Clear input immediately
+
+        // Add user message to UI
+        setModalMessages((prev) => [...prev, { type: 'user', text: currentMessage }]);
+        setIsLoading(true);
+
+        try {
+            // Use authenticated user ID or fallback to 'guest'
+            const userId = user?.id || 'guest';
+
+            const response = await sendMessageToN8n(userId, currentMessage);
+
+            if (response && response.answer) {
+                setModalMessages((prev) => [...prev, { type: 'bot', text: response.answer }]);
+            } else {
+                setModalMessages((prev) => [...prev, { type: 'bot', text: "죄송합니다. 답변을 형식이 올바르지 않습니다." }]);
+            }
+        } catch (error) {
+            setModalMessages((prev) => [...prev, { type: 'bot', text: "죄송합니다. 연결에 실패했습니다. (잠시 후 다시 시도해주세요)" }]);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -995,11 +1024,17 @@ function NewHome() {
                                         {msg.text}
                                     </div>
                                 ))}
+                                {isLoading && (
+                                    <div className="message bot">
+                                        <span className="typing-dots">답변 생성 중...</span>
+                                    </div>
+                                )}
                             </div>
                             <div className="modal-input">
                                 <input
                                     type="text"
-                                    placeholder="메시지를 입력하세요..."
+                                    placeholder={isLoading ? "답변을 기다리는 중..." : "메시지를 입력하세요..."}
+                                    disabled={isLoading}
                                     value={userMessage}
                                     onChange={(e) => setUserMessage(e.target.value)}
                                     onKeyDown={(e) => {

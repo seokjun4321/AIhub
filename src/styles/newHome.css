@@ -1321,3 +1321,14 @@ body {
     opacity: 1;
     transform: translateY(0);
 }
+/* Typing Animation */
+.typing-dots {
+  display: inline-block;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}

@@ -436,6 +436,19 @@ const Guides = () => {
 
               {/* 오른쪽 사이드바 (검색 결과 페이지에서도 동일) */}
               <div className="space-y-6 sticky-sidebar">
+                {/* Sell Guidebook Button */}
+                <Link to="/guide/new" className="block">
+                  <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] flex items-center justify-between group cursor-pointer">
+                    <div>
+                      <h3 className="font-bold text-lg">가이드북 판매하기</h3>
+                      <p className="text-emerald-100 text-sm">나만의 노하우를 공유하세요</p>
+                    </div>
+                    <div className="bg-white/20 p-2 rounded-lg group-hover:bg-white/30 transition-colors">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                </Link>
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">내 학습 진행</CardTitle>
@@ -587,6 +600,19 @@ const Guides = () => {
 
               {/* 오른쪽 사이드바 */}
               <div className="space-y-6 sticky-sidebar">
+                {/* Sell Guidebook Button */}
+                <Link to="/guide/new" className="block">
+                  <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] flex items-center justify-between group cursor-pointer">
+                    <div>
+                      <h3 className="font-bold text-lg">가이드북 판매하기</h3>
+                      <p className="text-emerald-100 text-sm">나만의 노하우를 공유하세요</p>
+                    </div>
+                    <div className="bg-white/20 p-2 rounded-lg group-hover:bg-white/30 transition-colors">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                </Link>
+
                 {/* 내 학습 진행 */}
                 <Card>
                   <CardHeader>

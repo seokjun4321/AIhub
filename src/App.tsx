@@ -34,6 +34,10 @@ import WorkflowDetail from "./pages/WorkflowDetail";
 import SellPreset from "./pages/SellPreset";
 import { GlobalFeedbackWidget } from "./components/feedback/GlobalFeedbackWidget";
 import { Toaster } from "@/components/ui/toaster";
+import GuideBuilderLayout from './components/guide-builder/GuideBuilderLayout';
+
+
+
 
 function App() {
   return (
@@ -47,10 +51,12 @@ function App() {
         <Route path="/guidebook" element={<Tools />} />
         <Route path="/guidebook/:id" element={<ToolDetail />} />
         <Route path="/guidebook/:toolId/:id" element={<GuideDetail />} />
-        {/* 새로운 가이드북 디자인 라우트 */}
 
-        <Route path="/presets" element={<PresetStore />} />
+        {/* 새로운 가이드북 디자인 라우트 */}
+        <Route path="/guide/new" element={<AdminRoute><GuideBuilderLayout /></AdminRoute>} />
+
         <Route path="/workflows/:id" element={<WorkflowDetail />} />
+        <Route path="/presets" element={<PresetStore />} />
         <Route path="/sell-preset" element={<SellPreset />} />
         <Route path="/community" element={<Community />} />
         <Route path="/community/:id" element={<PostDetail />} />
