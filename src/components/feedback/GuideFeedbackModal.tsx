@@ -96,7 +96,7 @@ export const GuideFeedbackModal = ({ isOpen, onClose, guideId, guideTitle, steps
             const { data: { user } } = await supabase.auth.getUser();
 
             const insertPromises = feedbackEntries.map(({ stepId, reason }) => {
-                return supabase.from('feedbacks').insert({
+                return supabase.from('feedbacks' as any).insert({
                     trigger: 'guidebook_complete',
                     entity_type: 'guidebook',
                     entity_id: String(guideId),
