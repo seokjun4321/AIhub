@@ -38,14 +38,22 @@ export function BuilderCanvas({ blocks, onRemove, onUpdate }: BuilderCanvasProps
                         items={blocks.map(b => b.id)}
                         strategy={verticalListSortingStrategy}
                     >
-                        {blocks.map((block) => (
-                            <BuilderBlock
-                                key={block.id}
-                                block={block}
-                                onRemove={onRemove}
-                                onUpdate={onUpdate}
-                            />
-                        ))}
+                        {blocks.map((block, index) => {
+                            // Calculate step number (count step blocks from start to current position)
+                            let stepIndex = 0;
+                            if (block.type === 'step') {
+                                stepIndex = blocks.slice(0, index + 1).filter(b => b.type === 'step').length;
+                            }
+                            return (
+                                <BuilderBlock
+                                    key={block.id}
+                                    block={block}
+                                    stepIndex={stepIndex}
+                                    onRemove={onRemove}
+                                    onUpdate={onUpdate}
+                                />
+                            );
+                        })}
                     </SortableContext>
                 </div>
             )}

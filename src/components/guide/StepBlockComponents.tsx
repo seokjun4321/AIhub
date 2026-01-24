@@ -59,7 +59,7 @@ export const GoalBanner = ({ goal, doneWhen }: { goal?: string, doneWhen?: strin
                         </div>
                         <span className="font-bold text-xs uppercase tracking-wider">Goal</span>
                     </div>
-                    <MarkdownContent content={goal} />
+                    <MarkdownContent content={goal} className="[&_p]:whitespace-pre-line" />
                 </div>
             )}
             {doneWhen && (
@@ -73,7 +73,7 @@ export const GoalBanner = ({ goal, doneWhen }: { goal?: string, doneWhen?: strin
                     {/* Replace plain newlines with "  \n" to force Markdown hard breaks */
                     /* Also handle escaped newlines just in case */}
                     <MarkdownContent
-                        content={doneWhen.replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
+                        content={doneWhen}
                         className="[&_p]:whitespace-pre-line"
                     />
                 </div>
@@ -90,7 +90,7 @@ export const WhyThisMatters = ({ content }: { content: string }) => {
                 <Lightbulb className="w-4 h-4" />
                 <span className="font-bold text-sm">Why This Matters</span>
             </div>
-            <MarkdownContent content={content} />
+            <MarkdownContent content={content} className="[&_p]:whitespace-pre-line" />
         </div>
     );
 };
@@ -1135,7 +1135,7 @@ export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: stri
 export const TipsBlock = ({ content }: { content: string | null | undefined }) => {
     if (!content || !content.trim()) return null;
 
-    const displayContent = content;
+    const displayContent = content.replace(/^•/gm, '-').replace(/\\n/g, '\n');
 
     return (
         <div className="mb-6 rounded-xl border border-yellow-200 bg-[#FFFBE6] p-5">
@@ -1255,12 +1255,12 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
         const lines = stringContent.split(/\r?\n/);
         const parsedItems = lines
             .map((line, index) => {
-                // Match "- [ ] text" or "- [x] text" or just "- text" with optional leading whitespace
-                const match = line.match(/^\s*[-*]\s+(\[([ xX])\])?\s*(.*)$/);
+                // Match "- [ ] text" or "- [x] text" or just "- text" or "• text" with optional leading whitespace
+                const match = line.match(/^\s*([-*•])\s+(\[([ xX])\])?\s*(.*)$/);
                 if (!match) return null;
 
-                const isCheckedMarkdown = match[2]?.toLowerCase() === 'x';
-                const text = match[3];
+                const isCheckedMarkdown = match[3]?.toLowerCase() === 'x';
+                const text = match[4];
                 const id = `item-${index}`;
 
                 // Use saved state if available, otherwise markdown state

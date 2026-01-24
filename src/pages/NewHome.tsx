@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from "@/hooks/useAuth";
-import { sendMessageToN8n } from "@/lib/n8n";
+import { useChatbot } from "@/contexts/ChatbotContext";
 import Navbar from '@/components/ui/navbar';
 import Footer from '@/components/ui/footer';
 import '../styles/newHome.css';
@@ -213,9 +213,8 @@ const formatTimeAgo = (dateString: string): string => {
 function NewHome() {
     const heroTextAreaRef = useRef<HTMLTextAreaElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [modalMessages, setModalMessages] = useState<{ type: 'user' | 'bot'; text: string }[]>([]);
-    const [userMessage, setUserMessage] = useState('');
+    // Use Global Chatbot Context
+    const { openChat } = useChatbot();
     const [demoExpanded, setDemoExpanded] = useState(false);
 
     // State for preset category
@@ -596,52 +595,14 @@ function NewHome() {
         animate();
     };
 
-    const handleOpenModal = () => {
-        const initialText = heroTextAreaRef.current?.value.trim() || '';
-        if (initialText) {
-            setModalMessages((prev) => [...prev, { type: 'user', text: initialText }]);
-            if (heroTextAreaRef.current) heroTextAreaRef.current.value = '';
-        }
-        setModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setModalOpen(false);
-    };
-
-    const [isLoading, setIsLoading] = useState(false);
-    const { user } = useAuth(); // Assuming useAuth is available from existing imports or needs to be imported if not present. 
-    // Wait, useAuth is not imported in the original file I viewed in step 65.
-    // I need to check imports. Step 65 shows `import { useQuery } from '@tanstack/react-query';` but NOT `useAuth`.
-    // However, `PromptEngineering.tsx` used `import { useAuth } from "@/hooks/useAuth";`. I should add that import.
-
-    const handleSendMessage = async () => {
-        if (!userMessage.trim() || isLoading) return;
-
-        const currentMessage = userMessage;
-        setUserMessage(''); // Clear input immediately
-
-        // Add user message to UI
-        setModalMessages((prev) => [...prev, { type: 'user', text: currentMessage }]);
-        setIsLoading(true);
-
-        try {
-            // Use authenticated user ID or fallback to 'guest'
-            const userId = user?.id || 'guest';
-
-            const response = await sendMessageToN8n(userId, currentMessage);
-
-            if (response && response.answer) {
-                setModalMessages((prev) => [...prev, { type: 'bot', text: response.answer }]);
-            } else {
-                setModalMessages((prev) => [...prev, { type: 'bot', text: "죄송합니다. 답변을 형식이 올바르지 않습니다." }]);
-            }
-        } catch (error) {
-            setModalMessages((prev) => [...prev, { type: 'bot', text: "죄송합니다. 연결에 실패했습니다. (잠시 후 다시 시도해주세요)" }]);
-        } finally {
-            setIsLoading(false);
+    const handleOpenChat = (initialMessage?: string) => {
+        openChat(initialMessage);
+        if (heroTextAreaRef.current) {
+            heroTextAreaRef.current.value = '';
         }
     };
+
+    // Removed local handleSendMessage logics as it is now handled globally in ChatbotContext
 
     return (
         <div className="min-h-screen bg-background">
@@ -677,25 +638,22 @@ function NewHome() {
 
                                     <div className="chat-body">
                                         <div className="suggestion-chips">
-                                            <button className="chip" onClick={handleOpenModal}>🚀 생산성 높이기</button>
-                                            <button className="chip" onClick={handleOpenModal}>🎨 이미지 생성</button>
-                                            <button className="chip" onClick={handleOpenModal}>📝 글쓰기 작성</button>
-                                            <button className="chip" onClick={handleOpenModal}>📊 데이터 분석</button>
+                                            <button className="chip" onClick={() => handleOpenChat("생산성을 높일 수 있는 방법을 알려줘")}>🚀 생산성 높이기</button>
+                                            <button className="chip" onClick={() => handleOpenChat("이미지 생성 도구를 추천해줘")}>🎨 이미지 생성</button>
+                                            <button className="chip" onClick={() => handleOpenChat("글쓰기를 도와주는 AI 도구는?")}>📝 글쓰기 작성</button>
+                                            <button className="chip" onClick={() => handleOpenChat("데이터 분석을 위한 AI 도구 추천해줘")}>📊 데이터 분석</button>
                                         </div>
                                     </div>
 
-                                    <div className="chat-input-area">
-                                        <textarea ref={heroTextAreaRef} placeholder="무엇을 도와드릴까요?" onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleOpenModal();
-                                            }
-                                        }}></textarea>
-                                        <button className="send-btn" aria-label="Send" onClick={handleOpenModal}>
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    <div className="chat-input-area" style={{ padding: '0.5rem' }}>
+                                        <button
+                                            className="w-full py-4 rounded-xl bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-95 transform duration-200"
+                                            onClick={() => handleOpenChat()}
+                                        >
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                             </svg>
+                                            AI 어시스턴트와 대화 시작하기
                                         </button>
                                     </div>
 
@@ -991,7 +949,7 @@ function NewHome() {
                         </p>
 
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1rem' }}>
-                            <button className="cta-btn" onClick={handleOpenModal}>
+                            <button className="cta-btn" onClick={() => handleOpenChat()}>
                                 무료로 시작하기
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', marginLeft: '0.5rem', verticalAlign: 'middle' }}>
                                     <path d="M5 12h14"></path>
@@ -1009,47 +967,7 @@ function NewHome() {
             {/* Footer */}
             <Footer />
 
-            {/* Chat Modal */}
-            {modalOpen && (
-                <div id="chat-modal" className="modal open" onClick={(e) => e.target === e.currentTarget && handleCloseModal()}>
-                    <div className="modal-card-wrapper">
-                        <div className="card-inner-content" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <div className="modal-header">
-                                <h3>AI 어시스턴트</h3>
-                                <button className="close-modal" onClick={handleCloseModal}>&times;</button>
-                            </div>
-                            <div className="modal-body">
-                                {modalMessages.map((msg, idx) => (
-                                    <div key={idx} className={`message ${msg.type} `}>
-                                        {msg.text}
-                                    </div>
-                                ))}
-                                {isLoading && (
-                                    <div className="message bot">
-                                        <span className="typing-dots">답변 생성 중...</span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="modal-input">
-                                <input
-                                    type="text"
-                                    placeholder={isLoading ? "답변을 기다리는 중..." : "메시지를 입력하세요..."}
-                                    disabled={isLoading}
-                                    value={userMessage}
-                                    onChange={(e) => setUserMessage(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleSendMessage();
-                                        }
-                                    }}
-                                />
-                                <button onClick={handleSendMessage}>전송</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Chat Modal - Removed as it is now Global */}
         </div>
     );
 }

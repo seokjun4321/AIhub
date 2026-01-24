@@ -1,15 +1,11 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import { Type, ListTodo, Lightbulb, AlertTriangle, TerminalSquare, Split, CheckSquare } from 'lucide-react';
+import { Type, ListTodo, Lightbulb, AlertTriangle, TerminalSquare, Split } from 'lucide-react';
 import { BlockType } from './GuideBuilderLayout';
 
 const tools = [
     { type: 'step', label: 'Step 추가', icon: ListTodo, desc: '새로운 단계를 추가합니다' },
     { type: 'action', label: 'Action', icon: TerminalSquare, desc: '구체적인 행동 지침' },
-    { type: 'tips', label: '꿀팁 & 실수', icon: Lightbulb, desc: '도움이 되는 팁 박스' },
-    { type: 'warning', label: '주의사항', icon: AlertTriangle, desc: '중요 경고 박스' },
-    { type: 'prompt', label: '프롬프트', icon: TerminalSquare, desc: 'AI 프롬프트 코드 블록' },
-    { type: 'checklist', label: '체크리스트', icon: CheckSquare, desc: '완료 확인용 리스트' },
     { type: 'branch', label: 'A/B 분기', icon: Split, desc: '선택형 시나리오' },
 ];
 

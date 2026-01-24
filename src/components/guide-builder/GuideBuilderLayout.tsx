@@ -13,20 +13,20 @@ import {
     defaultDropAnimationSideEffects,
     DropAnimation,
     pointerWithin,
-    rectIntersection,
-    getFirstCollision,
     CollisionDetection
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { BuilderSidebar } from './BuilderSidebar';
 import { BuilderCanvas } from './BuilderCanvas';
-import { BuilderBlock } from './BuilderBlock';
 import { GuideOverview } from './GuideOverview';
-import Navbar from '@/components/ui/navbar';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Eye } from 'lucide-react';
+import { ChevronLeft, Eye, BookOpen, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GuidePreview } from './GuidePreview';
+import { PromptManager } from './PromptManager';
+import { PromptItem } from "@/components/guidebook/PromptPack";
+import { GuideNavigator } from './GuideNavigator';
+import { useGuideSubmit } from '@/hooks/useGuideSubmit';
 
 export type BlockType =
     // Basic
@@ -38,8 +38,7 @@ export type BlockType =
     | 'warning'
     // Advanced
     | 'prompt'
-    | 'branch'
-    | 'checklist';
+    | 'branch';
 
 export interface GuideBlock {
     id: string;
@@ -54,6 +53,10 @@ export interface GuideMetadata {
     targetAudience: string;
     requirements: string;
     corePrinciples: string;
+    categoryId: number;
+    difficulty: string;
+    duration: string;
+    tags: string[];
 }
 
 const defaultDropAnimation: DropAnimation = {
@@ -83,16 +86,25 @@ export default function GuideBuilderLayout() {
     const [blocks, setBlocks] = useState<GuideBlock[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeType, setActiveType] = useState<BlockType | null>(null);
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const [activeTab, setActiveTab] = useState<'curriculum' | 'prompts'>('curriculum');
+    const [prompts, setPrompts] = useState<PromptItem[]>([]);
+
+    const { submitGuide, isSubmitting } = useGuideSubmit();
 
     const [metadata, setMetadata] = useState<GuideMetadata>({
         title: '',
         summary: '',
         targetAudience: '',
         requirements: '',
-        corePrinciples: ''
+        corePrinciples: '',
+        categoryId: 1,
+        difficulty: 'Beginner',
+        duration: '',
+        tags: []
     });
 
-    const updateMetadata = (key: keyof GuideMetadata, value: string) => {
+    const updateMetadata = (key: keyof GuideMetadata, value: any) => {
         setMetadata(prev => ({ ...prev, [key]: value }));
     };
 
@@ -235,75 +247,115 @@ export default function GuideBuilderLayout() {
         }));
     };
 
-    const [isPreview, setIsPreview] = useState(false);
-
-    if (isPreview) {
-        return <GuidePreview blocks={blocks} metadata={metadata} onExit={() => setIsPreview(false)} />;
+    if (isPreviewMode) {
+        return <GuidePreview blocks={blocks} metadata={metadata} prompts={prompts} onExit={() => setIsPreviewMode(false)} />;
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
-            {/* Header */}
-            <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 fixed top-0 w-full z-50">
-                <div className="flex items-center gap-4">
-                    <Link to="/guidebook" className="text-slate-500 hover:text-slate-900 transition-colors">
-                        <ChevronLeft className="w-5 h-5" />
-                    </Link>
-                    <h1 className="font-bold text-lg text-slate-900">새 가이드북 만들기</h1>
-                    <div className="h-4 w-px bg-slate-200 mx-2" />
-                    <span className="text-sm text-slate-500">초안 작성 중...</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Button
-                        variant="outline"
-                        className="text-slate-600 gap-2"
-                        onClick={() => setIsPreview(true)}
-                    >
-                        <Eye className="w-4 h-4" />
-                        미리보기
-                    </Button>
-                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">게시하기</Button>
-                </div>
-            </header>
-
-            {/* Main Editor Area */}
-            <div className="flex-1 pt-16 flex min-h-screen">
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={customCollisionDetection}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDragEnd={handleDragEnd}
-                >
-                    {/* Left: Canvas */}
-                    <main className="flex-1 bg-slate-50/50 p-8 flex justify-center">
-                        <div className="w-full max-w-3xl pb-24">
-                            <GuideOverview metadata={metadata} onChange={updateMetadata} />
-                            <BuilderCanvas
-                                blocks={blocks}
-                                onRemove={removeBlock}
-                                onUpdate={updateBlockContent}
-                            />
+        <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+        >
+            <div className="flex h-screen bg-slate-50 overflow-hidden">
+                {/* Fixed Header */}
+                <div className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-50">
+                    <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <BookOpen className="w-5 h-5 text-emerald-600" />
+                            </div>
+                            <h1 className="font-bold text-lg text-slate-800">Guide Builder</h1>
                         </div>
-                    </main>
 
-                    {/* Right: Sidebar */}
-                    <div className="w-80 relative">
-                        <aside className="bg-white border-l border-slate-200 flex flex-col z-40 shadow-xl shadow-slate-200/50 sticky top-16 h-[calc(100vh-4rem)]">
-                            <BuilderSidebar />
-                        </aside>
+                        {/* TAB SWITCHER */}
+                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                            <button
+                                onClick={() => setActiveTab('curriculum')}
+                                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'curriculum'
+                                    ? 'bg-white text-emerald-700 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Curriculum
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('prompts')}
+                                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'prompts'
+                                    ? 'bg-white text-emerald-700 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Prompt Pack
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Drag Overlay (Visual Follower) */}
-                    <DragOverlay dropAnimation={defaultDropAnimation}>
-                        {activeType ? (
-                            <div className="w-64 p-4 bg-white rounded-xl shadow-2xl border-2 border-emerald-500 opacity-90 cursor-grabbing pointer-events-none">
-                                <span className="font-bold text-slate-900 capitalize">{activeType} Block</span>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsPreviewMode(true)}
+                            className="text-slate-600 hover:text-emerald-600"
+                        >
+                            <Eye className="w-4 h-4 mr-2" />
+                            미리보기
+                        </Button>
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => submitGuide(metadata, blocks, prompts)}
+                            disabled={isSubmitting}
+                        >
+                            <Save className="w-4 h-4 mr-2" />
+                            {isSubmitting ? '제출 중...' : '제출하기'}
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="pt-16 w-full h-full">
+                    {activeTab === 'curriculum' ? (
+                        <div className="flex h-full">
+                            {/* Left Sidebar - Tools */}
+                            <div className="w-80 bg-white border-r border-slate-200 h-full overflow-hidden flex-shrink-0">
+                                <BuilderSidebar />
                             </div>
-                        ) : null}
-                    </DragOverlay>
-                </DndContext>
+
+                            {/* Center - Canvas */}
+                            <div className="flex-1 overflow-y-auto h-full relative bg-slate-50/50 p-8">
+                                <div className="w-full max-w-3xl mx-auto pb-24">
+                                    <GuideOverview metadata={metadata} onChange={updateMetadata} />
+                                    <BuilderCanvas
+                                        blocks={blocks}
+                                        onRemove={removeBlock}
+                                        onUpdate={updateBlockContent}
+                                    />
+                                </div>
+                                {/* Navigator */}
+                                <GuideNavigator blocks={blocks} />
+                            </div>
+                        </div>
+                    ) : (
+                        /* Prompt Manager Tab */
+                        <div className="h-full overflow-y-auto bg-slate-50">
+                            <PromptManager
+                                prompts={prompts}
+                                onChange={setPrompts}
+                                blocks={blocks}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {/* Drag Overlay */}
+                <DragOverlay>
+                    {activeId ? (
+                        <div className="p-4 bg-white rounded-xl shadow-xl border-2 border-emerald-500 w-[300px] opacity-90 cursor-grabbing">
+                            Scanning...
+                        </div>
+                    ) : null}
+                </DragOverlay>
             </div>
-        </div>
+        </DndContext>
     );
 }

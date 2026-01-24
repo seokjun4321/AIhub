@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowUp } from 'lucide-react';
 
-const ScrollToTop = () => {
+interface ScrollToTopProps {
+  className?: string;
+}
+
+const ScrollToTop = ({ className }: ScrollToTopProps = {}) => {
   // 현재 경로 정보를 가져옵니다.
   const { pathname } = useLocation();
   const [visible, setVisible] = useState(false);
@@ -15,12 +19,12 @@ const ScrollToTop = () => {
       // console.log('ScrollToTop: 커뮤니티 복귀 감지, 자동 스크롤 생략');
       return;
     }
-    
+
     // 커뮤니티 페이지에서는 자동 스크롤을 하지 않음 (sticky 레이아웃 보호)
     if (pathname === '/community') {
       return;
     }
-    
+
     window.scrollTo(0, 0);
   }, [pathname]);
 
@@ -47,7 +51,7 @@ const ScrollToTop = () => {
         <button
           onClick={handleClick}
           aria-label="맨 위로"
-          className="fixed bottom-6 right-6 z-50 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors w-12 h-12 flex items-center justify-center"
+          className={className || "fixed bottom-6 right-6 z-50 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors w-12 h-12 flex items-center justify-center"}
         >
           <ArrowUp className="w-5 h-5" />
         </button>

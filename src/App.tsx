@@ -1,5 +1,4 @@
 import { Routes, Route } from "react-router-dom";
-import ScrollToTop from './components/ui/ScrollToTop';
 import NewHome from './pages/NewHome';
 import Guides from './pages/Guides';
 import GuideDetail from './pages/GuideDetail';
@@ -32,17 +31,18 @@ import SubmissionDetail from "./pages/admin/SubmissionDetail"; // Import added
 import AdminHub from "./pages/admin/AdminHub";
 import WorkflowDetail from "./pages/WorkflowDetail";
 import SellPreset from "./pages/SellPreset";
-import { GlobalFeedbackWidget } from "./components/feedback/GlobalFeedbackWidget";
-import { Toaster } from "@/components/ui/toaster";
 import GuideBuilderLayout from './components/guide-builder/GuideBuilderLayout';
+import { Toaster } from "@/components/ui/toaster";
+import { ChatbotProvider } from "./contexts/ChatbotContext";
+import { FloatingActionGroup } from "./components/layout/FloatingActionGroup";
 
 
 
 
 function App() {
   return (
-    <>
-      <ScrollToTop />
+    <ChatbotProvider>
+      {/* <ScrollToTop /> - Now inside FloatingActionGroup */}
       <Routes>
         <Route path="/" element={<NewHome />} />
         <Route path="/guides" element={<Guides />} />
@@ -83,9 +83,9 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <GlobalFeedbackWidget />
+      <FloatingActionGroup />
       <Toaster />
-    </>
+    </ChatbotProvider>
   );
 }
 
