@@ -2,8 +2,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { BulletPointTextarea } from "@/components/ui/bullet-point-textarea";
 import { Input } from "@/components/ui/input";
-import { FileText, Users, Package, Lightbulb, Type } from "lucide-react";
+import { FileText, Users, Package, Lightbulb, Type, Check, ChevronsUpDown } from "lucide-react";
 import { GuideMetadata } from "./GuideBuilderLayout";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,6 +30,7 @@ interface GuideOverviewProps {
 export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
     const [categories, setCategories] = useState<{ id: number, name: string }[]>([]);
     const [aiModels, setAiModels] = useState<{ id: number, name: string }[]>([]);
+    const [open, setOpen] = useState(false);
 
     useEffect(() => {
         supabase.from('categories')
@@ -144,19 +160,52 @@ export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
                             </select>
                         </div>
 
-                        {/* AI Model */}
-                        <div className="space-y-2">
+                        {/* AI Model (Combobox) */}
+                        <div className="space-y-2 flex flex-col">
                             <label className="text-sm font-medium text-slate-700">사용 AI 모델</label>
-                            <select
-                                className="flex h-10 w-full rounded-md border border-input bg-emerald-50/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                value={metadata.aiModelId || ''}
-                                onChange={(e) => onChange('aiModelId', parseInt(e.target.value))}
-                            >
-                                <option value="">AI 모델을 선택하세요</option>
-                                {aiModels.map(model => (
-                                    <option key={model.id} value={model.id}>{model.name}</option>
-                                ))}
-                            </select>
+                            <Popover open={open} onOpenChange={setOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={open}
+                                        className="justify-between bg-emerald-50/30 border-input font-normal hover:bg-emerald-50/50"
+                                    >
+                                        {metadata.aiModelId
+                                            ? aiModels.find((model) => model.id === metadata.aiModelId)?.name
+                                            : "AI 모델을 선택하세요..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-0 w-[--radix-popover-trigger-width]">
+                                    <Command>
+                                        <CommandInput placeholder="AI 모델 검색..." />
+                                        <CommandList>
+                                            <CommandEmpty>일치하는 모델이 없습니다.</CommandEmpty>
+                                            <CommandGroup>
+                                                {aiModels.map((model) => (
+                                                    <CommandItem
+                                                        key={model.id}
+                                                        value={model.name}
+                                                        onSelect={() => {
+                                                            onChange('aiModelId', model.id);
+                                                            setOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                metadata.aiModelId === model.id ? "opacity-100" : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {model.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
 
                         {/* Difficulty */}
