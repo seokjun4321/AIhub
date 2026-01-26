@@ -1,5 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useChatbot } from '@/contexts/ChatbotContext';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import '../../styles/newHome.css'; // Reusing existing styles for now, or we can move them
 
 export const GlobalChatbot = () => {
@@ -77,7 +79,40 @@ export const GlobalChatbot = () => {
                                     : 'bg-white border shadow-sm text-slate-700 rounded-tl-none'
                                 }
                             `}>
-                                {msg.text}
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ children }) => <p className="mb-1 last:mb-0 leading-relaxed">{children}</p>,
+                                        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{children}</a>,
+                                        ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                                        ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                                        li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                                        strong: ({ children }) => <span className="font-bold text-slate-900">{children}</span>,
+                                        em: ({ children }) => <em className="italic">{children}</em>,
+                                        blockquote: ({ children }) => <blockquote className="border-l-4 border-slate-300 pl-4 py-1 my-2 bg-slate-50 italic">{children}</blockquote>,
+                                        code: ({ children }) => <code className="bg-slate-100 rounded px-1 py-0.5 text-xs font-mono text-red-500">{children}</code>,
+                                        pre: ({ children }) => <pre className="bg-slate-100 rounded p-2 text-xs overflow-x-auto my-2">{children}</pre>
+                                    }}
+                                >
+                                    {msg.text
+                                        // 1. Escape ampersands to prevent issues
+                                        .replace(/&/g, '&amp;')
+                                        // 2. Clean up ALL backslashes
+                                        .replace(/\\/g, '')
+                                        // 3. Normalize spaces around bold tags
+                                        .replace(/\*\*\s+/g, '**')
+                                        .replace(/\s+\*\*/g, '**')
+                                        // 4. Robust Fix: Move bold markers INSIDE brackets
+                                        // **[Text]** -> [**Text**]
+                                        .replace(/\*\*\[([^\]]*?)\]\*\*/g, '[**$1**]')
+                                        // 5. NEW: Convert [**Text**] into Link -> [**Text**](/guides?search=Text)
+                                        .replace(/\[\*\*([^\]]*?)\*\*\]/g, (match, title) => {
+                                            // Unescape HTML entities for the URL parameter (e.g. &amp; -> &)
+                                            const searchTitle = title.replace(/&amp;/g, '&');
+                                            return `[**${title}**](/guides?search=${encodeURIComponent(searchTitle)})`;
+                                        })
+                                    }
+                                </ReactMarkdown>
                             </div>
                         </div>
                     ))}

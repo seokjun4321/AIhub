@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search, Clock, Video, FileText, ExternalLink, Sparkles, BookOpen, Lightbulb } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -151,7 +151,9 @@ const getFormatText = (time: number | null) => {
 const Guides = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const initialSearchQuery = searchParams.get('search') || "";
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [selectedLevel, setSelectedLevel] = useState("전체");
 
