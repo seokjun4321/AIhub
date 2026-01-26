@@ -30,7 +30,7 @@ interface GuideOverviewProps {
 export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
     const [categories, setCategories] = useState<{ id: number, name: string }[]>([]);
     const [aiModels, setAiModels] = useState<{ id: number, name: string }[]>([]);
-    const [open, setOpen] = useState(false);
+    const [isComboboxOpen, setIsComboboxOpen] = useState(false);
 
     useEffect(() => {
         supabase.from('categories')
@@ -163,12 +163,12 @@ export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
                         {/* AI Model (Combobox) */}
                         <div className="space-y-2 flex flex-col">
                             <label className="text-sm font-medium text-slate-700">사용 AI 모델</label>
-                            <Popover open={open} onOpenChange={setOpen}>
+                            <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                         variant="outline"
                                         role="combobox"
-                                        aria-expanded={open}
+                                        aria-expanded={isComboboxOpen}
                                         className="justify-between bg-emerald-50/30 border-input font-normal hover:bg-emerald-50/50"
                                     >
                                         {metadata.aiModelId
@@ -189,7 +189,7 @@ export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
                                                         value={model.name}
                                                         onSelect={() => {
                                                             onChange('aiModelId', model.id);
-                                                            setOpen(false);
+                                                            setIsComboboxOpen(false);
                                                         }}
                                                     >
                                                         <Check
