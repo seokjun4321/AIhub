@@ -515,7 +515,7 @@ export const BranchBlock = ({ content }: { content: string | null | undefined })
                                         p: (props) => <p className="text-sm text-slate-600 leading-relaxed" {...props} />,
                                     }}
                                 >
-                                    {opt.desc.join('\n')}
+                                    {opt.desc.join('  \n')}
                                 </ReactMarkdown>
                             </div>
                         </div>

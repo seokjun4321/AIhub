@@ -12,6 +12,17 @@ import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, InputOutputBlock,
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+interface StepBranch {
+  id: string;
+  content: {
+    question?: string;
+    optionA?: string;
+    descriptionA?: string;
+    optionB?: string;
+    descriptionB?: string;
+  };
+}
+
 interface Step {
   id: number | string;
   step_order: number;
@@ -39,6 +50,7 @@ interface Step {
     label: string;
     placeholder: string | null;
   }>;
+  branches?: StepBranch[]; // New field for Preview
 }
 
 export interface StepCardProps {
@@ -201,6 +213,7 @@ const parseStepContent = (content: string | null): ParsedSections => {
 };
 
 export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, toolUrl }: StepCardProps) {
+  // ... (existing hooks and state) ...
   const [open, setOpen] = useState(isOpen);
   const [completed, setCompleted] = useState(false);
   const { user } = useAuth();
@@ -216,11 +229,8 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
   const checklist = step.checklist || parsedContent.checklist;
 
   // If we have specific action items, use them. 
-  // If we have 'other' content (unclassified), use that.
-  // DO NOT fallback to step.content if we are using the structured layout, 
-  // as step.content contains the raw full markdown which would cause duplication.
   const actions = step.actions || parsedContent.actions || parsedContent.other || "";
-  const copyPrompt = step.guide_prompts?.[0]?.text || parsedContent.copyPrompt; // use DB prompt only if not in content? Actually let's trust content more as it's newer, or both. Let's use content > db for now as DB might be empty.
+  const copyPrompt = step.guide_prompts?.[0]?.text || parsedContent.copyPrompt;
   const branch = parsedContent.branch;
 
   // Also check for example blocks in parsed content
@@ -229,16 +239,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
   const outputExample = parsedContent.output_example;
   const generalExample = parsedContent.example;
 
-  // Handle content that doesn't fit the strict schema (fallback)
-  // detailed check: if we have any structured columns OR parsed sections beyond intro
-
-  const hasStructuredContent = Boolean(
-    goal || doneWhen || whyMatters || tips || checklist ||
-    actions || inputExample || processExample || outputExample || generalExample ||
-    step.goal || step.done_when || step.why_matters || step.tips || step.checklist || // Check DB fields directly
-    Object.keys(parsedContent).length > 1
-  );
-
+  // ... (useEffect hooks) ...
   useEffect(() => {
     setOpen(isOpen);
   }, [isOpen]);
@@ -266,6 +267,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
   }, [user, step.id, guideId]);
 
   const handleToggleComplete = async () => {
+    // ... (existing implementation) ...
     const newCompleted = !completed;
     setCompleted(newCompleted);
 
@@ -317,9 +319,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
       <Collapsible open={open} onOpenChange={setOpen} className="group">
         <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${open ? 'bg-white border-slate-200 shadow-lg' : 'bg-white border-slate-100 shadow-sm hover:shadow-md'}`}>
           <CollapsibleTrigger asChild>
-            <div
-              className="flex w-full items-center justify-between p-6 h-auto hover:bg-slate-50/50 rounded-none cursor-pointer text-left"
-            >
+            <div className="flex w-full items-center justify-between p-6 h-auto hover:bg-slate-50/50 rounded-none cursor-pointer text-left">
               <div className="flex items-center gap-5 text-left flex-1 min-w-0">
                 <div className="flex items-center gap-4 flex-shrink-0">
                   <div className="relative">
@@ -355,7 +355,6 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
 
               <GoalBanner goal={goal} doneWhen={doneWhen} />
 
-              {/* Intro content if any (often empty if everything is modularized) */}
               {parsedContent.intro && (
                 <div className="mb-8 prose prose-sm max-w-none text-slate-600">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsedContent.intro}</ReactMarkdown>
@@ -363,19 +362,15 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
               )}
 
               <WhyThisMatters content={whyMatters} />
-
               <ComparisonBlock content={parsedContent.comparison} />
-
               <ActionList content={actions} />
 
-              {/* Render extracted Images */}
               {parsedContent.images && parsedContent.images.length > 0 && (
                 parsedContent.images.map((img, idx) => (
                   <ImageDisplayBlock key={idx} src={img.src} alt={img.alt} />
                 ))
               )}
 
-              {/* Render multiple copy blocks if available, else fallback to single block */}
               {parsedContent.copyBlocks && parsedContent.copyBlocks.length > 0 ? (
                 parsedContent.copyBlocks.map((block, index) => (
                   <CopyBlock
@@ -392,7 +387,45 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
 
               <BranchBlock content={branch} />
 
-              {/* Show Input/Output side by side if both exist, otherwise show separately */}
+              {/* Structured Branches from Builder (Preview) */}
+              {step.branches && step.branches.length > 0 && (
+                <div className="space-y-6 mb-8 mt-8 border-t border-slate-100 pt-8">
+                  {step.branches.map((branch, idx) => (
+                    <div key={branch.id} className="bg-purple-50 border border-purple-200 rounded-xl p-6 space-y-4">
+                      <div className="flex items-center gap-2 text-purple-700 font-bold">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                        </svg>
+                        A/B 분기 #{idx + 1}
+                      </div>
+                      <p className="text-lg font-medium text-slate-800">
+                        {branch.content?.question || "분기 질문이 없습니다"}
+                      </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button className="bg-blue-100 hover:bg-blue-200 border-2 border-blue-300 rounded-xl p-4 text-left transition-colors">
+                          <div className="flex items-center gap-2 text-blue-700 font-bold mb-2">
+                            <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">A</div>
+                            {branch.content?.optionA || "옵션 A"}
+                          </div>
+                          <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                            {branch.content?.descriptionA || "설명 없음"}
+                          </p>
+                        </button>
+                        <button className="bg-emerald-100 hover:bg-emerald-200 border-2 border-emerald-300 rounded-xl p-4 text-left transition-colors">
+                          <div className="flex items-center gap-2 text-emerald-700 font-bold mb-2">
+                            <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">B</div>
+                            {branch.content?.optionB || "옵션 B"}
+                          </div>
+                          <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                            {branch.content?.descriptionB || "설명 없음"}
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {(inputExample || outputExample) ? (
                 <InputOutputBlock inputContent={inputExample} processContent={processExample} outputContent={outputExample} />
               ) : (
@@ -408,7 +441,6 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
               <ChecklistBlock content={checklist} guideId={guideId} stepId={step.id} />
 
 
-              {/* Prompts and Workbooks (Always rendered if exist) */}
               {step.guide_prompts && step.guide_prompts.length > 0 && (
                 <div className="space-y-4 mt-8 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
                   <h4 className="font-bold text-indigo-900 mb-4 flex items-center gap-2">

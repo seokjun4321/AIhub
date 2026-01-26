@@ -47,7 +47,6 @@ const AdminHub = () => {
                             </CardDescription>
                         </CardHeader>
                     </Card>
-                    {/* Submission Management Card */}
                     <Card
                         className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-purple-500"
                         onClick={() => navigate('/admin/submissions')}
@@ -55,10 +54,26 @@ const AdminHub = () => {
                         <CardHeader>
                             <div className="flex items-center gap-3 mb-2">
                                 <Inbox className="w-6 h-6 text-purple-500" />
-                                <CardTitle>제출 관리</CardTitle>
+                                <CardTitle>제출 관리 (Presets)</CardTitle>
                             </div>
                             <CardDescription>
                                 사용자가 판매 등록한 프롬프트/템플릿을 검토하고 승인합니다.
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+
+                    {/* Guidebook Submissions Card */}
+                    <Card
+                        className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-orange-500"
+                        onClick={() => navigate('/admin/guide-submissions')}
+                    >
+                        <CardHeader>
+                            <div className="flex items-center gap-3 mb-2">
+                                <FileText className="w-6 h-6 text-orange-500" />
+                                <CardTitle>가이드북 제출 관리</CardTitle>
+                            </div>
+                            <CardDescription>
+                                사용자가 작성한 가이드북을 검토하고 승인합니다.
                             </CardDescription>
                         </CardHeader>
                     </Card>

@@ -57,6 +57,9 @@ export interface GuideMetadata {
     difficulty: string;
     duration: string;
     tags: string[];
+    aiModelId?: number;
+    submissionType?: 'new' | 'update';
+    originalGuideId?: string | null;
 }
 
 const defaultDropAnimation: DropAnimation = {
@@ -99,9 +102,12 @@ export default function GuideBuilderLayout() {
         requirements: '',
         corePrinciples: '',
         categoryId: 1,
+        aiModelId: 1, // Default to 1 (ChatGPT) or handled by default logic
         difficulty: 'Beginner',
-        duration: '',
-        tags: []
+        duration: '10 min',
+        tags: [],
+        submissionType: 'new',
+        originalGuideId: null
     });
 
     const updateMetadata = (key: keyof GuideMetadata, value: any) => {

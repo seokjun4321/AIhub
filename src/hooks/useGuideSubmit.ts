@@ -33,7 +33,11 @@ export function useGuideSubmit() {
                     blocks,
                     prompts
                 },
-                status: 'pending'
+                status: 'pending',
+                title: metadata.title,
+                category: metadata.categoryId?.toString() || 'Uncategorized',
+                submission_type: metadata.submissionType || 'new',
+                original_guide_id: metadata.originalGuideId || null
             });
 
             if (error) throw error;

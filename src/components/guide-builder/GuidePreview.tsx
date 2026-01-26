@@ -31,9 +31,6 @@ export function GuidePreview({ blocks, metadata, prompts, onExit }: GuidePreview
     // 2. Extract Steps and Branches
     const steps = blocks.filter(b => b.type === 'step');
     // Collect branches from top-level AND from inside step children
-    const topLevelBranches = blocks.filter(b => b.type === 'branch');
-    const childBranches = steps.flatMap(step => step.children?.filter(c => c.type === 'branch') || []);
-    const branches = [...topLevelBranches, ...childBranches];
 
     // 3. Transform GuideBlock -> Step Object expected by StepCard
     const stepObjects = steps.map((block, index) => {
@@ -72,12 +69,16 @@ export function GuidePreview({ blocks, metadata, prompts, onExit }: GuidePreview
             checklist: block.content?.miniChecklist || '',
             actions: actions, // This relies on our updated StepCard support
             guide_prompts: childPrompts, // Keep legacy child prompts if any
-            guide_workbook_fields: []
+            guide_workbook_fields: [],
+            // Pass the branches directly to StepCard
+            branches: block.children?.filter(c => c.type === 'branch') || []
         };
     });
 
     const currentStep = stepObjects[activeStepIndex];
     const totalSteps = stepObjects.length;
+
+    // Use stepObjects containing branch data now, no need for separate `currentStepBranches`
 
     // Navigation Handlers
     const handleNextStep = () => {
@@ -218,45 +219,8 @@ export function GuidePreview({ blocks, metadata, prompts, onExit }: GuidePreview
                                                 isOpen={true}
                                                 toolName="Preview Tool"
                                             />
+                                            {/* External Branch rendering removed. Now handled by StepCard. */}
 
-                                            {/* Branch Blocks */}
-                                            {branches.length > 0 && (
-                                                <div className="mt-8 space-y-6">
-                                                    {branches.map((branch, idx) => (
-                                                        <div key={branch.id} className="bg-purple-50 border border-purple-200 rounded-xl p-6 space-y-4">
-                                                            <div className="flex items-center gap-2 text-purple-700 font-bold">
-                                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                                                                </svg>
-                                                                A/B 분기 #{idx + 1}
-                                                            </div>
-                                                            <p className="text-lg font-medium text-slate-800">
-                                                                {branch.content?.question || "분기 질문이 없습니다"}
-                                                            </p>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <button className="bg-blue-100 hover:bg-blue-200 border-2 border-blue-300 rounded-xl p-4 text-left transition-colors">
-                                                                    <div className="flex items-center gap-2 text-blue-700 font-bold mb-2">
-                                                                        <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">A</div>
-                                                                        {branch.content?.optionA || "옵션 A"}
-                                                                    </div>
-                                                                    <p className="text-sm text-slate-600">
-                                                                        {branch.content?.descriptionA || "설명 없음"}
-                                                                    </p>
-                                                                </button>
-                                                                <button className="bg-emerald-100 hover:bg-emerald-200 border-2 border-emerald-300 rounded-xl p-4 text-left transition-colors">
-                                                                    <div className="flex items-center gap-2 text-emerald-700 font-bold mb-2">
-                                                                        <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">B</div>
-                                                                        {branch.content?.optionB || "옵션 B"}
-                                                                    </div>
-                                                                    <p className="text-sm text-slate-600">
-                                                                        {branch.content?.descriptionB || "설명 없음"}
-                                                                    </p>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
 
                                             {/* Navigation Footer */}
                                             <div className="mt-8 flex items-center justify-between">

@@ -14,6 +14,7 @@ interface GuideOverviewProps {
 
 export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
     const [categories, setCategories] = useState<{ id: number, name: string }[]>([]);
+    const [aiModels, setAiModels] = useState<{ id: number, name: string }[]>([]);
 
     useEffect(() => {
         supabase.from('categories')
@@ -21,6 +22,13 @@ export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
             .order('name')
             .then(({ data }) => {
                 if (data) setCategories(data);
+            });
+
+        supabase.from('ai_models')
+            .select('id, name')
+            .order('name')
+            .then(({ data }) => {
+                if (data) setAiModels(data);
             });
     }, []);
 
@@ -132,6 +140,21 @@ export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
                                 <option value="">카테고리를 선택하세요</option>
                                 {categories.map(cat => (
                                     <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* AI Model */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">사용 AI 모델</label>
+                            <select
+                                className="flex h-10 w-full rounded-md border border-input bg-emerald-50/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={metadata.aiModelId || ''}
+                                onChange={(e) => onChange('aiModelId', parseInt(e.target.value))}
+                            >
+                                <option value="">AI 모델을 선택하세요</option>
+                                {aiModels.map(model => (
+                                    <option key={model.id} value={model.id}>{model.name}</option>
                                 ))}
                             </select>
                         </div>

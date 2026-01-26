@@ -26,7 +26,9 @@ import ToolProposals from "./pages/admin/ToolProposals";
 import MyTools from "./pages/MyTools";
 import FeedbackDashboard from "./pages/admin/FeedbackDashboard";
 import SubmissionList from "./pages/admin/SubmissionList";
-import SubmissionDetail from "./pages/admin/SubmissionDetail"; // Import added
+import SubmissionDetail from "./pages/admin/SubmissionDetail";
+import GuideSubmissionList from "./pages/admin/GuideSubmissionList"; // Import added
+import GuideSubmissionDetail from "./pages/admin/GuideSubmissionDetail"; // Import added
 
 import AdminHub from "./pages/admin/AdminHub";
 import WorkflowDetail from "./pages/WorkflowDetail";
@@ -71,7 +73,9 @@ function App() {
         <Route path="/admin/proposals" element={<AdminRoute><ToolProposals /></AdminRoute>} />
         <Route path="/admin/feedback" element={<AdminRoute><FeedbackDashboard /></AdminRoute>} />
         <Route path="/admin/submissions" element={<AdminRoute><SubmissionList /></AdminRoute>} />
-        <Route path="/admin/submissions/:id" element={<AdminRoute><SubmissionDetail /></AdminRoute>} /> {/* Route added */}
+        <Route path="/admin/submissions/:id" element={<AdminRoute><SubmissionDetail /></AdminRoute>} />
+        <Route path="/admin/guide-submissions" element={<AdminRoute><GuideSubmissionList /></AdminRoute>} /> {/* New Route */}
+        <Route path="/admin/guide-submissions/:id" element={<AdminRoute><GuideSubmissionDetail /></AdminRoute>} /> {/* New Route */}
         <Route path="/my-tools" element={<ProtectedRoute><MyTools /></ProtectedRoute>} />
         <Route path="/tools/:id" element={<ToolDetail />} />
         <Route path="/tools/compare" element={<ToolCompare />} />

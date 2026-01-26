@@ -47,7 +47,7 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
     };
 
     const handleContentChange = (key: string, value: string) => {
-        onUpdate(block.id, { [key]: value });
+        onUpdate(block.id, { ...block.content, [key]: value });
     };
 
     return (
@@ -76,20 +76,7 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
                             {block.type === 'step' ? `STEP ${stepIndex}` : `${block.type} BLOCK`}
                         </span>
 
-                        {/* Tool Selector (Only for Step Blocks) */}
-                        {block.type === 'step' && (
-                            <select
-                                className="h-6 text-xs bg-slate-50 border border-slate-200 rounded px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                value={block.content.tool || 'ChatGPT'}
-                                onChange={(e) => handleContentChange('tool', e.target.value)}
-                            >
-                                <option value="ChatGPT">ChatGPT</option>
-                                <option value="Claude">Claude</option>
-                                <option value="Midjourney">Midjourney</option>
-                                <option value="Gemini">Gemini</option>
-                                <option value="Custom">직접 입력</option>
-                            </select>
-                        )}
+
                     </div>
 
                     <div className="flex items-center gap-1">
@@ -187,7 +174,6 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
                             </div>
 
                             {/* 3. Why This Matters */}
-                            {/* WHY THIS MATTERS */}
                             <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 space-y-2">
                                 <div className="flex items-center gap-2 text-amber-600 font-bold text-xs uppercase tracking-wider">
                                     <Lightbulb className="w-4 h-4" />
@@ -199,6 +185,39 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
                                     value={block.content.whyMatters || ''}
                                     onChange={(e) => handleContentChange('whyMatters', e.target.value)}
                                 />
+                            </div>
+
+                            {/* 4. Tips & Checklist (2 Columns) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* TIPS */}
+                                <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 space-y-2">
+                                    <div className="flex items-center gap-2 text-orange-600 font-bold text-xs uppercase tracking-wider">
+                                        <AlertTriangle className="w-3 h-3" />
+                                        Success Tips & Mistakes
+                                    </div>
+                                    <BulletPointTextarea
+                                        placeholder="성공 팁이나 자주 하는 실수를 적어주세요."
+                                        className="min-h-[80px] border-none bg-transparent focus-visible:ring-0 resize-none text-sm p-0 placeholder:text-orange-700/30"
+                                        value={block.content.tips || ''}
+                                        onChange={(e) => handleContentChange('tips', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* CHECKLIST */}
+                                <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-4 space-y-2">
+                                    <div className="flex items-center gap-2 text-purple-600 font-bold text-xs uppercase tracking-wider">
+                                        <div className="w-4 h-4 rounded-full border-2 border-purple-500 flex items-center justify-center">
+                                            <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                        </div>
+                                        Interactive Checklist
+                                    </div>
+                                    <BulletPointTextarea
+                                        placeholder="사용자가 수행해야 할 체크리스트 항목을 적어주세요."
+                                        className="min-h-[80px] border-none bg-transparent focus-visible:ring-0 resize-none text-sm p-0 placeholder:text-purple-700/30"
+                                        value={block.content.checklist || ''}
+                                        onChange={(e) => handleContentChange('checklist', e.target.value)}
+                                    />
+                                </div>
                             </div>
                             {/* 4. Nested Children (Action & Content) */}
                             <div className="mt-2 pt-4 border-t border-slate-100">
@@ -313,11 +332,17 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
                                                                             <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold">A</div>
                                                                             옵션 A
                                                                         </div>
-                                                                        <Textarea
+                                                                        <Input
                                                                             placeholder="예: ChatGPT 사용하기"
-                                                                            className="border-blue-200 text-xs min-h-[60px]"
+                                                                            className="border-blue-200 text-xs h-8"
                                                                             value={child.content?.optionA || ''}
                                                                             onChange={(e) => onUpdate(child.id, { ...child.content, optionA: e.target.value })}
+                                                                        />
+                                                                        <Textarea
+                                                                            placeholder="설명 (선택)"
+                                                                            className="border-blue-200 text-xs min-h-[60px] resize-none"
+                                                                            value={child.content?.descriptionA || ''}
+                                                                            onChange={(e) => onUpdate(child.id, { ...child.content, descriptionA: e.target.value })}
                                                                         />
                                                                     </div>
                                                                     <div className="space-y-1">
@@ -325,11 +350,17 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
                                                                             <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">B</div>
                                                                             옵션 B
                                                                         </div>
-                                                                        <Textarea
+                                                                        <Input
                                                                             placeholder="예: Claude 사용하기"
-                                                                            className="border-emerald-200 text-xs min-h-[60px]"
+                                                                            className="border-emerald-200 text-xs h-8"
                                                                             value={child.content?.optionB || ''}
                                                                             onChange={(e) => onUpdate(child.id, { ...child.content, optionB: e.target.value })}
+                                                                        />
+                                                                        <Textarea
+                                                                            placeholder="설명 (선택)"
+                                                                            className="border-emerald-200 text-xs min-h-[60px] resize-none"
+                                                                            value={child.content?.descriptionB || ''}
+                                                                            onChange={(e) => onUpdate(child.id, { ...child.content, descriptionB: e.target.value })}
                                                                         />
                                                                     </div>
                                                                 </div>
