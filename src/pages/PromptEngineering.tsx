@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
-import { PromptHero } from "@/components/PromptHero";
-import { ChapterNav } from "@/components/ChapterNav";
-import { ChapterSection } from "@/components/ChapterSection";
+import { GuidebookHeader } from "@/components/guidebook/GuidebookHeader";
+import { GuideOverviewCards } from "@/components/guidebook/GuideOverviewCards";
+import { GuideProgressSidebar } from "@/components/guidebook/GuideProgressSidebar";
 import { ExamplePromptBlock } from "@/components/ExamplePromptBlock";
 import { PracticeCard } from "@/components/PracticeCard";
 import { TipsCard } from "@/components/TipsCard";
@@ -13,6 +13,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import confetti from 'canvas-confetti';
 
 const TOTAL_CHAPTERS = 10;
 
@@ -36,7 +41,7 @@ const PromptEngineering = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeChapter, setActiveChapter] = useState("chapter-0");
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [selectedPersona, setSelectedPersona] = useState(0);
 
   // 진행도 가져오기
@@ -96,26 +101,55 @@ const PromptEngineering = () => {
     // 진행도 업데이트
     queryClient.invalidateQueries({ queryKey: ['promptEngineeringProgress', user.id] });
 
+    // 완료 축하 효과
+    if (newCompleted) {
+      toast({
+        title: "완료되었습니다! 🎉",
+        description: "다음 챕터로 넘어가보세요!",
+      });
+      if (chapterId === TOTAL_CHAPTERS - 1) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+
     // 진행도 변경 이벤트 발생
     window.dispatchEvent(new CustomEvent('promptEngineeringProgressChanged'));
-
-    toast({
-      title: newCompleted ? "완료되었습니다! 🎉" : "완료 취소됨",
-    });
   };
 
-  const chapters = [
-    { id: "chapter-0", title: "0. 왜 프롬프트 엔지니어링이 먼저인가", completed: completedChapters.has(0) },
-    { id: "chapter-1", title: "1. 마인드셋", completed: completedChapters.has(1) },
-    { id: "chapter-2", title: "2. RCTFP 구조", completed: completedChapters.has(2) },
-    { id: "chapter-3", title: "3. ROSES 프레임워크", completed: completedChapters.has(3) },
-    { id: "chapter-4", title: "4. Few-shot & Chain-of-Thought", completed: completedChapters.has(4) },
-    { id: "chapter-5", title: "5. 출력 포맷 통제", completed: completedChapters.has(5) },
-    { id: "chapter-6", title: "6. 페르소나 & 컨텍스트", completed: completedChapters.has(6) },
-    { id: "chapter-7", title: "7. 모듈형 프롬프트 시스템", completed: completedChapters.has(7) },
-    { id: "chapter-8", title: "8. AIHub 프레임워크", completed: completedChapters.has(8) },
-    { id: "chapter-9", title: "9. 마스터 프롬프트 워크숍", completed: completedChapters.has(9) },
-  ];
+  const handleNextStep = () => {
+    if (activeStepIndex < TOTAL_CHAPTERS - 1) {
+      setActiveStepIndex(prev => prev + 1);
+      scrollToContent();
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (activeStepIndex > 0) {
+      setActiveStepIndex(prev => prev - 1);
+      scrollToContent();
+    }
+  };
+
+  const scrollToContent = () => {
+    setTimeout(() => {
+      window.scrollTo({ top: 100, behavior: 'smooth' });
+    }, 50);
+  };
+
+  const handleStepClick = (id: string | number) => {
+    // id is "chapter-0", "chapter-1" etc.
+    if (typeof id === 'string' && id.startsWith('chapter-')) {
+      const index = parseInt(id.split('-')[1]);
+      if (!isNaN(index)) {
+        setActiveStepIndex(index);
+        scrollToContent();
+      }
+    }
+  };
 
   const personas = [
     {
@@ -153,61 +187,45 @@ const PromptEngineering = () => {
     },
   ];
 
-  const handleChapterClick = (id: string) => {
-    setActiveChapter(id);
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
+  const chapters = [
+    { id: "chapter-0", title: "0. 왜 프롬프트 엔지니어링이 먼저인가" },
+    { id: "chapter-1", title: "1. 마인드셋" },
+    { id: "chapter-2", title: "2. RCTFP 구조" },
+    { id: "chapter-3", title: "3. ROSES 프레임워크" },
+    { id: "chapter-4", title: "4. Few-shot & Chain-of-Thought" },
+    { id: "chapter-5", title: "5. 출력 포맷 통제" },
+    { id: "chapter-6", title: "6. 페르소나 & 컨텍스트" },
+    { id: "chapter-7", title: "7. 모듈형 프롬프트 시스템" },
+    { id: "chapter-8", title: "8. AIHub 프레임워크" },
+    { id: "chapter-9", title: "9. 마스터 프롬프트 워크숍" },
+  ];
 
-  const completedCount = completedChapters.size;
+  // Convert Set to Array for Sidebar
+  const completedStepIds = Array.from(completedChapters).map(num => `chapter-${num}`);
 
-  return (
-    <div className="min-h-screen bg-background prompt-engineering-page">
-      <Navbar />
-      <main className="pt-24 pb-12">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <PromptHero completedChapters={completedCount} totalChapters={TOTAL_CHAPTERS} />
+  const renderContent = (index: number) => {
+    switch (index) {
+      case 0:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                ChatGPT, Claude, Gemini 같은 AI 도구들이 등장하면서 누구나 AI를 쓸 수 있게 되었습니다.
+                하지만 같은 AI를 사용해도 결과물의 품질은 천차만별입니다.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong className="text-emerald-600">핵심은?</strong> AI는 똑똑하지만 마음을 읽을 순 없습니다.
+                당신이 원하는 결과를 얻으려면 명확한 지시를 내려야 합니다. 이것이 바로 프롬프트 엔지니어링입니다.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                AIHub의 모든 가이드북(글쓰기, 취업, 창업, 코딩 등)은 "좋은 프롬프트를 이미 알고 있다"는 전제로 작성되어 있습니다.
+                따라서 이 코스를 먼저 완주하면 다른 모든 가이드북을 100% 활용할 수 있습니다.
+              </p>
+            </div>
 
-          <div className="grid lg:grid-cols-[280px_1fr] gap-8 mt-8">
-            {/* Left: Navigation */}
-            <aside className="hidden lg:block sticky-sidebar">
-              <ChapterNav
-                chapters={chapters}
-                activeChapter={activeChapter}
-                onChapterClick={handleChapterClick}
-                onToggleComplete={toggleChapterComplete}
-              />
-            </aside>
-
-            {/* Right: Content */}
-            <main className="space-y-6">
-              {/* Chapter 0 */}
-              <ChapterSection
-                id="chapter-0"
-                number={0}
-                title="왜 프롬프트 엔지니어링이 먼저인가"
-                description="AI를 효과적으로 사용하기 위한 필수 기초"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    ChatGPT, Claude, Gemini 같은 AI 도구들이 등장하면서 누구나 AI를 쓸 수 있게 되었습니다.
-                    하지만 같은 AI를 사용해도 결과물의 품질은 천차만별입니다.
-                  </p>
-                  <p className="text-foreground leading-relaxed">
-                    <strong className="text-primary">핵심은?</strong> AI는 똑똑하지만 마음을 읽을 순 없습니다.
-                    당신이 원하는 결과를 얻으려면 명확한 지시를 내려야 합니다. 이것이 바로 프롬프트 엔지니어링입니다.
-                  </p>
-                  <p className="text-foreground leading-relaxed">
-                    AIHub의 모든 가이드북(글쓰기, 취업, 창업, 코딩 등)은 "좋은 프롬프트를 이미 알고 있다"는 전제로 작성되어 있습니다.
-                    따라서 이 코스를 먼저 완주하면 다른 모든 가이드북을 100% 활용할 수 있습니다.
-                  </p>
-                </div>
-
-                <ExamplePromptBlock
-                  title="좋은 프롬프트 예시"
-                  prompt={`나쁜 예: "마케팅 글 써줘"
+            <ExamplePromptBlock
+              title="좋은 프롬프트 예시"
+              prompt={`나쁜 예: "마케팅 글 써줘"
 
 좋은 예:
 당신은 B2B SaaS 마케팅 전문가입니다.
@@ -220,93 +238,85 @@ const PromptEngineering = () => {
 - 결론 (CTA 포함, 2문단)
 
 톤: 전문적이면서도 친근하게, 전문 용어는 쉽게 풀어서 설명`}
-                />
+            />
 
-                <TipsCard
-                  tips={[
-                    { type: "mistake", text: "너무 짧거나 애매한 지시: 'PPT 만들어줘', '보고서 써줘'" },
-                    { type: "mistake", text: "맥락 없이 작업만 요구: AI는 당신의 상황을 모릅니다" },
-                    { type: "tip", text: "구체적인 역할, 맥락, 형식을 명시하세요" },
-                    { type: "tip", text: "원하는 결과물의 예시를 함께 제공하면 더욱 좋습니다" },
-                  ]}
-                />
-              </ChapterSection>
+            <TipsCard
+              tips={[
+                { type: "mistake", text: "너무 짧거나 애매한 지시: 'PPT 만들어줘', '보고서 써줘'" },
+                { type: "mistake", text: "맥락 없이 작업만 요구: AI는 당신의 상황을 모릅니다" },
+                { type: "tip", text: "구체적인 역할, 맥락, 형식을 명시하세요" },
+                { type: "tip", text: "원하는 결과물의 예시를 함께 제공하면 더욱 좋습니다" },
+              ]}
+            />
+          </div>
+        );
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                많은 사람들이 AI를 "마법 도구"로 생각합니다. 명령 한 번이면 완벽한 결과가 나올 거라 기대하죠.
+                하지만 현실은 다릅니다.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong className="text-emerald-600">핵심은?</strong> AI를 유능한 인턴이나 주니어 동료라고 생각하세요.
+                명확한 지시와 맥락을 주면 훌륭하게 일하지만, 애매하게 지시하면 엉뚱한 결과를 냅니다.
+              </p>
+            </div>
 
-              {/* Chapter 1 */}
-              <ChapterSection
-                id="chapter-1"
-                number={1}
-                title="마인드셋"
-                description="AI를 동료처럼 대하는 법"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    많은 사람들이 AI를 "마법 도구"로 생각합니다. 명령 한 번이면 완벽한 결과가 나올 거라 기대하죠.
-                    하지만 현실은 다릅니다.
-                  </p>
-                  <p className="text-foreground leading-relaxed">
-                    <strong className="text-primary">핵심은?</strong> AI를 유능한 인턴이나 주니어 동료라고 생각하세요.
-                    명확한 지시와 맥락을 주면 훌륭하게 일하지만, 애매하게 지시하면 엉뚱한 결과를 냅니다.
-                  </p>
-                </div>
+            <div className="grid md:grid-cols-2 gap-4 my-6">
+              <div className="bg-red-50 border border-red-100 rounded-lg p-4">
+                <h4 className="font-semibold text-red-700 mb-2">❌ 잘못된 마인드셋</h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li>• "AI가 알아서 해주겠지"</li>
+                  <li>• "한 번에 완벽한 결과 기대"</li>
+                  <li>• "실패하면 AI 탓"</li>
+                </ul>
+              </div>
+              <div className="bg-green-50 border border-green-100 rounded-lg p-4">
+                <h4 className="font-semibold text-green-700 mb-2">✅ 올바른 마인드셋</h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li>• "내가 명확히 지시해야 함"</li>
+                  <li>• "반복적으로 개선 (iterate)"</li>
+                  <li>• "프롬프트 설계가 핵심"</li>
+                </ul>
+              </div>
+            </div>
 
-                <div className="grid md:grid-cols-2 gap-4 my-6">
-                  <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
-                    <h4 className="font-semibold text-destructive mb-2">❌ 잘못된 마인드셋</h4>
-                    <ul className="space-y-2 text-sm text-foreground">
-                      <li>• "AI가 알아서 해주겠지"</li>
-                      <li>• "한 번에 완벽한 결과 기대"</li>
-                      <li>• "실패하면 AI 탓"</li>
-                    </ul>
-                  </div>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-green-700 mb-2">✅ 올바른 마인드셋</h4>
-                    <ul className="space-y-2 text-sm text-foreground">
-                      <li>• "내가 명확히 지시해야 함"</li>
-                      <li>• "반복적으로 개선 (iterate)"</li>
-                      <li>• "프롬프트 설계가 핵심"</li>
-                    </ul>
-                  </div>
-                </div>
+            <TipsCard
+              tips={[
+                { type: "tip", text: "첫 번째 결과가 마음에 안 들면 프롬프트를 수정하고 다시 시도하세요" },
+                { type: "tip", text: "AI와의 대화는 '협업'입니다. 피드백을 주고받으며 개선하세요" },
+                { type: "mistake", text: "한 번 실패했다고 포기하지 마세요. 프롬프트 조정이 필요한 신호입니다" },
+              ]}
+            />
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                좋은 프롬프트는 다음 5가지 요소로 구성됩니다:
+              </p>
+              <ul className="text-slate-600 space-y-2 list-disc pl-5">
+                <li><strong className="text-emerald-600">Role</strong> (역할): AI에게 어떤 역할을 맡길 것인가?</li>
+                <li><strong className="text-emerald-600">Context</strong> (맥락): 어떤 상황/배경인가?</li>
+                <li><strong className="text-emerald-600">Task</strong> (작업): 구체적으로 무엇을 해야 하는가?</li>
+                <li><strong className="text-emerald-600">Format</strong> (형식): 결과물은 어떤 형태여야 하는가?</li>
+                <li><strong className="text-emerald-600">Parameters</strong> (제약): 톤, 길이, 금지사항 등</li>
+              </ul>
+            </div>
 
-                <TipsCard
-                  tips={[
-                    { type: "tip", text: "첫 번째 결과가 마음에 안 들면 프롬프트를 수정하고 다시 시도하세요" },
-                    { type: "tip", text: "AI와의 대화는 '협업'입니다. 피드백을 주고받으며 개선하세요" },
-                    { type: "mistake", text: "한 번 실패했다고 포기하지 마세요. 프롬프트 조정이 필요한 신호입니다" },
-                  ]}
-                />
-              </ChapterSection>
-
-              {/* Chapter 2 */}
-              <ChapterSection
-                id="chapter-2"
-                number={2}
-                title="RCTFP 구조"
-                description="모든 프롬프트의 기본 골격"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    좋은 프롬프트는 다음 5가지 요소로 구성됩니다:
-                  </p>
-                  <ul className="text-foreground space-y-2">
-                    <li><strong className="text-primary">Role</strong> (역할): AI에게 어떤 역할을 맡길 것인가?</li>
-                    <li><strong className="text-primary">Context</strong> (맥락): 어떤 상황/배경인가?</li>
-                    <li><strong className="text-primary">Task</strong> (작업): 구체적으로 무엇을 해야 하는가?</li>
-                    <li><strong className="text-primary">Format</strong> (형식): 결과물은 어떤 형태여야 하는가?</li>
-                    <li><strong className="text-primary">Parameters</strong> (제약): 톤, 길이, 금지사항 등</li>
-                  </ul>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4 my-6">
-                  <ExamplePromptBlock
-                    title="개선 전"
-                    prompt="대학 입시 자기소개서 써줘"
-                    variant="before"
-                  />
-                  <ExamplePromptBlock
-                    title="개선 후 (RCTFP 적용)"
-                    prompt={`Role: 당신은 10년 경력의 입시 컨설턴트입니다.
+            <div className="grid md:grid-cols-2 gap-4 my-6">
+              <ExamplePromptBlock
+                title="개선 전"
+                prompt="대학 입시 자기소개서 써줘"
+                variant="before"
+              />
+              <ExamplePromptBlock
+                title="개선 후 (RCTFP 적용)"
+                prompt={`Role: 당신은 10년 경력의 입시 컨설턴트입니다.
 
 Context: 저는 컴퓨터공학과 지원을 준비 중인 고3 학생입니다. 교내 코딩 동아리 회장을 맡았고, 지역 해커톤에서 입상한 경험이 있습니다.
 
@@ -319,47 +329,43 @@ Format:
 Parameters:
 - 톤: 진솔하고 열정적이게
 - 피해야 할 것: 과장된 표현, 진부한 문장`}
-                    variant="after"
-                  />
-                </div>
+                variant="after"
+              />
+            </div>
 
-                <PracticeCard
-                  fields={[
-                    { id: "role", label: "Role (역할)", placeholder: "예: 당신은 경험 많은 마케팅 컨설턴트입니다" },
-                    { id: "context", label: "Context (맥락)", placeholder: "예: 신제품 런칭을 앞둔 스타트업입니다" },
-                    { id: "task", label: "Task (작업)", placeholder: "예: 제품 소개 이메일 초안을 작성하세요" },
-                    { id: "format", label: "Format (형식)", placeholder: "예: 제목 + 본문(3문단) + CTA 버튼 문구" },
-                    { id: "parameters", label: "Parameters (제약)", placeholder: "예: 친근한 톤, 300자 이내" },
-                  ]}
-                  onGenerate={(values) => {
-                    return `# Role\n${values.role || "[역할 입력 필요]"}\n\n# Context\n${values.context || "[맥락 입력 필요]"}\n\n# Task\n${values.task || "[작업 입력 필요]"}\n\n# Format\n${values.format || "[형식 입력 필요]"}\n\n# Parameters\n${values.parameters || "[제약사항 입력 필요]"}`;
-                  }}
-                />
-              </ChapterSection>
+            <PracticeCard
+              fields={[
+                { id: "role", label: "Role (역할)", placeholder: "예: 당신은 경험 많은 마케팅 컨설턴트입니다" },
+                { id: "context", label: "Context (맥락)", placeholder: "예: 신제품 런칭을 앞둔 스타트업입니다" },
+                { id: "task", label: "Task (작업)", placeholder: "예: 제품 소개 이메일 초안을 작성하세요" },
+                { id: "format", label: "Format (형식)", placeholder: "예: 제목 + 본문(3문단) + CTA 버튼 문구" },
+                { id: "parameters", label: "Parameters (제약)", placeholder: "예: 친근한 톤, 300자 이내" },
+              ]}
+              onGenerate={(values) => {
+                return `# Role\n${values.role || "[역할 입력 필요]"}\n\n# Context\n${values.context || "[맥락 입력 필요]"}\n\n# Task\n${values.task || "[작업 입력 필요]"}\n\n# Format\n${values.format || "[형식 입력 필요]"}\n\n# Parameters\n${values.parameters || "[제약사항 입력 필요]"}`;
+              }}
+            />
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                RCTFP가 기본이라면, ROSES는 더 복잡한 작업(전략 수립, 분석, 컨설팅)을 위한 구조입니다.
+              </p>
+              <ul className="text-slate-600 space-y-2 list-disc pl-5">
+                <li><strong className="text-emerald-600">Role</strong>: 전문가 역할 정의</li>
+                <li><strong className="text-emerald-600">Objective</strong>: 궁극적 목표</li>
+                <li><strong className="text-emerald-600">Scenario</strong>: 구체적 상황 묘사</li>
+                <li><strong className="text-emerald-600">Expected Solution</strong>: 기대하는 솔루션 형태</li>
+                <li><strong className="text-emerald-600">Steps</strong>: 검증 기준</li>
+              </ul>
+            </div>
 
-              {/* Chapter 3 */}
-              <ChapterSection
-                id="chapter-3"
-                number={3}
-                title="ROSES 프레임워크"
-                description="복잡한 작업을 위한 고급 구조"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    RCTFP가 기본이라면, ROSES는 더 복잡한 작업(전략 수립, 분석, 컨설팅)을 위한 구조입니다.
-                  </p>
-                  <ul className="text-foreground space-y-2">
-                    <li><strong className="text-primary">Role</strong>: 전문가 역할 정의</li>
-                    <li><strong className="text-primary">Objective</strong>: 궁극적 목표</li>
-                    <li><strong className="text-primary">Scenario</strong>: 구체적 상황 묘사</li>
-                    <li><strong className="text-primary">Expected Solution</strong>: 기대하는 솔루션 형태</li>
-                    <li><strong className="text-primary">Steps</strong>: 검증 기준</li>
-                  </ul>
-                </div>
-
-                <ExamplePromptBlock
-                  title="ROSES 프롬프트 예시 - 사업 전략 수립"
-                  prompt={`Role: 당신은 20년 경력의 경영 전략 컨설턴트입니다.
+            <ExamplePromptBlock
+              title="ROSES 프롬프트 예시 - 사업 전략 수립"
+              prompt={`Role: 당신은 20년 경력의 경영 전략 컨설턴트입니다.
 
 Objective: 새로운 시장 진입 전략을 수립하고, 실행 가능한 로드맵을 제시하는 것입니다.
 
@@ -380,47 +386,43 @@ Steps:
 2단계: 경쟁 환경과 진입 장벽 평가
 3단계: 최적 진입 전략 수립
 4단계: 실행 계획과 리스크 관리`}
-                />
+            />
 
-                <TipsCard
-                  tips={[
-                    { type: "tip", text: "ROSES는 전략/분석/컨설팅처럼 깊이 있는 사고가 필요한 작업에 효과적입니다" },
-                    { type: "tip", text: "Steps 단계를 꼭 포함하세요. AI가 스스로 결과를 검증하게 만듭니다" },
-                    { type: "mistake", text: "간단한 작업에 ROSES를 쓰면 오히려 복잡해집니다. RCTFP로 충분합니다" },
-                  ]}
-                />
-              </ChapterSection>
+            <TipsCard
+              tips={[
+                { type: "tip", text: "ROSES는 전략/분석/컨설팅처럼 깊이 있는 사고가 필요한 작업에 효과적입니다" },
+                { type: "tip", text: "Steps 단계를 꼭 포함하세요. AI가 스스로 결과를 검증하게 만듭니다" },
+                { type: "mistake", text: "간단한 작업에 ROSES를 쓰면 오히려 복잡해집니다. RCTFP로 충분합니다" },
+              ]}
+            />
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                <strong className="text-emerald-600">Few-shot Learning</strong>: 원하는 결과의 예시를 2-3개 보여주면, AI가 패턴을 학습해 비슷한 품질로 작업합니다.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong className="text-emerald-600">Chain-of-Thought (CoT)</strong>: "단계별로 생각하세요"라는 지시를 추가하면, AI가 중간 추론 과정을 보여주며 더 정확한 답을 냅니다.
+              </p>
+            </div>
 
-              {/* Chapter 4 */}
-              <ChapterSection
-                id="chapter-4"
-                number={4}
-                title="Few-shot & Chain-of-Thought"
-                description="예시와 사고 과정으로 품질 높이기"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    <strong className="text-primary">Few-shot Learning</strong>: 원하는 결과의 예시를 2-3개 보여주면, AI가 패턴을 학습해 비슷한 품질로 작업합니다.
-                  </p>
-                  <p className="text-foreground leading-relaxed">
-                    <strong className="text-primary">Chain-of-Thought (CoT)</strong>: "단계별로 생각하세요"라는 지시를 추가하면, AI가 중간 추론 과정을 보여주며 더 정확한 답을 냅니다.
-                  </p>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4 my-6">
-                  <div>
-                    <h4 className="font-semibold text-foreground mb-3">일반 프롬프트</h4>
-                    <ExamplePromptBlock
-                      prompt={`다음 리뷰의 감정을 분석하세요:
+            <div className="grid md:grid-cols-2 gap-4 my-6">
+              <div>
+                <h4 className="font-semibold text-slate-800 mb-3">일반 프롬프트</h4>
+                <ExamplePromptBlock
+                  prompt={`다음 리뷰의 감정을 분석하세요:
 "배송은 빨랐는데 제품이 기대에 못 미쳤어요. 환불 고려 중입니다."`}
-                      variant="before"
-                    />
-                    <p className="text-sm text-muted-foreground mt-2">결과: "부정적" (근거 없음)</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-foreground mb-3">Few-shot + CoT 프롬프트</h4>
-                    <ExamplePromptBlock
-                      prompt={`다음 리뷰의 감정을 분석하세요. 단계별로 생각하며 근거를 제시하세요.
+                  variant="before"
+                />
+                <p className="text-sm text-slate-500 mt-2">결과: "부정적" (근거 없음)</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-slate-800 mb-3">Few-shot + CoT 프롬프트</h4>
+                <ExamplePromptBlock
+                  prompt={`다음 리뷰의 감정을 분석하세요. 단계별로 생각하며 근거를 제시하세요.
 
 예시 1:
 리뷰: "배송 빠르고 품질 좋아요!"
@@ -432,52 +434,48 @@ Steps:
 
 이제 분석하세요:
 "배송은 빨랐는데 제품이 기대에 못 미쳤어요. 환불 고려 중입니다."`}
-                      variant="after"
-                    />
-                    <p className="text-sm text-green-600 mt-2">
-                      결과: "부정적 (배송 긍정이지만 제품 품질과 환불 언급으로 전체적으로 부정)"
-                    </p>
-                  </div>
-                </div>
-
-                <PracticeCard
-                  title="Few-shot 프롬프트 연습"
-                  fields={[
-                    { id: "task", label: "작업 설명", placeholder: "예: 제품명에서 카테고리를 추출하세요" },
-                    { id: "example1", label: "예시 1 (입력 → 출력)", placeholder: "입력: '애플 에어팟 프로 2세대'\n출력: '전자제품 > 오디오'" },
-                    { id: "example2", label: "예시 2", placeholder: "입력: '나이키 에어맥스 운동화'\n출력: '패션 > 신발'" },
-                    { id: "test", label: "테스트 입력", placeholder: "예: '삼성 갤럭시 버즈2'" },
-                  ]}
+                  variant="after"
                 />
+                <p className="text-sm text-green-600 mt-2">
+                  결과: "부정적 (배송 긍정이지만 제품 품질과 환불 언급으로 전체적으로 부정)"
+                </p>
+              </div>
+            </div>
 
-                <TipsCard
-                  tips={[
-                    { type: "tip", text: "Few-shot: 예시 2-3개면 충분합니다. 너무 많으면 오히려 혼란스러워집니다" },
-                    { type: "tip", text: "CoT: 복잡한 추론(수학, 논리, 분석)이 필요한 작업에 효과적입니다" },
-                    { type: "mistake", text: "예시가 일관성 없으면 AI가 패턴을 학습하지 못합니다" },
-                  ]}
-                />
-              </ChapterSection>
+            <PracticeCard
+              title="Few-shot 프롬프트 연습"
+              fields={[
+                { id: "task", label: "작업 설명", placeholder: "예: 제품명에서 카테고리를 추출하세요" },
+                { id: "example1", label: "예시 1 (입력 → 출력)", placeholder: "입력: '애플 에어팟 프로 2세대'\n출력: '전자제품 > 오디오'" },
+                { id: "example2", label: "예시 2", placeholder: "입력: '나이키 에어맥스 운동화'\n출력: '패션 > 신발'" },
+                { id: "test", label: "테스트 입력", placeholder: "예: '삼성 갤럭시 버즈2'" },
+              ]}
+            />
 
-              {/* Chapter 5 */}
-              <ChapterSection
-                id="chapter-5"
-                number={5}
-                title="출력 포맷 통제"
-                description="원하는 형태로 정확히 결과 받기"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    AI는 내용뿐 아니라 형식도 제어할 수 있습니다. JSON, 마크다운, 테이블, 심지어 코드까지 원하는 형태로 출력 가능합니다.
-                  </p>
-                  <p className="text-foreground leading-relaxed">
-                    <strong className="text-primary">핵심은?</strong> 출력 형식을 명확히 지정하면, 결과물을 다른 시스템에 바로 연동하거나 후처리 없이 사용할 수 있습니다.
-                  </p>
-                </div>
+            <TipsCard
+              tips={[
+                { type: "tip", text: "Few-shot: 예시 2-3개면 충분합니다. 너무 많으면 오히려 혼란스러워집니다" },
+                { type: "tip", text: "CoT: 복잡한 추론(수학, 논리, 분석)이 필요한 작업에 효과적입니다" },
+                { type: "mistake", text: "예시가 일관성 없으면 AI가 패턴을 학습하지 못합니다" },
+              ]}
+            />
+          </div>
+        );
+      case 5:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                AI는 내용뿐 아니라 형식도 제어할 수 있습니다. JSON, 마크다운, 테이블, 심지어 코드까지 원하는 형태로 출력 가능합니다.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong className="text-emerald-600">핵심은?</strong> 출력 형식을 명확히 지정하면, 결과물을 다른 시스템에 바로 연동하거나 후처리 없이 사용할 수 있습니다.
+              </p>
+            </div>
 
-                <ExamplePromptBlock
-                  title="JSON 형식 지정 예시"
-                  prompt={`다음 제품 설명을 분석하여 JSON 형식으로 출력하세요:
+            <ExamplePromptBlock
+              title="JSON 형식 지정 예시"
+              prompt={`다음 제품 설명을 분석하여 JSON 형식으로 출력하세요:
 
 입력: "삼성 갤럭시 S24 울트라, 256GB, 티타늄 그레이, 999,000원"
 
@@ -491,11 +489,11 @@ Steps:
 }
 
 주의: JSON 이외의 부연 설명은 절대 포함하지 마세요.`}
-                />
+            />
 
-                <ExamplePromptBlock
-                  title="마크다운 테이블 형식 예시"
-                  prompt={`경쟁사 3개의 SaaS 제품을 비교 분석하여 마크다운 테이블로 출력하세요:
+            <ExamplePromptBlock
+              title="마크다운 테이블 형식 예시"
+              prompt={`경쟁사 3개의 SaaS 제품을 비교 분석하여 마크다운 테이블로 출력하세요:
 
 | 항목 | 제품 A | 제품 B | 제품 C |
 |------|--------|--------|--------|
@@ -506,92 +504,84 @@ Steps:
 | 적합한 고객 | | | |
 
 각 셀은 1-2줄로 간결하게 작성하세요.`}
-                />
+            />
 
-                <TipsCard
-                  tips={[
-                    { type: "tip", text: "구조화된 데이터가 필요하면 JSON을 사용하세요 (API 연동 등)" },
-                    { type: "tip", text: "형식 예시를 함께 제공하면 정확도가 높아집니다" },
-                    { type: "mistake", text: "'JSON으로 출력해줘'만 말하지 말고, 정확한 스키마(키 이름)를 지정하세요" },
-                  ]}
-                />
-              </ChapterSection>
+            <TipsCard
+              tips={[
+                { type: "tip", text: "구조화된 데이터가 필요하면 JSON을 사용하세요 (API 연동 등)" },
+                { type: "tip", text: "형식 예시를 함께 제공하면 정확도가 높아집니다" },
+                { type: "mistake", text: "'JSON으로 출력해줘'만 말하지 말고, 정확한 스키마(키 이름)를 지정하세요" },
+              ]}
+            />
+          </div>
+        );
+      case 6:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                단순히 "마케터" 역할을 주는 것과 "10년 경력의 B2B SaaS 마케팅 전문가"를 주는 것은 결과가 완전히 다릅니다.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong className="text-emerald-600">핵심은?</strong> 구체적인 페르소나(전문성, 관점, 경험)를 부여하면 AI가 해당 관점에서 사고하고 답변합니다.
+              </p>
+            </div>
 
-              {/* Chapter 6 */}
-              <ChapterSection
-                id="chapter-6"
-                number={6}
-                title="페르소나 & 컨텍스트"
-                description="AI에게 전문가 정체성 부여하기"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    단순히 "마케터" 역할을 주는 것과 "10년 경력의 B2B SaaS 마케팅 전문가"를 주는 것은 결과가 완전히 다릅니다.
-                  </p>
-                  <p className="text-foreground leading-relaxed">
-                    <strong className="text-primary">핵심은?</strong> 구체적인 페르소나(전문성, 관점, 경험)를 부여하면 AI가 해당 관점에서 사고하고 답변합니다.
-                  </p>
+            <div className="my-6">
+              <h4 className="font-semibold text-slate-800 mb-4">페르소나 템플릿 선택</h4>
+              <div className="grid md:grid-cols-3 gap-4 mb-6">
+                {personas.map((persona, index) => (
+                  <PersonaCard
+                    key={index}
+                    {...persona}
+                    isSelected={selectedPersona === index}
+                    onClick={() => setSelectedPersona(index)}
+                  />
+                ))}
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm">
+                <h4 className="font-semibold text-slate-800 mb-3">선택된 페르소나 프롬프트:</h4>
+                <ExamplePromptBlock prompt={personas[selectedPersona].prompt} />
+              </div>
+            </div>
+
+            <TipsCard
+              tips={[
+                { type: "tip", text: "페르소나는 구체적일수록 좋습니다: '마케터' < 'B2B 마케터' < '10년 경력 B2B SaaS 마케터'" },
+                { type: "tip", text: "여러 관점이 필요하면 페르소나를 바꿔가며 같은 질문을 해보세요" },
+                { type: "mistake", text: "페르소나와 작업이 맞지 않으면 이상한 결과가 나옵니다 (예: 개발자에게 디자인 피드백 요청)" },
+              ]}
+            />
+          </div>
+        );
+      case 7:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                매번 긴 프롬프트를 처음부터 작성하는 건 비효율적입니다.
+                자주 쓰는 요소들을 모듈로 만들어 조합하면 빠르고 일관성 있게 작업할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4 my-6">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-3">재사용 가능한 모듈</h4>
+                <div className="space-y-2">
+                  <div className="bg-white border border-slate-200 px-3 py-2 rounded text-sm font-mono text-slate-600">[PERSONA_VC]</div>
+                  <div className="bg-white border border-slate-200 px-3 py-2 rounded text-sm font-mono text-slate-600">[PERSONA_DESIGNER]</div>
+                  <div className="bg-white border border-slate-200 px-3 py-2 rounded text-sm font-mono text-slate-600">[FORMAT_BLOG]</div>
+                  <div className="bg-white border border-slate-200 px-3 py-2 rounded text-sm font-mono text-slate-600">[FORMAT_JSON]</div>
+                  <div className="bg-white border border-slate-200 px-3 py-2 rounded text-sm font-mono text-slate-600">[TONE_PROFESSIONAL]</div>
+                  <div className="bg-white border border-slate-200 px-3 py-2 rounded text-sm font-mono text-slate-600">[CONSTRAINT_SHORT]</div>
                 </div>
+              </div>
 
-                <div className="my-6">
-                  <h4 className="font-semibold text-foreground mb-4">페르소나 템플릿 선택</h4>
-                  <div className="grid md:grid-cols-3 gap-4 mb-6">
-                    {personas.map((persona, index) => (
-                      <PersonaCard
-                        key={index}
-                        {...persona}
-                        isSelected={selectedPersona === index}
-                        onClick={() => setSelectedPersona(index)}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="bg-card rounded-xl p-6 shadow-lg">
-                    <h4 className="font-semibold text-foreground mb-3">선택된 페르소나 프롬프트:</h4>
-                    <ExamplePromptBlock prompt={personas[selectedPersona].prompt} />
-                  </div>
-                </div>
-
-                <TipsCard
-                  tips={[
-                    { type: "tip", text: "페르소나는 구체적일수록 좋습니다: '마케터' < 'B2B 마케터' < '10년 경력 B2B SaaS 마케터'" },
-                    { type: "tip", text: "여러 관점이 필요하면 페르소나를 바꿔가며 같은 질문을 해보세요" },
-                    { type: "mistake", text: "페르소나와 작업이 맞지 않으면 이상한 결과가 나옵니다 (예: 개발자에게 디자인 피드백 요청)" },
-                  ]}
-                />
-              </ChapterSection>
-
-              {/* Chapter 7 */}
-              <ChapterSection
-                id="chapter-7"
-                number={7}
-                title="모듈형 프롬프트 시스템"
-                description="재사용 가능한 프롬프트 블록 만들기"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    매번 긴 프롬프트를 처음부터 작성하는 건 비효율적입니다.
-                    자주 쓰는 요소들을 모듈로 만들어 조합하면 빠르고 일관성 있게 작업할 수 있습니다.
-                  </p>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4 my-6">
-                  <div className="bg-accent rounded-lg p-4">
-                    <h4 className="font-semibold text-foreground mb-3">재사용 가능한 모듈</h4>
-                    <div className="space-y-2">
-                      <div className="bg-card px-3 py-2 rounded text-sm font-mono">[PERSONA_VC]</div>
-                      <div className="bg-card px-3 py-2 rounded text-sm font-mono">[PERSONA_DESIGNER]</div>
-                      <div className="bg-card px-3 py-2 rounded text-sm font-mono">[FORMAT_BLOG]</div>
-                      <div className="bg-card px-3 py-2 rounded text-sm font-mono">[FORMAT_JSON]</div>
-                      <div className="bg-card px-3 py-2 rounded text-sm font-mono">[TONE_PROFESSIONAL]</div>
-                      <div className="bg-card px-3 py-2 rounded text-sm font-mono">[CONSTRAINT_SHORT]</div>
-                    </div>
-                  </div>
-
-                  <div className="bg-card rounded-lg p-4 shadow-lg">
-                    <h4 className="font-semibold text-foreground mb-3">조합 예시</h4>
-                    <ExamplePromptBlock
-                      prompt={`[PERSONA_VC]
+              <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                <h4 className="font-semibold text-slate-800 mb-3">조합 예시</h4>
+                <ExamplePromptBlock
+                  prompt={`[PERSONA_VC]
 당신은 10년 경력의 벤처캐피탈 투자심사역입니다.
 
 [TASK]
@@ -607,38 +597,34 @@ Steps:
 
 [TONE_PROFESSIONAL]
 전문적이고 객관적인 톤으로 작성하세요.`}
-                    />
-                  </div>
-                </div>
-
-                <TipsCard
-                  tips={[
-                    { type: "tip", text: "자주 쓰는 페르소나, 형식, 톤을 모듈로 저장해두세요 (노트 앱, Notion 등)" },
-                    { type: "tip", text: "모듈명은 [대문자_밑줄] 형식으로 통일하면 식별이 쉽습니다" },
-                    { type: "tip", text: "팀원과 모듈을 공유하면 협업 시 일관성이 높아집니다" },
-                  ]}
                 />
-              </ChapterSection>
+              </div>
+            </div>
 
-              {/* Chapter 8 */}
-              <ChapterSection
-                id="chapter-8"
-                number={8}
-                title="AIHub 프레임워크"
-                description="모든 것을 통합한 최종 구조"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    지금까지 배운 모든 기법(RCTFP, ROSES, Few-shot, CoT, 페르소나, 모듈)을 하나로 통합한 것이 AIHub 프레임워크입니다.
-                  </p>
-                  <p className="text-foreground leading-relaxed">
-                    <strong className="text-primary">핵심은?</strong> 복잡한 프로젝트(사업 계획서, 논문, 전략 보고서 등)도 이 구조로 단계별로 해결할 수 있습니다.
-                  </p>
-                </div>
+            <TipsCard
+              tips={[
+                { type: "tip", text: "자주 쓰는 페르소나, 형식, 톤을 모듈로 저장해두세요 (노트 앱, Notion 등)" },
+                { type: "tip", text: "모듈명은 [대문자_밑줄] 형식으로 통일하면 식별이 쉽습니다" },
+                { type: "tip", text: "팀원과 모듈을 공유하면 협업 시 일관성이 높아집니다" },
+              ]}
+            />
+          </div>
+        );
+      case 8:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                지금까지 배운 모든 기법(RCTFP, ROSES, Few-shot, CoT, 페르소나, 모듈)을 하나로 통합한 것이 AIHub 프레임워크입니다.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong className="text-emerald-600">핵심은?</strong> 복잡한 프로젝트(사업 계획서, 논문, 전략 보고서 등)도 이 구조로 단계별로 해결할 수 있습니다.
+              </p>
+            </div>
 
-                <ExamplePromptBlock
-                  title="AIHub 통합 프롬프트 예시"
-                  prompt={`# AIHub 프레임워크 - 사업 계획서 작성
+            <ExamplePromptBlock
+              title="AIHub 통합 프롬프트 예시"
+              prompt={`# AIHub 프레임워크 - 사업 계획서 작성
 
 ## PERSONA
 [PERSONA_BUSINESS_CONSULTANT]
@@ -678,40 +664,160 @@ Steps:
 - 제시한 숫자와 가정이 현실적인가?
 - 경쟁사 대비 차별점이 명확한가?
 - 실행 가능성이 검증되었는가?`}
-                />
+            />
 
-                <TipsCard
-                  tips={[
-                    { type: "tip", text: "AIHub 프레임워크는 대형 프로젝트의 '마스터 프롬프트'로 사용하세요" },
-                    { type: "tip", text: "섹션이 많으면 한 번에 모두 요청하지 말고, 섹션별로 나눠 진행하세요" },
-                    { type: "mistake", text: "모든 작업에 이 구조를 쓸 필요는 없습니다. 복잡도에 따라 RCTFP만으로도 충분합니다" },
-                  ]}
-                />
-              </ChapterSection>
-
-              {/* Chapter 9 */}
-              <ChapterSection
-                id="chapter-9"
-                number={9}
-                title="마스터 프롬프트 워크숍"
-                description="이제 직접 만들어보세요"
-              >
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    지금까지 배운 모든 것을 종합해, 당신만의 "마스터 프롬프트"를 만들 차례입니다.
-                    이 프롬프트는 AIHub의 다른 가이드북에서도 반복해서 사용할 수 있습니다.
-                  </p>
-                  <p className="text-foreground leading-relaxed">
-                    <strong className="text-primary">핵심은?</strong> 좋은 프롬프트는 한 번 만들어두면 계속 재사용할 수 있습니다.
-                    시간을 들여 정교하게 만드세요.
-                  </p>
-                </div>
-              </ChapterSection>
-
-              {/* Master Prompt Builder */}
-              <MasterPromptBuilder />
-            </main>
+            <TipsCard
+              tips={[
+                { type: "tip", text: "AIHub 프레임워크는 대형 프로젝트의 '마스터 프롬프트'로 사용하세요" },
+                { type: "tip", text: "섹션이 많으면 한 번에 모두 요청하지 말고, 섹션별로 나눠 진행하세요" },
+                { type: "mistake", text: "모든 작업에 이 구조를 쓸 필요는 없습니다. 복잡도에 따라 RCTFP만으로도 충분합니다" },
+              ]}
+            />
           </div>
+        );
+      case 9:
+        return (
+          <div className="space-y-6">
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed">
+                지금까지 배운 모든 것을 종합해, 당신만의 "마스터 프롬프트"를 만들 차례입니다.
+                이 프롬프트는 AIHub의 다른 가이드북에서도 반복해서 사용할 수 있습니다.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong className="text-emerald-600">핵심은?</strong> 좋은 프롬프트는 한 번 만들어두면 계속 재사용할 수 있습니다.
+                시간을 들여 정교하게 만드세요.
+              </p>
+            </div>
+
+            <MasterPromptBuilder />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const completedCount = completedChapters.size;
+  const progressPercentage = Math.round((completedCount / TOTAL_CHAPTERS) * 100);
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <Navbar />
+
+      <main className="container max-w-7xl mx-auto py-12 px-4">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-slate-500 mb-6">
+          <Link to="/" className="hover:text-slate-900 cursor-pointer">홈</Link>
+          <span>/</span>
+          <Link to="/guidebook" className="hover:text-slate-900 cursor-pointer">가이드북</Link>
+          <span>/</span>
+          <span className="text-slate-900 font-medium">프롬프트 엔지니어링 입문</span>
+        </div>
+
+        {/* 1. Header */}
+        <GuidebookHeader
+          title="프롬프트 엔지니어링 입문"
+          description="AI를 잘 쓰는 사람과 못 쓰는 사람의 차이는 결국 프롬프트 설계 능력입니다. 이 코스는 AIHub의 모든 가이드북을 보기 전에 먼저 완주하는 0번 트랙입니다."
+          progress={progressPercentage}
+          category="필수 코스"
+          tags={['ChatGPT', 'Claude', 'Gemini']}
+          duration="2시간"
+          difficulty="입문"
+        />
+
+        <div className="space-y-12">
+          {/* 2. Overview Cards */}
+          <section className="space-y-8">
+            <GuideOverviewCards
+              summary="AI와 대화하는 법을 처음부터 끝까지 체계적으로 배웁니다. 기본기부터 고급 프레임워크까지 프롬프트 엔지니어링의 모든 것을 다룹니다."
+              recommendations={[
+                "AI를 처음 써보는 입문자",
+                "업무 생산성을 높이고 싶은 직장인",
+                "더 나은 결과물을 원하는 AI 사용자"
+              ]}
+              requirements={["ChatGPT 무료 계정 이상"]}
+              corePrinciples={[
+                "AI는 도구일 뿐, 지시는 인간의 몫입니다.",
+                "명확한 맥락이 좋은 결과를 만듭니다.",
+                "한 번에 완벽할 수 없습니다. 반복해서 개선하세요."
+              ]}
+            />
+          </section>
+
+          {/* 3. Content Area */}
+          <section className="min-h-[500px]">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+
+              {/* Sidebar (Desktop: Left) */}
+              <div className="hidden lg:block space-y-6 sticky top-24 lg:col-span-1">
+                <GuideProgressSidebar
+                  steps={chapters}
+                  activeStepId={`chapter-${activeStepIndex}`}
+                  completedStepIds={completedStepIds}
+                  onStepClick={handleStepClick}
+                />
+              </div>
+
+              {/* Main Content (Right) */}
+              <div className="lg:col-span-2 space-y-8">
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+                  {/* Step Header */}
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                      <h2 className="text-xl font-bold text-slate-800">
+                        {chapters[activeStepIndex].title}
+                      </h2>
+                      <div className="text-sm font-medium text-slate-400">
+                        Step {activeStepIndex + 1}
+                      </div>
+                    </div>
+                    <div className="p-8">
+                      {renderContent(activeStepIndex)}
+                    </div>
+                  </div>
+
+                  {/* Navigation Footer */}
+                  <div className="mt-8 flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={handlePrevStep}
+                      disabled={activeStepIndex === 0}
+                      className="gap-2 pl-2.5 text-slate-600 hover:text-slate-900"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      이전 Step
+                    </Button>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm font-medium text-slate-400">
+                        {activeStepIndex + 1} / {TOTAL_CHAPTERS}
+                      </div>
+
+                      <Button
+                        variant={completedChapters.has(activeStepIndex) ? "secondary" : "outline"}
+                        onClick={() => toggleChapterComplete(activeStepIndex)}
+                        className={`gap-2 ${completedChapters.has(activeStepIndex) ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200' : 'text-slate-500 hover:text-slate-900'}`}
+                      >
+                        <CheckCircle2 className={`w-4 h-4 ${completedChapters.has(activeStepIndex) ? 'fill-emerald-600 text-white' : ''}`} />
+                        {completedChapters.has(activeStepIndex) ? '완료됨' : '완료 표시'}
+                      </Button>
+
+                      <Button
+                        onClick={handleNextStep}
+                        disabled={activeStepIndex === TOTAL_CHAPTERS - 1}
+                        className="gap-2 pr-2.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition-all"
+                      >
+                        다음 Step
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </section>
         </div>
       </main>
       <Footer />

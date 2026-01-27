@@ -207,25 +207,7 @@ export const MasterPromptBuilder = () => {
             </pre>
           </div>
 
-          <div className="bg-accent/50 rounded-xl p-6">
-            <p className="text-sm text-foreground mb-4">
-              이 프롬프트를 다른 가이드북에도 적용해보세요.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button variant="outline" className="gap-2" asChild>
-                <Link to="/guides">
-                  글쓰기 가이드북 보러가기
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </Button>
-              <Button variant="outline" className="gap-2" asChild>
-                <Link to="/guides">
-                  취업 가이드북 보러가기
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </Button>
-            </div>
-          </div>
+
         </div>
       </div>
     </section>
