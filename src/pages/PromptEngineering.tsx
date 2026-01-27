@@ -14,10 +14,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import confetti from 'canvas-confetti';
+import { Checkbox } from "@/components/ui/checkbox";
+import { HighlightBold } from "@/components/ui/highlight-bold";
 
 const TOTAL_CHAPTERS = 10;
 
@@ -764,12 +766,28 @@ Steps:
 
                   {/* Step Header */}
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
-                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                      <h2 className="text-xl font-bold text-slate-800">
-                        {chapters[activeStepIndex].title}
-                      </h2>
-                      <div className="text-sm font-medium text-slate-400">
-                        Step {activeStepIndex + 1}
+                    <div className="flex w-full items-center justify-between p-6 h-auto border-b border-slate-100 bg-white">
+                      <div className="flex items-center gap-5 text-left flex-1 min-w-0">
+                        <div className="flex items-center gap-4 flex-shrink-0">
+                          <div className="relative">
+                            <Checkbox
+                              checked={completedChapters.has(activeStepIndex)}
+                              onCheckedChange={() => toggleChapterComplete(activeStepIndex)}
+                              className="absolute -top-1 -right-1 z-10 bg-white shadow-sm h-5 w-5 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-none text-white rounded-full"
+                            />
+                            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-lg shadow-inner transition-colors ${completedChapters.has(activeStepIndex) ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                              {activeStepIndex + 1}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`font-bold text-lg transition-colors ${completedChapters.has(activeStepIndex) ? 'text-slate-500 line-through decoration-slate-300 decoration-2' : 'text-slate-900'}`}>
+                            <HighlightBold text={chapters[activeStepIndex].title.replace(/^\d+\.\s*/, '')} />
+                          </h3>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                        <ChevronDown className="h-5 w-5 text-slate-400 rotate-180" />
                       </div>
                     </div>
                     <div className="p-8">
