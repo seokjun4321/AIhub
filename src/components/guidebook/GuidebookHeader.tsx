@@ -1,6 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
+import { HighlightBold } from "@/components/ui/highlight-bold";
 
 interface GuidebookHeaderProps {
   title: string;
@@ -50,12 +50,14 @@ export function GuidebookHeader({
                 </span>
               ))}
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 leading-tight">{title}</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+              <HighlightBold text={title} />
+            </h1>
           </div>
         </div>
 
         <p className="text-lg text-slate-500 max-w-2xl leading-relaxed">
-          {description}
+          <HighlightBold text={description} />
         </p>
       </div>
 

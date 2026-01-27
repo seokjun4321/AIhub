@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Heart, ExternalLink, Copy, Check, Lightbulb, FileText, Code, Settings } from "lucide-react";
 import { Preset } from "@/types/preset";
+import { HighlightBold } from "@/components/ui/highlight-bold";
 
 interface PresetDetailModalProps {
     preset: Preset;
@@ -99,14 +100,15 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                 {/* Main Content */}
                 <div className="flex-1 flex flex-col">
                     {/* Header */}
-                    {/* Header */}
                     <div className="p-6 border-b border-gray-200">
                         <div className="flex items-start justify-between">
                             <div className="flex-1">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                                    {preset.title}
+                                    <HighlightBold text={preset.title} />
                                 </h2>
-                                <p className="text-gray-600">{preset.description}</p>
+                                <p className="text-gray-600">
+                                    <HighlightBold text={preset.description} />
+                                </p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -127,7 +129,9 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                         <Lightbulb className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                         <div>
                                             <h3 className="font-semibold text-blue-900 mb-1">한 줄 요약</h3>
-                                            <p className="text-blue-800 text-sm">{preset.overview.summary}</p>
+                                            <p className="text-blue-800 text-sm">
+                                                <HighlightBold text={preset.overview.summary} />
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -139,7 +143,7 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                         {preset.overview.whenToUse.map((item, idx) => (
                                             <li key={idx} className="flex items-start gap-2 text-emerald-800 text-sm">
                                                 <span className="text-emerald-600 mt-1">●</span>
-                                                <span>{item}</span>
+                                                <span><HighlightBold text={item} /></span>
                                             </li>
                                         ))}
                                     </ul>
@@ -152,7 +156,7 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                         {preset.overview.expectedResults.map((item, idx) => (
                                             <li key={idx} className="flex items-start gap-2 text-amber-800 text-sm">
                                                 <span className="text-amber-600 mt-1">●</span>
-                                                <span>{item}</span>
+                                                <span><HighlightBold text={item} /></span>
                                             </li>
                                         ))}
                                     </ul>
@@ -165,7 +169,9 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-gray-900">프롬프트 마스터</h3>
-                                        <p className="text-sm text-gray-600">{preset.overview.promptMaster}</p>
+                                        <p className="text-sm text-gray-600">
+                                            <HighlightBold text={preset.overview.promptMaster} />
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -178,7 +184,9 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                     <div key={idx} className="space-y-4">
                                         <div className="bg-gray-50 p-4 rounded-lg">
                                             <h4 className="text-sm font-semibold text-red-600 mb-2">Before</h4>
-                                            <p className="text-gray-700 text-sm">{example.before}</p>
+                                            <p className="text-gray-700 text-sm">
+                                                <HighlightBold text={example.before} />
+                                            </p>
                                         </div>
                                         <div className="flex justify-center">
                                             <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
@@ -188,7 +196,7 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                         <div className="bg-emerald-50 p-4 rounded-lg">
                                             <h4 className="text-sm font-semibold text-emerald-600 mb-2">After</h4>
                                             <pre className="text-gray-800 text-sm whitespace-pre-wrap font-sans">
-                                                {example.after}
+                                                <HighlightBold text={example.after} />
                                             </pre>
                                         </div>
                                     </div>
@@ -239,7 +247,7 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                         )}
                                     </button>
                                     <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono pr-24">
-                                        {preset.prompt.content}
+                                        <HighlightBold text={preset.prompt.content} />
                                     </pre>
                                 </div>
                             </div>
@@ -283,10 +291,10 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                                             {variable.name}
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-gray-700">
-                                                            {variable.description}
+                                                            <HighlightBold text={variable.description} />
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-gray-600">
-                                                            {variable.example}
+                                                            <HighlightBold text={variable.example} />
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -300,7 +308,7 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">예시 입력</h3>
                                     <div className="bg-gray-50 p-4 rounded-lg">
                                         <p className="text-sm text-gray-700 font-mono whitespace-pre-wrap">
-                                            {preset.variables.exampleInput}
+                                            <HighlightBold text={preset.variables.exampleInput} />
                                         </p>
                                     </div>
                                 </div>
@@ -314,7 +322,7 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                                 <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-semibold">
                                                     {idx + 1}
                                                 </span>
-                                                <span>{step}</span>
+                                                <span><HighlightBold text={step} /></span>
                                             </li>
                                         ))}
                                     </ol>

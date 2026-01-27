@@ -1,4 +1,5 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { HighlightBold } from "@/components/ui/highlight-bold";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, Link as LinkIcon } from "lucide-react";
@@ -336,7 +337,7 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className={`font-bold text-lg transition-colors ${completed ? 'text-slate-500 line-through decoration-slate-300 decoration-2' : 'text-slate-900'}`}>
-                    {step.title.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^Step\s+/i, '').replace(/^\d+\.\s*/, '')}
+                    <HighlightBold text={step.title.replace(/^Step\s+/i, '').replace(/^\d+\.\s*/, '')} />
                   </h3>
                   {step.summary && !open && (
                     <p className="text-sm text-slate-500 mt-1 truncate">{step.summary}</p>

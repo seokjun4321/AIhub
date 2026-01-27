@@ -196,8 +196,9 @@ function parseMarkdownToSteps(content: string | null): Array<{
         steps.push(currentStep);
       }
       const rawTitle = headingMatch[2].trim();
-      const title = removeMarkdownBold(rawTitle);
-      const slug = title
+      // 슬러그 생성을 위해 특수문자 제거 버전 생성
+      const cleanTitle = removeMarkdownBold(rawTitle);
+      const slug = cleanTitle
         .toLowerCase()
         .replace(/[^a-z0-9가-힣\s-]/g, '')
         .replace(/\s+/g, '-')
@@ -206,7 +207,7 @@ function parseMarkdownToSteps(content: string | null): Array<{
       currentStep = {
         id: `step-${slug}`,
         step_order: stepOrder++,
-        title: title,
+        title: rawTitle, // 원본(볼드 문법 포함) 유지
         summary: null,
         content: line + '\n', // 헤딩 포함
       };

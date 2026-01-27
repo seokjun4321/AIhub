@@ -1,4 +1,5 @@
 import { Progress } from "@/components/ui/progress";
+import { HighlightBold } from "@/components/ui/highlight-bold";
 import { CheckCircle2, Circle, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +76,7 @@ export function GuideProgressSidebar({
                                     "line-clamp-2",
                                     isCompleted && !isActive && "text-slate-400"
                                 )}>
-                                    {step.title.replace(/^Step\s+\d+[\.\:]?\s*/i, '').replace(/^\d+[\.\)]\s*/, '')}
+                                    <HighlightBold text={step.title.replace(/^Step\s+\d+[\.\:]?\s*/i, '').replace(/^\d+[\.\)]\s*/, '')} />
                                 </span>
                             </button>
                         );

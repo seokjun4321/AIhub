@@ -12,14 +12,36 @@ interface MarkdownProps {
     className?: string;
 }
 
+import { HighlightBold } from "@/components/ui/highlight-bold";
+
+
+
 const MarkdownContent = ({ content, className }: MarkdownProps) => (
     <div className={cn("prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1", className)}>
         <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-                p: (props) => <p className="text-sm text-slate-600 leading-relaxed" {...props} />,
+                p: ({ children }) => (
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                        {React.Children.map(children, child => {
+                            if (typeof child === 'string') {
+                                return <HighlightBold text={child} />;
+                            }
+                            return child;
+                        })}
+                    </p>
+                ),
                 strong: (props) => <strong className="font-semibold text-slate-900" {...props} />,
-                li: (props) => <li className="text-sm text-slate-600" {...props} />,
+                li: ({ children }) => (
+                    <li className="text-sm text-slate-600">
+                        {React.Children.map(children, child => {
+                            if (typeof child === 'string') {
+                                return <HighlightBold text={child} />;
+                            }
+                            return child;
+                        })}
+                    </li>
+                ),
             }}
         >
             {content}
@@ -890,7 +912,7 @@ export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: stri
             const submitMicroFeedback = async (rating: number) => {
                 try {
                     const { data: { user } } = await supabase.auth.getUser();
-                    await supabase.from('feedbacks').insert({
+                    await supabase.from('feedbacks' as any).insert({
                         trigger: 'preset_copy',
                         entity_type: 'guide_content',
                         entity_id: mainContent.slice(0, 50),
@@ -1116,8 +1138,17 @@ export const CopyBlock = ({ content, toolName, toolUrl, title }: { content: stri
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
-                                    p: (props) => <span {...props} />,
-                                    strong: (props) => <span className="font-bold text-slate-800 bg-yellow-100 px-1 rounded mx-0.5" {...props} />
+                                    p: ({ children }) => (
+                                        <div className="text-sm text-slate-600">
+                                            {React.Children.map(children, child => {
+                                                if (typeof child === 'string') {
+                                                    return <HighlightBold text={child} />;
+                                                }
+                                                return child;
+                                            })}
+                                        </div>
+                                    ),
+                                    strong: (props) => <strong className="font-bold text-slate-800 bg-yellow-100 px-1 rounded mx-0.5" {...props} />
                                 }}
                             >
                                 {footerText}
@@ -1179,7 +1210,14 @@ export const TipsBlock = ({ content }: { content: string | null | undefined }) =
                             return (
                                 <li className="flex gap-3 text-sm text-slate-800 items-start leading-relaxed">
                                     {icon}
-                                    <span className="flex-1">{text}</span>
+                                    <span className="flex-1">
+                                        {React.Children.map(text, child => {
+                                            if (typeof child === 'string') {
+                                                return <HighlightBold text={child} />;
+                                            }
+                                            return child;
+                                        })}
+                                    </span>
                                 </li>
                             );
                         },
@@ -1322,7 +1360,7 @@ export const ChecklistBlock = ({ content, guideId, stepId }: { content: string |
                             className={`flex-1 leading-relaxed cursor-pointer select-none transition-colors ${item.checked ? 'text-slate-400' : 'text-slate-700'}`}
                             onClick={() => toggleItem(item.id)}
                         >
-                            {item.text}
+                            <HighlightBold text={item.text} />
                         </span>
                     </div>
                 ))}
@@ -1355,9 +1393,27 @@ export const ComparisonBlock = ({ content }: { content: string | null | undefine
                             tbody: ({ node, ...props }) => <tbody className="bg-white divide-y divide-slate-100" {...props} />,
                             tr: ({ node, ...props }) => <tr className="hover:bg-slate-50/50 transition-colors" {...props} />,
                             th: ({ node, ...props }) => <th className="px-6 py-3 font-semibold text-slate-900 bg-slate-50" {...props} />,
-                            td: ({ node, ...props }) => <td className="px-6 py-4 whitespace-pre-wrap leading-relaxed align-top border-r last:border-r-0 border-slate-100" {...props} />,
+                            td: ({ children, ...props }) => (
+                                <td className="px-6 py-4 whitespace-pre-wrap leading-relaxed align-top border-r last:border-r-0 border-slate-100" {...props}>
+                                    {React.Children.map(children, child => {
+                                        if (typeof child === 'string') {
+                                            return <HighlightBold text={child} />;
+                                        }
+                                        return child;
+                                    })}
+                                </td>
+                            ),
                             strong: ({ node, ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
-                            p: ({ node, ...props }) => <p className="m-0" {...props} />,
+                            p: ({ children, ...props }) => (
+                                <p className="m-0" {...props}>
+                                    {React.Children.map(children, child => {
+                                        if (typeof child === 'string') {
+                                            return <HighlightBold text={child} />;
+                                        }
+                                        return child;
+                                    })}
+                                </p>
+                            ),
                         }}
                     >
                         {content}
