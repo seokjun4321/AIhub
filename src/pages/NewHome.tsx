@@ -19,7 +19,8 @@ import {
     type Tool,
     type CommunityItem
 } from '../data/homeData';
-import { MessageCircleQuestion, BadgeCheck } from 'lucide-react';
+import { MessageCircleQuestion, BadgeCheck, Send } from 'lucide-react';
+import { AuroraBackground } from '@/components/ui/aurora-background';
 
 // Fetch recent guides from Supabase
 // Fetch recent guides from Supabase
@@ -211,11 +212,11 @@ const formatTimeAgo = (dateString: string): string => {
 
 
 function NewHome() {
-    const heroTextAreaRef = useRef<HTMLTextAreaElement>(null);
+
     const canvasRef = useRef<HTMLCanvasElement>(null);
     // Use Global Chatbot Context
     const { openChat } = useChatbot();
-    const [demoExpanded, setDemoExpanded] = useState(false);
+
 
     // State for preset category
     const [activePresetCategory, setActivePresetCategory] = useState<'design' | 'prompt' | 'agent' | 'workflow' | 'template'>('design');
@@ -332,13 +333,7 @@ function NewHome() {
         }
     });
 
-    // Particle initialization
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-            initParticles(canvas);
-        }
-    }, []);
+
 
     // Scroll reveal observer
     useEffect(() => {
@@ -523,83 +518,10 @@ function NewHome() {
         return div;
     };
 
-    const initParticles = (canvas: HTMLCanvasElement) => {
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
 
-        let width: number, height: number;
-        const particles: Particle[] = [];
-        const particleCount = 60;
-
-        const resize = () => {
-            width = canvas.width = canvas.offsetWidth;
-            height = canvas.height = canvas.offsetHeight;
-        };
-
-        class Particle {
-            x: number;
-            y: number;
-            vx: number;
-            vy: number;
-            size: number;
-            alpha: number;
-
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.vx = (Math.random() - 0.5) * 0.5;
-                this.vy = (Math.random() - 0.5) * 0.5;
-                this.size = Math.random() * 2 + 1;
-                this.alpha = Math.random() * 0.5 + 0.1;
-            }
-
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-
-                if (this.x < 0 || this.x > width) this.vx *= -1;
-                if (this.y < 0 || this.y > height) this.vy *= -1;
-            }
-
-            draw() {
-                ctx.fillStyle = `rgba(0, 0, 0, ${this.alpha * 0.4})`;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        const init = () => {
-            particles.length = 0;
-            for (let i = 0; i < particleCount; i++) {
-                particles.push(new Particle());
-            }
-        };
-
-        const animate = () => {
-            ctx.clearRect(0, 0, width, height);
-            particles.forEach((p) => {
-                p.update();
-                p.draw();
-            });
-            requestAnimationFrame(animate);
-        };
-
-        window.addEventListener('resize', () => {
-            resize();
-            init();
-        });
-
-        resize();
-        init();
-        animate();
-    };
 
     const handleOpenChat = (initialMessage?: string) => {
         openChat(initialMessage);
-        if (heroTextAreaRef.current) {
-            heroTextAreaRef.current.value = '';
-        }
     };
 
     // Removed local handleSendMessage logics as it is now handled globally in ChatbotContext
@@ -616,64 +538,82 @@ function NewHome() {
                 </div>
 
                 {/* Hero Section */}
-                <header className="hero">
-                    <canvas ref={canvasRef} id="hero-particles"></canvas>
-                    <div className="new-home-container hero-container">
-                        <div className="hero-left reveal">
-                            <h1 className="hero-title">AIHub</h1>
-                            <p className="hero-subtitle">
-                                상황을 입력하면 필요한 AI 도구·가이드북·프리셋을
-                                <br />
-                                한 번에 연결합니다.
-                            </p>
-                        </div>
+                <header className="hero" style={{ background: 'transparent', padding: 0 }}>
+                    <AuroraBackground className="h-full min-h-[80vh]">
+                        <div className="new-home-container hero-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', height: '100%', gap: '2rem' }}>
+                            <div className="hero-content reveal">
+                                <h1 className="hero-title" style={{ marginBottom: '1rem' }}>AIHub</h1>
+                                <p className="hero-subtitle" style={{ maxWidth: '800px', margin: '0 auto 3rem auto' }}>
+                                    AI가 모두의 기본기가 되는 시대를 만듭니다. 복잡한 도구들 사이에서 길을 잃지 않도록, 가장 쉬운 시작점을 제공합니다
+                                </p>
 
-                        <div className="hero-right reveal" style={{ transitionDelay: '100ms' }}>
-                            <div className="chatbot-card">
-                                <div className="shine-border"></div>
-                                <div className="card-inner-content">
-                                    <div className="chat-header">
-                                        <h2>AI 추천 어시스턴트</h2>
-                                    </div>
-
-                                    <div className="chat-body">
-                                        <div className="suggestion-chips">
-                                            <button className="chip" onClick={() => handleOpenChat("생산성을 높일 수 있는 방법을 알려줘")}>🚀 생산성 높이기</button>
-                                            <button className="chip" onClick={() => handleOpenChat("이미지 생성 도구를 추천해줘")}>🎨 이미지 생성</button>
-                                            <button className="chip" onClick={() => handleOpenChat("글쓰기를 도와주는 AI 도구는?")}>📝 글쓰기 작성</button>
-                                            <button className="chip" onClick={() => handleOpenChat("데이터 분석을 위한 AI 도구 추천해줘")}>📊 데이터 분석</button>
-                                        </div>
-                                    </div>
-
-                                    <div className="chat-input-area" style={{ padding: '0.5rem' }}>
-                                        <button
-                                            className="w-full py-4 rounded-xl bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-95 transform duration-200"
-                                            onClick={() => handleOpenChat()}
-                                        >
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                            </svg>
-                                            AI 어시스턴트와 대화 시작하기
-                                        </button>
-                                    </div>
-
-                                    <div className="mini-demo">
-                                        <div className="demo-header" onClick={() => setDemoExpanded(!demoExpanded)}>
-                                            <span className="demo-text">💡 예시: "블로그 글 자동화하고 싶어요"</span>
-                                            <button className="demo-toggle">{demoExpanded ? '접기' : '보기'}</button>
-                                        </div>
-                                        <div className={`demo - content ${demoExpanded ? 'expanded' : ''} `}>
-                                            <div className="result-chips">
-                                                {/* <span className="result-chip tool">Claude</span>
-                                                <span className="result-chip guide">AI 블로그 자동화</span>
-                                                <span className="result-chip preset">블로그 글 프롬프트</span> */}
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="simple-search-bar" style={{
+                                    position: 'relative',
+                                    maxWidth: '700px',
+                                    width: '100%',
+                                    margin: '0 auto',
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                    padding: '0.5rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'all 0.2s ease'
+                                }}>
+                                    <input
+                                        type="text"
+                                        placeholder="AIHub에게 무엇이든 물어보세요..."
+                                        style={{
+                                            flex: 1,
+                                            border: 'none',
+                                            outline: 'none',
+                                            padding: '1rem 1.5rem',
+                                            fontSize: '1.1rem',
+                                            background: 'transparent',
+                                            color: '#374151'
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleOpenChat((e.target as HTMLInputElement).value);
+                                                (e.target as HTMLInputElement).value = '';
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={(e) => {
+                                            const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
+                                            if (input.value.trim()) {
+                                                handleOpenChat(input.value);
+                                                input.value = '';
+                                            }
+                                        }}
+                                        style={{
+                                            background: '#3B82F6',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            padding: '0.8rem 1.2rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'background 0.2s',
+                                            marginLeft: '0.5rem'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.background = '#2563EB'}
+                                        onMouseOut={(e) => e.currentTarget.style.background = '#3B82F6'}
+                                    >
+                                        <Send size={20} />
+                                    </button>
                                 </div>
+
+                                <p style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#6B7280', opacity: 0.8 }}>
+                                    무엇이든 물어보세요. AIHub가 실행 가능한 솔루션을 제공합니다.
+                                </p>
                             </div>
                         </div>
-                    </div>
+                    </AuroraBackground>
                 </header>
 
                 {/* Logo Marquee Strip */}

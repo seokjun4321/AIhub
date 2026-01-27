@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useChatbot } from '@/contexts/ChatbotContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Send } from 'lucide-react';
 import '../../styles/newHome.css'; // Reusing existing styles for now, or we can move them
 
 export const GlobalChatbot = () => {
@@ -147,11 +148,25 @@ export const GlobalChatbot = () => {
                         <button
                             onClick={handleSend}
                             disabled={isLoading || !inputValue.trim()}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center min-w-[3rem]"
+                            style={{
+                                background: '#3B82F6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '12px',
+                                padding: '0.8rem 1.2rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'background 0.2s',
+                                minWidth: '3rem'
+                            }}
+                            onMouseOver={(e) => !isLoading && inputValue.trim() && (e.currentTarget.style.background = '#2563EB')}
+                            onMouseOut={(e) => !isLoading && inputValue.trim() && (e.currentTarget.style.background = '#3B82F6')}
+                            className="disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
+                            <Send size={20} />
                         </button>
                     </div>
                 </div>

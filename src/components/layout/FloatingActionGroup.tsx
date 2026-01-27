@@ -49,7 +49,7 @@ export const FloatingActionGroup = () => {
                         </svg>
                     ) : (
                         <>
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-500 to-blue-600 opacity-90 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute inset-0 rounded-full bg-[#3B82F6] opacity-90 group-hover:opacity-100 transition-opacity" />
                             <MessageCircle className="w-7 h-7 text-white relative z-10" strokeWidth={2} />
                         </>
                     )}
