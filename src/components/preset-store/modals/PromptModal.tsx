@@ -109,7 +109,7 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
         const submitMicroFeedback = async (rating: number) => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
-                await supabase.from('feedbacks').insert({
+                await supabase.from('feedbacks' as any).insert({
                     trigger: 'preset_copy',
                     entity_type: 'preset',
                     entity_id: String(item.id),
