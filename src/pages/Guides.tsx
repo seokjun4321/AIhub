@@ -99,7 +99,8 @@ const fetchAllGuides = async () => {
       difficulty_level,
       estimated_time,
       categories(name),
-      ai_models(name, logo_url)
+      ai_models(name, logo_url),
+      tags
     `)
     .order('created_at', { ascending: false });
 
@@ -222,9 +223,16 @@ const Guides = () => {
 
     // 검색어 필터
     if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter((guide: any) =>
-        guide.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        guide.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        guide.title?.toLowerCase().includes(lowerQuery) ||
+        guide.description?.toLowerCase().includes(lowerQuery) ||
+        // 태그 검색 추가
+        (guide.tags && Array.isArray(guide.tags) && guide.tags.some((tag: string) => tag.toLowerCase().includes(lowerQuery))) ||
+        // 카테고리 검색 추가
+        (guide.categories as any)?.name?.toLowerCase().includes(lowerQuery) ||
+        // AI 모델 검색 추가
+        (guide.ai_models as any)?.name?.toLowerCase().includes(lowerQuery)
       );
     }
 
@@ -261,7 +269,7 @@ const Guides = () => {
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
               AI를 진짜로 활용하는 방법을 배우세요 — 프롬프트 엔지니어링 기초부터 에세이 작성, 학습, 취업 준비, 스타트업 워크플로우까지.
             </p>
-            <div className="relative max-w-2xl mx-auto">
+            <div className="relative w-full max-w-5xl mx-auto">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input
                 type="text"
