@@ -382,16 +382,6 @@ const Guides = () => {
                           가이드북 시작하기
                         </Link>
                       </Button>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="default"
-                        className="border-gray-300"
-                      >
-                        <Link to="/prompt-engineering">
-                          자세히 보기
-                        </Link>
-                      </Button>
                     </div>
                   </div>
                 </div>
