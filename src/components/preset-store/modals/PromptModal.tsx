@@ -7,15 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Copy, Check, FileText, FlaskConical, BookOpen, Lightbulb } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
-
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import { useTossPayment } from "@/integrations/toss/useTossPayment";
 
 interface PromptModalProps {
     item: PromptTemplate;
@@ -27,7 +27,58 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
     const [variables, setVariables] = useState<Record<string, string>>({});
     const [copied, setCopied] = useState(false);
     const [language, setLanguage] = useState<'ko' | 'en'>('ko');
+    const [isPurchased, setIsPurchased] = useState(false);
     const { toast } = useToast();
+    const { requestPayment } = useTossPayment();
+
+    useEffect(() => {
+        if (isOpen) {
+            checkPurchaseStatus();
+        }
+    }, [isOpen, item.id]);
+
+    const checkPurchaseStatus = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data } = await supabase
+                .from('purchases' as any)
+                .select('id, status')
+                .eq('user_id', user.id)
+                .eq('item_id', String(item.id))
+                .limit(1)
+                .maybeSingle();
+
+            if (data) {
+                setIsPurchased(true);
+            }
+        } catch (error) {
+            console.error("Error checking purchase status:", error);
+        }
+    };
+
+    const handleBuy = async () => {
+        try {
+            // Close modal first to prevent focus trap/z-index issues with Toss popup
+            onClose();
+
+            // Safer ID generation
+            const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+            await requestPayment("카드", {
+                amount: item.price,
+                orderId: orderId,
+                orderName: item.title,
+                customerName: "AIHub User",
+                successUrl: window.location.origin + `/payment/success?itemId=${item.id}&itemType=preset`,
+                failUrl: window.location.origin + "/payment/fail",
+            });
+        } catch (error: any) {
+            console.error("Payment failed", error);
+            alert(`결제 시작 실패: ${error.message || error}`);
+        }
+    };
 
     const handleVariableChange = (name: string, value: string) => {
         setVariables(prev => ({ ...prev, [name]: value }));
@@ -149,8 +200,10 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                             </Badge>
                         ))}
                         <div className="ml-auto flex items-center">
-                            {(!item.price || item.price === 0) ? (
-                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 font-bold px-3 py-1">무료</Badge>
+                            {(!item.price || item.price === 0 || isPurchased) ? (
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 font-bold px-3 py-1">
+                                    {isPurchased ? "구매됨" : "무료"}
+                                </Badge>
                             ) : (
                                 <span className="text-xl font-bold text-slate-900">{item.price.toLocaleString()}원</span>
                             )}
@@ -237,8 +290,8 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                                                     </div>
                                                 )}
                                             </div>
-                                            {item.price > 0 ? (
-                                                <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700">
+                                            {item.price > 0 && !isPurchased ? (
+                                                <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={handleBuy}>
                                                     구매하기 ({item.price.toLocaleString()}원)
                                                 </Button>
                                             ) : (
@@ -249,7 +302,7 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                                             )}
                                         </div>
                                         <div className="relative flex-1">
-                                            {item.price > 0 ? (
+                                            {item.price > 0 && !isPurchased ? (
                                                 <div className="h-full min-h-[400px] flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
                                                     <div className="mb-4 p-3 bg-blue-100 text-blue-600 rounded-full">
                                                         <BookOpen className="w-8 h-8" />
@@ -258,7 +311,7 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                                                     <p className="text-slate-500 mb-6 max-w-sm">
                                                         전체 프롬프트와 상세 가이드를 보시려면 구매가 필요합니다.
                                                     </p>
-                                                    <Button className="w-full max-w-xs bg-blue-600 hover:bg-blue-700">
+                                                    <Button className="w-full max-w-xs bg-blue-600 hover:bg-blue-700" onClick={handleBuy}>
                                                         지금 구매하고 내용 보기
                                                     </Button>
                                                 </div>
@@ -275,7 +328,7 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                             </TabsContent>
 
                             <TabsContent value="example" className="mt-0 space-y-6">
-                                {item.price > 0 ? (
+                                {item.price > 0 && !isPurchased ? (
                                     <div className="flex flex-col items-center justify-center min-h-[300px] bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
                                         <div className="mb-4 p-3 bg-blue-100 text-blue-600 rounded-full">
                                             <FlaskConical className="w-8 h-8" />
@@ -304,7 +357,7 @@ const PromptModal = ({ item, isOpen, onClose }: PromptModalProps) => {
                             </TabsContent>
 
                             <TabsContent value="tips" className="mt-0">
-                                {item.price > 0 ? (
+                                {item.price > 0 && !isPurchased ? (
                                     <div className="flex flex-col items-center justify-center min-h-[300px] bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
                                         <div className="mb-4 p-3 bg-blue-100 text-blue-600 rounded-full">
                                             <Lightbulb className="w-8 h-8" />

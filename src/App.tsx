@@ -29,6 +29,8 @@ import SubmissionList from "./pages/admin/SubmissionList";
 import SubmissionDetail from "./pages/admin/SubmissionDetail";
 import GuideSubmissionList from "./pages/admin/GuideSubmissionList"; // Import added
 import GuideSubmissionDetail from "./pages/admin/GuideSubmissionDetail"; // Import added
+import PaymentSuccess from "./pages/payment/PaymentSuccess";
+import PaymentFail from "./pages/payment/PaymentFail";
 
 import AdminHub from "./pages/admin/AdminHub";
 import WorkflowDetail from "./pages/WorkflowDetail";
@@ -56,6 +58,9 @@ function App() {
 
         {/* 새로운 가이드북 디자인 라우트 */}
         <Route path="/guide/new" element={<AdminRoute><GuideBuilderLayout /></AdminRoute>} />
+
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/fail" element={<PaymentFail />} />
 
         <Route path="/workflows/:id" element={<WorkflowDetail />} />
         <Route path="/presets" element={<PresetStore />} />

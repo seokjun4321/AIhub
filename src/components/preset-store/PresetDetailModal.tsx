@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Heart, ExternalLink, Copy, Check, Lightbulb, FileText, Code, Settings } from "lucide-react";
 import { Preset } from "@/types/preset";
 import { HighlightBold } from "@/components/ui/highlight-bold";
+import { useTossPayment } from "@/integrations/toss/useTossPayment";
 
 interface PresetDetailModalProps {
     preset: Preset;
@@ -14,6 +15,29 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
     const [activeTab, setActiveTab] = useState<TabType>("개요");
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [copied, setCopied] = useState(false);
+
+    // Payment Hook
+    const { requestPayment } = useTossPayment();
+
+    const handleBuy = async () => {
+        try {
+            // Safer ID generation for compatibility
+            const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+            await requestPayment("카드", {
+                amount: preset.price,
+                orderId: orderId,
+                orderName: preset.title,
+                customerName: "AIHub User",
+                successUrl: window.location.origin + "/payment/success",
+                failUrl: window.location.origin + "/payment/fail",
+            });
+        } catch (error: any) {
+            console.error("Payment failed", error);
+            // Temporary alert for debugging
+            alert(`결제 시작 실패: ${error.message || error}`);
+        }
+    };
 
     const tabs: TabType[] = ["개요", "예시", "프롬프트/지침(복사)", "변수 & 사용법"];
 
@@ -338,7 +362,7 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="p-6 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                    <div className="p-6 border-t border-gray-200 bg-gray-50 flex items-center justify-between relative z-10">
                         <div className="flex items-center gap-3">
                             <span className="text-sm text-gray-600">
                                 {preset.isFree ? "무료" : `₩${preset.price.toLocaleString()}`}
@@ -364,22 +388,32 @@ const PresetDetailModal = ({ preset, onClose }: PresetDetailModalProps) => {
                                 사용할 툴 열기
                             </button>
 
-                            <button
-                                onClick={handleFooterCopy}
-                                className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                            >
-                                {copied ? (
-                                    <>
-                                        <Check className="w-4 h-4" />
-                                        복사됨
-                                    </>
-                                ) : (
-                                    <>
-                                        <Copy className="w-4 h-4" />
-                                        복사하기
-                                    </>
-                                )}
-                            </button>
+                            {/* Payment Integration: Show Buy button if not free */}
+                            {!preset.isFree ? (
+                                <button
+                                    onClick={handleBuy}
+                                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                                >
+                                    <span>₩{preset.price ? preset.price.toLocaleString() : 0} 구매하기</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleFooterCopy}
+                                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                                >
+                                    {copied ? (
+                                        <>
+                                            <Check className="w-4 h-4" />
+                                            복사됨
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="w-4 h-4" />
+                                            복사하기
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
