@@ -14,22 +14,69 @@ import { useAuth } from "@/hooks/useAuth";
 
 const TOTAL_CHAPTERS = 10;
 
-// Supabase에서 프롬프트 엔지니어링 진행도 가져오기
-const fetchPromptEngineeringProgressCount = async (userId: string | undefined): Promise<number> => {
-  if (!userId) return 0;
+// 사용자 학습 진행 상황 가져오기 (진행 중인 가이드만)
+const fetchUserProgress = async (userId: string | undefined) => {
+  if (!userId) return [];
 
-  const { data, error } = await (supabase as any)
-    .from('prompt_engineering_progress')
-    .select('chapter_id')
+  // 1. Get IDs of guides the user has made progress on, ordered by most recently modified
+  const { data: progressData, error: progressError } = await (supabase as any)
+    .from('guide_progress')
+    .select('guide_id, completed_at')
     .eq('user_id', userId)
-    .eq('completed', true);
+    .order('completed_at', { ascending: false }); // updated_at이 없으면 completed_at 등 사용
 
-  if (error) {
-    console.error('Failed to load prompt engineering progress', error);
-    return 0;
+  if (progressError) {
+    console.error('Failed to fetch user progress:', progressError);
+    return [];
   }
 
-  return data?.length || 0;
+  // Get unique guide IDs
+  const uniqueGuideIds = Array.from(new Set(progressData.map((item: any) => item.guide_id as number)));
+
+  if (uniqueGuideIds.length === 0) return [];
+
+  const progressList = [];
+
+  for (const guideId of uniqueGuideIds) {
+    // 2. Fetch Guide Details
+    const { data: guideData } = await supabase
+      .from('guides')
+      .select('title')
+      .eq('id', guideId as any)
+      .single();
+
+    if (!guideData) continue;
+
+    // 3. Count Total Steps
+    const { count: totalSteps } = await (supabase as any)
+      .from('guide_steps')
+      .select('*', { count: 'exact', head: true })
+      .eq('guide_id', guideId);
+
+    // 4. Count Completed Steps
+    const { count: completedSteps } = await (supabase as any)
+      .from('guide_progress')
+      .select('*', { count: 'exact', head: true })
+      .eq('guide_id', guideId)
+      .eq('user_id', userId)
+      .eq('completed', true);
+
+    const total = totalSteps || 0;
+    const completed = completedSteps || 0;
+
+    // Filter out 100% completed guides and 0% started
+    if (total > 0 && completed < total) {
+      progressList.push({
+        guideId,
+        title: guideData.title,
+        total,
+        completed,
+        percentage: Math.round((completed / total) * 100)
+      });
+    }
+  }
+
+  return progressList;
 };
 
 // 카테고리별 가이드북 가져오기
@@ -157,28 +204,35 @@ const Guides = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [selectedLevel, setSelectedLevel] = useState("전체");
+  const [showAllProgress, setShowAllProgress] = useState(false); // 더보기 상태
 
-  // 프롬프트 엔지니어링 진행도 가져오기
-  const { data: promptEngineeringProgress = 0 } = useQuery({
-    queryKey: ['promptEngineeringProgressCount', user?.id],
-    queryFn: () => fetchPromptEngineeringProgressCount(user?.id),
+  // 사용자 학습 진행 리스트 가져오기
+  const { data: userProgressList = [] } = useQuery({
+    queryKey: ['userProgressList', user?.id],
+    queryFn: () => fetchUserProgress(user?.id),
     enabled: !!user,
   });
 
-  // 프롬프트 엔지니어링 진행도 업데이트 리스너
+  // 진행도 업데이트 리스너
   useEffect(() => {
     const handleProgressChange = () => {
       // React Query가 자동으로 refetch하도록 invalidate
       if (user) {
-        queryClient.invalidateQueries({ queryKey: ['promptEngineeringProgressCount', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['userProgressList', user.id] });
       }
     };
 
+    window.addEventListener('stepProgressChanged', handleProgressChange);
     window.addEventListener('promptEngineeringProgressChanged', handleProgressChange);
+
     return () => {
+      window.removeEventListener('stepProgressChanged', handleProgressChange);
       window.removeEventListener('promptEngineeringProgressChanged', handleProgressChange);
     };
   }, [user, queryClient]);
+
+  // 보여줄 진행 상황 리스트 계산
+  const displayedProgress = showAllProgress ? userProgressList : userProgressList.slice(0, 2);
 
   // 카테고리 가져오기 (DB에서 동적으로)
   const { data: categories, isLoading: categoriesLoading } = useQuery({
@@ -464,23 +518,61 @@ const Guides = () => {
                     <CardTitle className="text-lg">내 학습 진행</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">프롬프트 엔지니어링 가이드북</span>
-                        <Badge variant="secondary" className="text-xs">진행 중</Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <span>{promptEngineeringProgress}/{TOTAL_CHAPTERS} 챕터 완료</span>
+                    {user ? (
+                      userProgressList.length > 0 ? (
+                        <>
+                          <div className="space-y-6">
+                            {displayedProgress.map((progress: any) => (
+                              <div key={progress.guideId}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <Link to={`/guides/${progress.guideId}`} className="text-sm font-medium hover:underline line-clamp-1 flex-1 mr-2">
+                                    {progress.title}
+                                  </Link>
+                                  <Badge variant="secondary" className="text-xs shrink-0">진행 중</Badge>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <span>{progress.completed}/{progress.total} 챕터 완료</span>
+                                    <span className="text-xs font-bold">{progress.percentage}%</span>
+                                  </div>
+                                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="bg-primary h-full rounded-full transition-all duration-500"
+                                      style={{ width: `${progress.percentage}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {userProgressList.length > 2 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-muted-foreground hover:text-primary mt-2"
+                              onClick={() => setShowAllProgress(!showAllProgress)}
+                            >
+                              {showAllProgress ? "접기" : `더 보기 (+${userProgressList.length - 2})`}
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-muted-foreground mb-3">진행 중인 학습이 없습니다.</p>
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to="/guides">가이드북 찾아보기</Link>
+                          </Button>
                         </div>
-                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-primary h-full rounded-full transition-all duration-500"
-                            style={{ width: `${(promptEngineeringProgress / TOTAL_CHAPTERS) * 100}%` }}
-                          />
-                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground mb-3">로그인하고 학습을 관리하세요.</p>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to="/auth">로그인하기</Link>
+                        </Button>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -629,23 +721,61 @@ const Guides = () => {
                     <CardTitle className="text-lg">내 학습 진행</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">프롬프트 엔지니어링 가이드북</span>
-                        <Badge variant="secondary" className="text-xs">진행 중</Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <span>{promptEngineeringProgress}/{TOTAL_CHAPTERS} 챕터 완료</span>
+                    {user ? (
+                      userProgressList.length > 0 ? (
+                        <>
+                          <div className="space-y-6">
+                            {displayedProgress.map((progress: any) => (
+                              <div key={progress.guideId}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <Link to={`/guides/${progress.guideId}`} className="text-sm font-medium hover:underline line-clamp-1 flex-1 mr-2">
+                                    {progress.title}
+                                  </Link>
+                                  <Badge variant="secondary" className="text-xs shrink-0">진행 중</Badge>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <span>{progress.completed}/{progress.total} 챕터 완료</span>
+                                    <span className="text-xs font-bold">{progress.percentage}%</span>
+                                  </div>
+                                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="bg-primary h-full rounded-full transition-all duration-500"
+                                      style={{ width: `${progress.percentage}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {userProgressList.length > 2 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-muted-foreground hover:text-primary mt-2"
+                              onClick={() => setShowAllProgress(!showAllProgress)}
+                            >
+                              {showAllProgress ? "접기" : `더 보기 (+${userProgressList.length - 2})`}
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-muted-foreground mb-3">진행 중인 학습이 없습니다.</p>
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to="/guides">가이드북 찾아보기</Link>
+                          </Button>
                         </div>
-                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-primary h-full rounded-full transition-all duration-500"
-                            style={{ width: `${(promptEngineeringProgress / TOTAL_CHAPTERS) * 100}%` }}
-                          />
-                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground mb-3">로그인하고 학습을 관리하세요.</p>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to="/auth">로그인하기</Link>
+                        </Button>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
 
