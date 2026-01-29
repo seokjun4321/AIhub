@@ -9,7 +9,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, InputOutputBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock, ComparisonBlock, ImageDisplayBlock } from "./StepBlockComponents";
+import { GoalBanner, WhyThisMatters, ActionList, ExampleBlock, InputOutputBlock, TipsBlock, ChecklistBlock, CopyBlock, BranchBlock, ComparisonBlock, ImageDisplayBlock, ExampleDisplayBlock } from "./StepBlockComponents";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -21,6 +21,36 @@ interface StepBranch {
     descriptionA?: string;
     optionB?: string;
     descriptionB?: string;
+  };
+}
+
+interface StepExample {
+  id: string;
+  content: {
+    title?: string;
+    description?: string;
+    exampleText: string;
+    type?: 'success' | 'warning' | 'info';
+  };
+}
+
+interface StepImage {
+  id: string;
+  content: {
+    imageUrl: string;
+    caption?: string;
+    alt?: string;
+    width?: string;
+  };
+}
+
+interface StepCopyBlock {
+  id: string;
+  content: {
+    title?: string;
+    text: string;
+    language?: string;
+    description?: string;
   };
 }
 
@@ -52,6 +82,10 @@ interface Step {
     placeholder: string | null;
   }>;
   branches?: StepBranch[]; // New field for Preview
+  // NEW: Content Enhancement Blocks
+  examples?: StepExample[];
+  images?: StepImage[];
+  copyBlocks?: StepCopyBlock[];
 }
 
 export interface StepCardProps {
@@ -426,6 +460,39 @@ export function StepCard({ step, stepNumber, isOpen = false, guideId, toolName, 
                   ))}
                 </div>
               )}
+
+              {/* NEW: Example Blocks */}
+              {step.examples && step.examples.length > 0 && step.examples.map((example) => (
+                <ExampleDisplayBlock
+                  key={example.id}
+                  title={example.content?.title}
+                  description={example.content?.description}
+                  exampleText={example.content?.exampleText || ''}
+                  type={example.content?.type}
+                />
+              ))}
+
+              {/* NEW: Image Blocks */}
+              {step.images && step.images.length > 0 && step.images.map((image) => (
+                <ImageDisplayBlock
+                  key={image.id}
+                  src={image.content?.imageUrl}
+                  alt={image.content?.alt}
+                  caption={image.content?.caption}
+                  width={image.content?.width}
+                />
+              ))}
+
+              {/* NEW: Copy Blocks (from builder children) */}
+              {step.copyBlocks && step.copyBlocks.length > 0 && step.copyBlocks.map((copyBlock) => (
+                <CopyBlock
+                  key={copyBlock.id}
+                  content={copyBlock.content?.text || ''}
+                  title={copyBlock.content?.title}
+                  toolName={toolName}
+                  toolUrl={toolUrl}
+                />
+              ))}
 
               {(inputExample || outputExample) ? (
                 <InputOutputBlock inputContent={inputExample} processContent={processExample} outputContent={outputExample} />

@@ -44,7 +44,13 @@ export function GuideOverview({ metadata, onChange }: GuideOverviewProps) {
             .select('id, name')
             .order('name')
             .then(({ data }) => {
-                if (data) setAiModels(data);
+                if (data) {
+                    setAiModels(data);
+                    // 자동으로 첫 번째 AI 모델 선택 (기본값이 없을 때만)
+                    if (!metadata.aiModelId && data.length > 0) {
+                        onChange('aiModelId', data[0].id);
+                    }
+                }
             });
     }, []);
 

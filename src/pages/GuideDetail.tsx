@@ -71,7 +71,8 @@ const fetchGuideSteps = async (guideId: number) => {
     console.error("fetchGuideSteps error:", error);
     throw new Error(error.message);
   }
-  return (data || []) as Array<{
+
+  return data as Array<{
     id: number;
     step_order: number;
     title: string;

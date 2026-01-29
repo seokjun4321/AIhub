@@ -71,7 +71,11 @@ export function GuidePreview({ blocks, metadata, prompts, onExit }: GuidePreview
             guide_prompts: childPrompts, // Keep legacy child prompts if any
             guide_workbook_fields: [],
             // Pass the branches directly to StepCard
-            branches: block.children?.filter(c => c.type === 'branch') || []
+            branches: block.children?.filter(c => c.type === 'branch') || [],
+            // NEW: Pass example, image, copy blocks
+            examples: block.children?.filter(c => c.type === 'example') || [],
+            images: block.children?.filter(c => c.type === 'image') || [],
+            copyBlocks: block.children?.filter(c => c.type === 'copy') || []
         };
     });
 

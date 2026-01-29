@@ -1,12 +1,16 @@
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import { Type, ListTodo, Lightbulb, AlertTriangle, TerminalSquare, Split } from 'lucide-react';
+import { Type, ListTodo, Lightbulb, AlertTriangle, TerminalSquare, Split, FileText, ImageIcon, Copy } from 'lucide-react';
 import { BlockType } from './GuideBuilderLayout';
 
 const tools = [
     { type: 'step', label: 'Step 추가', icon: ListTodo, desc: '새로운 단계를 추가합니다' },
     { type: 'action', label: 'Action', icon: TerminalSquare, desc: '구체적인 행동 지침' },
     { type: 'branch', label: 'A/B 분기', icon: Split, desc: '선택형 시나리오' },
+    // NEW: Content Enhancement Blocks
+    { type: 'example', label: '예시 블록', icon: FileText, desc: '실제 사례나 예시 표시' },
+    { type: 'image', label: '이미지', icon: ImageIcon, desc: '스크린샷/다이어그램' },
+    { type: 'copy', label: '복붙 블록', icon: Copy, desc: '복사 가능한 코드/명령어' },
 ];
 
 export function BuilderSidebar() {

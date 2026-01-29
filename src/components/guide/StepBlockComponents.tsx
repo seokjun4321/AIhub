@@ -1,4 +1,4 @@
-import { Check, Info, Lightbulb, AlertTriangle, Terminal, XCircle, CheckCircle2, Image as ImageIcon, ThumbsUp, ThumbsDown, X } from "lucide-react";
+import { Check, Info, Lightbulb, AlertTriangle, Terminal, XCircle, CheckCircle2, Image as ImageIcon, ThumbsUp, ThumbsDown, X, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from 'react-markdown';
@@ -49,22 +49,102 @@ const MarkdownContent = ({ content, className }: MarkdownProps) => (
     </div>
 );
 
-export const ImageDisplayBlock = ({ src, alt }: { src?: string, alt?: string }) => {
+export const ImageDisplayBlock = ({
+    src,
+    alt,
+    caption,
+    width = '100%'
+}: {
+    src?: string;
+    alt?: string;
+    caption?: string;
+    width?: string;
+}) => {
     if (!src) return null;
     return (
-        <div className="my-6 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm not-prose block w-full max-w-full">
+        <div
+            className="my-6 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm not-prose block"
+            style={{ maxWidth: width, margin: '1.5rem auto' }}
+        >
             <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
                 <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Image</span>
             </div>
             <div className="bg-white">
-                <img src={src} alt={alt} className="w-full h-auto block" />
+                <img src={src} alt={alt || caption || ''} className="w-full h-auto block" />
             </div>
-            {alt && (
+            {caption && (
                 <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 text-center">
-                    <span className="text-xs text-slate-500 font-medium">{alt}</span>
+                    <span className="text-xs text-slate-500 font-medium">{caption}</span>
                 </div>
             )}
+        </div>
+    );
+};
+
+export const ExampleDisplayBlock = ({
+    title,
+    description,
+    exampleText,
+    type = 'info'
+}: {
+    title?: string;
+    description?: string;
+    exampleText: string;
+    type?: 'success' | 'warning' | 'info';
+}) => {
+    if (!exampleText) return null;
+
+    // Type-based color schemes
+    const typeStyles = {
+        success: {
+            bg: 'bg-emerald-50',
+            border: 'border-emerald-200',
+            iconBg: 'bg-emerald-100',
+            iconColor: 'text-emerald-600',
+            titleColor: 'text-emerald-900'
+        },
+        warning: {
+            bg: 'bg-amber-50',
+            border: 'border-amber-200',
+            iconBg: 'bg-amber-100',
+            iconColor: 'text-amber-600',
+            titleColor: 'text-amber-900'
+        },
+        info: {
+            bg: 'bg-blue-50',
+            border: 'border-blue-200',
+            iconBg: 'bg-blue-100',
+            iconColor: 'text-blue-600',
+            titleColor: 'text-blue-900'
+        }
+    };
+
+    const style = typeStyles[type];
+
+    return (
+        <div className={`mb-8 rounded-xl border ${style.border} ${style.bg} p-6 shadow-sm`}>
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-3">
+                <div className={`p-1.5 rounded ${style.iconBg}`}>
+                    <FileText className={`w-4 h-4 ${style.iconColor}`} />
+                </div>
+                <h4 className={`font-bold text-sm uppercase tracking-wide ${style.titleColor}`}>
+                    {title || '예시'}
+                </h4>
+            </div>
+
+            {/* Description */}
+            {description && (
+                <p className="text-sm text-slate-700 mb-4 leading-relaxed">
+                    {description}
+                </p>
+            )}
+
+            {/* Example Content */}
+            <div className="bg-white rounded-lg border border-slate-100 p-4">
+                <MarkdownContent content={exampleText} />
+            </div>
         </div>
     );
 };

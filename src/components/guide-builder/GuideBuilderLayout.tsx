@@ -38,7 +38,11 @@ export type BlockType =
     | 'warning'
     // Advanced
     | 'prompt'
-    | 'branch';
+    | 'branch'
+    // NEW: Content Enhancement
+    | 'example'
+    | 'image'
+    | 'copy';
 
 export interface GuideBlock {
     id: string;
@@ -102,7 +106,7 @@ export default function GuideBuilderLayout() {
         requirements: '',
         corePrinciples: '',
         categoryId: 1,
-        aiModelId: 1, // Default to 1 (ChatGPT) or handled by default logic
+        aiModelId: undefined, // Will be set automatically in GuideOverview
         difficulty: 'Beginner',
         duration: '10 min',
         tags: [],
@@ -154,10 +158,25 @@ export default function GuideBuilderLayout() {
         // 1. Drop from Sidebar (New Item)
         if (active.data.current?.type && !blocks.find(b => b.id === active.id)) {
             const type = active.data.current.type as BlockType;
+
+            // Get default content based on block type
+            const getDefaultContent = (blockType: BlockType): any => {
+                switch(blockType) {
+                    case 'example':
+                        return { title: '', description: '', exampleText: '', type: 'info' };
+                    case 'image':
+                        return { imageUrl: '', caption: '', alt: '', width: '100%' };
+                    case 'copy':
+                        return { title: '', text: '', language: 'bash', description: '' };
+                    default:
+                        return {};
+                }
+            };
+
             const newBlock: GuideBlock = {
                 id: `block-${Date.now()}`,
                 type,
-                content: {},
+                content: getDefaultContent(type),
             };
 
             if (over.id === 'canvas-droppable') {

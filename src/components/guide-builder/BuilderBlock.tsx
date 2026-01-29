@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { BulletPointTextarea } from '@/components/ui/bullet-point-textarea';
-import { GripVertical, Trash2, X, Lightbulb, TerminalSquare, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { GripVertical, Trash2, X, Lightbulb, TerminalSquare, AlertTriangle, ChevronDown, ChevronUp, FileText, ImageIcon, Copy, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface BuilderBlockProps {
     block: GuideBlock;
@@ -20,6 +23,9 @@ interface BuilderBlockProps {
 
 export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBlockProps) {
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const { user } = useAuth();
+    const { toast } = useToast();
 
     const {
         attributes,
@@ -48,6 +54,72 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
 
     const handleContentChange = (key: string, value: string) => {
         onUpdate(block.id, { ...block.content, [key]: value });
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, childId?: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // 파일 크기 체크 (10MB 제한)
+        if (file.size > 10 * 1024 * 1024) {
+            toast({
+                title: "파일 크기 초과",
+                description: "이미지는 10MB 이하여야 합니다.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        // 이미지 파일 체크
+        if (!file.type.startsWith('image/')) {
+            toast({
+                title: "잘못된 파일 형식",
+                description: "이미지 파일만 업로드 가능합니다.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            const userId = user?.id || 'anonymous';
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+            const { data, error } = await supabase.storage
+                .from('guide-images')
+                .upload(fileName, file);
+
+            if (error) throw error;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('guide-images')
+                .getPublicUrl(data.path);
+
+            // Update content
+            if (childId) {
+                // Child block update (for nested image blocks)
+                onUpdate(childId, { imageUrl: publicUrl });
+            } else {
+                // Main block update
+                handleContentChange('imageUrl', publicUrl);
+            }
+
+            toast({
+                title: "업로드 완료!",
+                description: "이미지가 성공적으로 업로드되었습니다."
+            });
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            toast({
+                title: "업로드 실패",
+                description: error.message || "이미지 업로드 중 오류가 발생했습니다.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     return (
@@ -187,38 +259,6 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
                                 />
                             </div>
 
-                            {/* 4. Tips & Checklist (2 Columns) */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* TIPS */}
-                                <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 space-y-2">
-                                    <div className="flex items-center gap-2 text-orange-600 font-bold text-xs uppercase tracking-wider">
-                                        <AlertTriangle className="w-3 h-3" />
-                                        Success Tips & Mistakes
-                                    </div>
-                                    <BulletPointTextarea
-                                        placeholder="성공 팁이나 자주 하는 실수를 적어주세요."
-                                        className="min-h-[80px] border-none bg-transparent focus-visible:ring-0 resize-none text-sm p-0 placeholder:text-orange-700/30"
-                                        value={block.content.tips || ''}
-                                        onChange={(e) => handleContentChange('tips', e.target.value)}
-                                    />
-                                </div>
-
-                                {/* CHECKLIST */}
-                                <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-4 space-y-2">
-                                    <div className="flex items-center gap-2 text-purple-600 font-bold text-xs uppercase tracking-wider">
-                                        <div className="w-4 h-4 rounded-full border-2 border-purple-500 flex items-center justify-center">
-                                            <div className="w-2 h-2 rounded-full bg-purple-500" />
-                                        </div>
-                                        Interactive Checklist
-                                    </div>
-                                    <BulletPointTextarea
-                                        placeholder="사용자가 수행해야 할 체크리스트 항목을 적어주세요."
-                                        className="min-h-[80px] border-none bg-transparent focus-visible:ring-0 resize-none text-sm p-0 placeholder:text-purple-700/30"
-                                        value={block.content.checklist || ''}
-                                        onChange={(e) => handleContentChange('checklist', e.target.value)}
-                                    />
-                                </div>
-                            </div>
                             {/* 4. Nested Children (Action & Content) */}
                             <div className="mt-2 pt-4 border-t border-slate-100">
                                 <Label className="text-slate-400 text-xs uppercase tracking-wider font-bold mb-3 block">
@@ -227,7 +267,7 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
                                 <div
                                     ref={setDroppableRef}
                                     className={cn(
-                                        "bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200 min-h-[120px] transition-all duration-200",
+                                        "bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200 min-h-[120px] max-h-[600px] overflow-y-auto transition-all duration-200",
                                         isDroppableOver
                                             ? "bg-emerald-50 border-emerald-500 ring-4 ring-emerald-200 scale-[1.02] shadow-inner"
                                             : "hover:bg-slate-50 hover:border-emerald-300/50"
@@ -367,8 +407,214 @@ export function BuilderBlock({ block, stepIndex, onRemove, onUpdate }: BuilderBl
                                                             </div>
                                                         )}
 
+                                                        {/* NEW: Example Block */}
+                                                        {child.type === 'example' && (
+                                                            <div className="space-y-4">
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant={child.content?.type === 'success' ? 'default' : 'outline'}
+                                                                        className={child.content?.type === 'success' ? 'bg-emerald-600' : ''}
+                                                                        onClick={() => onUpdate(child.id, { ...child.content, type: 'success' })}
+                                                                    >
+                                                                        성공 사례
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant={child.content?.type === 'info' ? 'default' : 'outline'}
+                                                                        className={child.content?.type === 'info' ? 'bg-blue-600' : ''}
+                                                                        onClick={() => onUpdate(child.id, { ...child.content, type: 'info' })}
+                                                                    >
+                                                                        정보
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant={child.content?.type === 'warning' ? 'default' : 'outline'}
+                                                                        className={child.content?.type === 'warning' ? 'bg-amber-600' : ''}
+                                                                        onClick={() => onUpdate(child.id, { ...child.content, type: 'warning' })}
+                                                                    >
+                                                                        주의사항
+                                                                    </Button>
+                                                                </div>
+                                                                <Input
+                                                                    placeholder="예시 제목"
+                                                                    className="text-sm"
+                                                                    value={child.content?.title || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, title: e.target.value })}
+                                                                />
+                                                                <Textarea
+                                                                    placeholder="간단한 설명"
+                                                                    className="min-h-[60px] text-sm resize-none"
+                                                                    value={child.content?.description || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, description: e.target.value })}
+                                                                />
+                                                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-2">
+                                                                    <div className="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-wider">
+                                                                        <FileText className="w-4 h-4" />
+                                                                        예시 내용
+                                                                    </div>
+                                                                    <Textarea
+                                                                        placeholder="실제 예시를 입력하세요 (마크다운 지원)"
+                                                                        className="min-h-[120px] border-blue-200 bg-white text-sm"
+                                                                        value={child.content?.exampleText || ''}
+                                                                        onChange={(e) => onUpdate(child.id, { ...child.content, exampleText: e.target.value })}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* NEW: Image Block */}
+                                                        {child.type === 'image' && (
+                                                            <div className="space-y-4">
+                                                                {/* 파일 업로드 */}
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-sm text-indigo-700 font-bold">이미지 업로드</Label>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Input
+                                                                            type="file"
+                                                                            accept="image/*"
+                                                                            onChange={(e) => handleImageUpload(e, child.id)}
+                                                                            disabled={isUploading}
+                                                                            className="text-sm"
+                                                                        />
+                                                                        {isUploading && (
+                                                                            <span className="text-xs text-indigo-600 animate-pulse">업로드 중...</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-500">
+                                                                        <Upload className="w-3 h-3 inline mr-1" />
+                                                                        최대 10MB, JPG/PNG/GIF/WebP 지원
+                                                                    </p>
+                                                                </div>
+
+                                                                {/* URL 직접 입력 */}
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-sm text-slate-600">또는 URL 직접 입력</Label>
+                                                                    <Input
+                                                                        placeholder="https://example.com/image.png"
+                                                                        className="text-sm"
+                                                                        value={child.content?.imageUrl || ''}
+                                                                        onChange={(e) => onUpdate(child.id, { ...child.content, imageUrl: e.target.value })}
+                                                                    />
+                                                                </div>
+
+                                                                {child.content?.imageUrl && (
+                                                                    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                                                                        <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider mb-2">
+                                                                            <ImageIcon className="w-4 h-4" />
+                                                                            미리보기
+                                                                        </div>
+                                                                        <div className="bg-white rounded-lg overflow-hidden border border-indigo-100">
+                                                                            <img
+                                                                                src={child.content.imageUrl}
+                                                                                alt="Preview"
+                                                                                className="w-full h-auto max-h-[300px] object-contain"
+                                                                                onError={(e) => {
+                                                                                    e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect fill="%23f1f5f9" width="400" height="200"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8"%3E이미지를 불러올 수 없습니다%3C/text%3E%3C/svg%3E';
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                <Input
+                                                                    placeholder="캡션"
+                                                                    className="text-sm"
+                                                                    value={child.content?.caption || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, caption: e.target.value })}
+                                                                />
+                                                                <Input
+                                                                    placeholder="대체 텍스트 (접근성)"
+                                                                    className="text-sm"
+                                                                    value={child.content?.alt || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, alt: e.target.value })}
+                                                                />
+
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-xs text-slate-600">표시 너비</Label>
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => onUpdate(child.id, { ...child.content, width: '100%' })}
+                                                                        >
+                                                                            전체
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => onUpdate(child.id, { ...child.content, width: '600px' })}
+                                                                        >
+                                                                            중간
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => onUpdate(child.id, { ...child.content, width: '400px' })}
+                                                                        >
+                                                                            작게
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* NEW: Copy Block */}
+                                                        {child.type === 'copy' && (
+                                                            <div className="space-y-4">
+                                                                <Input
+                                                                    placeholder="블록 제목 (선택)"
+                                                                    className="text-sm"
+                                                                    value={child.content?.title || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, title: e.target.value })}
+                                                                />
+
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-xs text-slate-600">코드 언어</Label>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {['bash', 'python', 'javascript', 'json', 'sql', 'text'].map(lang => (
+                                                                            <Button
+                                                                                key={lang}
+                                                                                size="sm"
+                                                                                variant={child.content?.language === lang ? 'default' : 'outline'}
+                                                                                className={child.content?.language === lang ? 'bg-slate-700' : ''}
+                                                                                onClick={() => onUpdate(child.id, { ...child.content, language: lang })}
+                                                                            >
+                                                                                {lang}
+                                                                            </Button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="bg-slate-900 rounded-xl p-4 space-y-2">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-2 text-slate-400 font-mono text-xs uppercase tracking-wider">
+                                                                            <Copy className="w-3 h-3" />
+                                                                            복사할 내용
+                                                                        </div>
+                                                                        <span className="text-slate-500 text-xs font-mono">
+                                                                            {child.content?.language || 'text'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <Textarea
+                                                                        placeholder="사용자가 복사할 텍스트나 코드를 입력하세요..."
+                                                                        className="min-h-[120px] bg-slate-950 border-slate-700 text-slate-100 font-mono text-sm focus-visible:ring-slate-500"
+                                                                        value={child.content?.text || ''}
+                                                                        onChange={(e) => onUpdate(child.id, { ...child.content, text: e.target.value })}
+                                                                    />
+                                                                </div>
+
+                                                                <Textarea
+                                                                    placeholder="추가 설명 (선택)"
+                                                                    className="min-h-[60px] text-sm resize-none"
+                                                                    value={child.content?.description || ''}
+                                                                    onChange={(e) => onUpdate(child.id, { ...child.content, description: e.target.value })}
+                                                                />
+                                                            </div>
+                                                        )}
+
                                                         {/* Fallback for other types */}
-                                                        {!['action', 'tips', 'warning', 'prompt', 'branch'].includes(child.type) && (
+                                                        {!['action', 'tips', 'warning', 'prompt', 'branch', 'example', 'image', 'copy'].includes(child.type) && (
                                                             <div className="p-2 bg-slate-100 rounded text-xs text-slate-500 text-center">
                                                                 {child.type} 설정 폼
                                                             </div>
