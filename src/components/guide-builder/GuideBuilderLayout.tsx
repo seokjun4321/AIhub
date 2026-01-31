@@ -121,8 +121,8 @@ export default function GuideBuilderLayout() {
                     .single();
 
                 if (error) throw error;
-                if (data && data.guide_data) {
-                    const { metadata: savedMetadata, blocks: savedBlocks, prompts: savedPrompts } = data.guide_data;
+                if (data && (data as any).guide_data) {
+                    const { metadata: savedMetadata, blocks: savedBlocks, prompts: savedPrompts } = (data as any).guide_data;
 
                     if (savedMetadata) setMetadata(savedMetadata);
                     if (savedBlocks) setBlocks(savedBlocks);
