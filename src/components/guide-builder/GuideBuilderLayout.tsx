@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     DndContext,
     DragOverlay,
@@ -21,12 +21,15 @@ import { BuilderCanvas } from './BuilderCanvas';
 import { GuideOverview } from './GuideOverview';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Eye, BookOpen, Save } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { GuidePreview } from './GuidePreview';
 import { PromptManager } from './PromptManager';
 import { PromptItem } from "@/components/guidebook/PromptPack";
 import { GuideNavigator } from './GuideNavigator';
 import { useGuideSubmit } from '@/hooks/useGuideSubmit';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 export type BlockType =
     // Basic
@@ -96,8 +99,62 @@ export default function GuideBuilderLayout() {
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [activeTab, setActiveTab] = useState<'curriculum' | 'prompts'>('curriculum');
     const [prompts, setPrompts] = useState<PromptItem[]>([]);
+    const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
-    const { submitGuide, isSubmitting } = useGuideSubmit();
+    const { submitGuide, saveDraft, isSubmitting } = useGuideSubmit();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const draftId = searchParams.get('draftId');
+
+    // Load Draft Effect
+    useEffect(() => {
+        const loadDraft = async () => {
+            if (!draftId) return;
+
+            setIsLoadingDraft(true);
+            try {
+                const { data, error } = await supabase
+                    .from('guide_submissions' as any)
+                    .select('*')
+                    .eq('id', draftId)
+                    .single();
+
+                if (error) throw error;
+                if (data && data.guide_data) {
+                    const { metadata: savedMetadata, blocks: savedBlocks, prompts: savedPrompts } = data.guide_data;
+
+                    if (savedMetadata) setMetadata(savedMetadata);
+                    if (savedBlocks) setBlocks(savedBlocks);
+                    if (savedPrompts) setPrompts(savedPrompts);
+
+                    toast({
+                        title: "임시저장 불러오기 성공",
+                        description: "이전에 작업하던 내용을 불러왔습니다.",
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to load draft:", error);
+                toast({
+                    title: "불러오기 실패",
+                    description: "임시저장된 내용을 불러오는데 실패했습니다.",
+                    variant: "destructive"
+                });
+            } finally {
+                setIsLoadingDraft(false);
+            }
+        };
+
+        loadDraft();
+    }, [draftId]);
+
+    const handleSaveDraft = async () => {
+        const newDraftId = await saveDraft(metadata, blocks, prompts, draftId || undefined);
+        if (newDraftId && newDraftId !== draftId) {
+            // Update URL with new draft ID if it was a new creation
+            setSearchParams({ draftId: newDraftId });
+        }
+    };
 
     const [metadata, setMetadata] = useState<GuideMetadata>({
         title: '',
@@ -161,7 +218,7 @@ export default function GuideBuilderLayout() {
 
             // Get default content based on block type
             const getDefaultContent = (blockType: BlockType): any => {
-                switch(blockType) {
+                switch (blockType) {
                     case 'example':
                         return { title: '', description: '', exampleText: '', type: 'info' };
                     case 'image':
@@ -327,11 +384,20 @@ export default function GuideBuilderLayout() {
                             미리보기
                         </Button>
                         <Button
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                            onClick={() => submitGuide(metadata, blocks, prompts)}
-                            disabled={isSubmitting}
+                            variant="outline"
+                            onClick={handleSaveDraft}
+                            disabled={isSubmitting || isLoadingDraft}
+                            className="text-slate-600 border-slate-300 hover:bg-slate-50"
                         >
                             <Save className="w-4 h-4 mr-2" />
+                            {isSubmitting ? '저장 중...' : '임시 저장'}
+                        </Button>
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => submitGuide(metadata, blocks, prompts)}
+                            disabled={isSubmitting || isLoadingDraft}
+                        >
+                            {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                             {isSubmitting ? '제출 중...' : '제출하기'}
                         </Button>
                     </div>

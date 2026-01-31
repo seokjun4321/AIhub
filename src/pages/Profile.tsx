@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useNavigate, Link } from 'react-router-dom';
-import { Upload, Trash2, Loader2, MessageSquare, ThumbsUp, Bookmark, Eye, Calendar, User, Star, Trophy, TrendingUp } from 'lucide-react';
+import { Upload, Trash2, Loader2, MessageSquare, ThumbsUp, Bookmark, Eye, Calendar, User, Star, Trophy, TrendingUp, BookOpen } from 'lucide-react';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { PointDisplay } from '@/components/ui/point-display';
@@ -51,7 +51,7 @@ const fetchUserPosts = async (userId: string) => {
     `)
     .eq('author_id', userId)
     .order('created_at', { ascending: false });
-  
+
   if (error) throw new Error(error.message);
   return data || [];
 };
@@ -70,7 +70,7 @@ const fetchUserComments = async (userId: string) => {
     `)
     .eq('author_id', userId)
     .order('created_at', { ascending: false });
-  
+
   if (error) throw new Error(error.message);
   return data || [];
 };
@@ -100,7 +100,7 @@ const fetchUserVotedPosts = async (userId: string) => {
     `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
-  
+
   if (error) throw new Error(error.message);
   return data || [];
 };
@@ -129,9 +129,23 @@ const fetchUserBookmarkedPosts = async (userId: string) => {
     `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
-  
+
+  if (error) throw new Error(error.message);
   if (error) throw new Error(error.message);
   return data?.map(item => item.posts).filter(Boolean) || [];
+};
+
+// 사용자의 가이드북 초안을 가져오는 함수
+const fetchUserDrafts = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('guide_submissions' as any)
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'draft')
+    .order('updated_at', { ascending: false }); // Assuming updated_at exists or use created_at
+
+  if (error) throw error;
+  return data || [];
 };
 
 // --- ▼▼▼ 이미지 크롭을 위한 헬퍼 함수 ▼▼▼ ---
@@ -178,11 +192,11 @@ const Profile = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { 
-    pointHistoryQuery, 
-    levelConfigQuery, 
-    achievementsQuery, 
-    getCurrentLevelInfo 
+  const {
+    pointHistoryQuery,
+    levelConfigQuery,
+    achievementsQuery,
+    getCurrentLevelInfo
   } = usePoints();
 
   // --- 기존 상태 ---
@@ -196,29 +210,29 @@ const Profile = () => {
   const [imgSrc, setImgSrc] = useState('');
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
-  const [imageDimensions, setImageDimensions] = useState<{width: number, height: number} | null>(null);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number, height: number } | null>(null);
   const [showCrop, setShowCrop] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
-  
+
   // 이미지 로드 후 크롭 영역 자동 설정
   const setInitialCrop = () => {
     if (!imgRef.current) return;
-    
+
     const img = imgRef.current;
     const imgWidth = img.naturalWidth;
     const imgHeight = img.naturalHeight;
-    
+
     // 이미지 크기 저장
     setImageDimensions({ width: imgWidth, height: imgHeight });
-    
+
     const displayWidth = img.offsetWidth;
     const displayHeight = img.offsetHeight;
-    
+
     // 이미지 비율에 따라 최적의 크롭 영역 계산
     const imageAspectRatio = imgWidth / imgHeight;
-    
+
     let cropWidth, cropHeight, cropX, cropY;
-    
+
     if (imageAspectRatio > 1) {
       // 가로가 더 긴 이미지 - 세로 기준으로 정사각형 크롭
       cropHeight = displayHeight;
@@ -238,7 +252,7 @@ const Profile = () => {
       cropX = 0;
       cropY = 0;
     }
-    
+
     // 표시 크기에 대한 픽셀 단위로 설정
     const pixelCrop = {
       x: cropX,
@@ -247,7 +261,7 @@ const Profile = () => {
       height: cropHeight,
       unit: 'px' as const
     };
-    
+
     setCrop(pixelCrop);
   };
 
@@ -262,43 +276,43 @@ const Profile = () => {
   // 이미지 비율에 따른 모달 크기 계산
   const getModalSize = () => {
     if (!imageDimensions) return { width: 'max-w-4xl', height: 'max-h-[95vh]' };
-    
+
     const { width, height } = imageDimensions;
     const aspectRatio = width / height;
-    
+
     // 화면 크기 제한
     const maxWidth = Math.min(width, 800);
     const maxHeight = Math.min(height, 700);
-    
+
     if (aspectRatio > 1.5) {
       // 매우 가로가 긴 이미지
-      return { 
-        width: `max-w-[${maxWidth}px]`, 
-        height: `max-h-[${Math.min(maxHeight, 500)}px]` 
+      return {
+        width: `max-w-[${maxWidth}px]`,
+        height: `max-h-[${Math.min(maxHeight, 500)}px]`
       };
     } else if (aspectRatio > 1) {
       // 가로가 긴 이미지
-      return { 
-        width: `max-w-[${maxWidth}px]`, 
-        height: `max-h-[${Math.min(maxHeight, 600)}px]` 
+      return {
+        width: `max-w-[${maxWidth}px]`,
+        height: `max-h-[${Math.min(maxHeight, 600)}px]`
       };
     } else if (aspectRatio < 0.7) {
       // 매우 세로가 긴 이미지
-      return { 
-        width: `max-w-[${Math.min(maxWidth, 500)}px]`, 
-        height: `max-h-[${maxHeight}px]` 
+      return {
+        width: `max-w-[${Math.min(maxWidth, 500)}px]`,
+        height: `max-h-[${maxHeight}px]`
       };
     } else if (aspectRatio < 1) {
       // 세로가 긴 이미지
-      return { 
-        width: `max-w-[${Math.min(maxWidth, 600)}px]`, 
-        height: `max-h-[${maxHeight}px]` 
+      return {
+        width: `max-w-[${Math.min(maxWidth, 600)}px]`,
+        height: `max-h-[${maxHeight}px]`
       };
     } else {
       // 정사각형 이미지
-      return { 
-        width: `max-w-[${Math.min(maxWidth, 600)}px]`, 
-        height: `max-h-[${Math.min(maxHeight, 600)}px]` 
+      return {
+        width: `max-w-[${Math.min(maxWidth, 600)}px]`,
+        height: `max-h-[${Math.min(maxHeight, 600)}px]`
       };
     }
   };
@@ -347,6 +361,15 @@ const Profile = () => {
     staleTime: 0,
   });
 
+  const { data: userDrafts, isLoading: isDraftsLoading } = useQuery({
+    queryKey: ['userDrafts', user?.id],
+    queryFn: () => fetchUserDrafts(user!.id),
+    enabled: !!user,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
@@ -360,12 +383,12 @@ const Profile = () => {
       setCrop(undefined); // Reset crop state
       setImageDimensions(null); // Reset image dimensions
       setShowCrop(false); // Reset crop visibility
-      
+
       const reader = new FileReader();
       reader.addEventListener('load', () => {
         const result = reader.result?.toString() || '';
         setImgSrc(result);
-        
+
         // 이미지 크기를 미리 가져와서 모달 크기 조정
         const img = new Image();
         img.onload = () => {
@@ -390,13 +413,13 @@ const Profile = () => {
         completedCrop,
         `${user.id}.png`
       );
-      
+
       const filePath = `${user.id}.png`;
 
       // Storage에 업로드 (RLS 정책이 설정되어 있지 않으면 실패할 수 있음)
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, croppedImageFile, { 
+        .upload(filePath, croppedImageFile, {
           upsert: true,
           cacheControl: '3600'
         });
@@ -413,14 +436,14 @@ const Profile = () => {
       const { data } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
-      
+
       const publicUrl = data.publicUrl;
       const newAvatarUrl = `${publicUrl}?t=${new Date().getTime()}`;
 
       // 프로필 테이블 업데이트
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           avatar_url: newAvatarUrl,
           updated_at: new Date().toISOString()
         })
@@ -428,7 +451,7 @@ const Profile = () => {
         .select();
 
       if (updateError) throw updateError;
-      
+
       toast.success("프로필 사진이 성공적으로 변경되었습니다!");
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
       setImgSrc(''); // 모달 닫기
@@ -463,7 +486,7 @@ const Profile = () => {
       // 3. profiles 테이블에서 avatar_url을 null로 업데이트
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           avatar_url: null,
           updated_at: new Date().toISOString()
         })
@@ -481,15 +504,15 @@ const Profile = () => {
       setRemoving(false);
     }
   };
-  
+
   // ... (updateProfileMutation, handleUpdateProfile, useEffect 등 나머지 로직은 동일)
-    const updateProfileMutation = useMutation({
+  const updateProfileMutation = useMutation({
     mutationFn: async ({ fullName, username }: { fullName: string; username: string }) => {
       if (!user) throw new Error("User not found");
       const { data, error } = await supabase
         .from('profiles')
-        .update({ 
-          full_name: fullName, 
+        .update({
+          full_name: fullName,
           username: username,
           updated_at: new Date().toISOString()
         })
@@ -513,7 +536,7 @@ const Profile = () => {
     e.preventDefault();
     updateProfileMutation.mutate({ fullName, username });
   };
-  
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -541,7 +564,7 @@ const Profile = () => {
               queryClient.refetchQueries({ queryKey: ['userComments', user.id] });
             }
           }} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8">
+            <TabsList className="grid w-full grid-cols-9">
               <TabsTrigger value="profile">프로필</TabsTrigger>
               <TabsTrigger value="level">레벨</TabsTrigger>
               <TabsTrigger value="achievements">업적</TabsTrigger>
@@ -550,6 +573,7 @@ const Profile = () => {
               <TabsTrigger value="comments">댓글</TabsTrigger>
               <TabsTrigger value="votes">추천</TabsTrigger>
               <TabsTrigger value="bookmarks">북마크</TabsTrigger>
+              <TabsTrigger value="drafts">가이드북</TabsTrigger>
             </TabsList>
 
             {/* 프로필 설정 탭 */}
@@ -566,14 +590,14 @@ const Profile = () => {
                         <AvatarImage src={profile.avatar_url || ''} alt={profile.username || ''} />
                         <AvatarFallback>{profile.username?.charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
-                      <Label 
+                      <Label
                         htmlFor="avatar-upload"
                         className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors"
                       >
                         <Upload className="h-4 w-4" />
-                        <input 
-                          id="avatar-upload" 
-                          type="file" 
+                        <input
+                          id="avatar-upload"
+                          type="file"
                           accept="image/png, image/jpeg"
                           className="hidden"
                           onChange={onSelectFile}
@@ -630,15 +654,15 @@ const Profile = () => {
                             );
                           })()}
                         </div>
-                        <PointDisplay 
-                          points={profile.total_points || 0} 
-                          type="total" 
+                        <PointDisplay
+                          points={profile.total_points || 0}
+                          type="total"
                           size="sm"
                         />
                       </div>
                     </div>
                   </div>
-                  
+
                   <form onSubmit={handleUpdateProfile} className="space-y-6">
                     <div className="space-y-2">
                       <Label htmlFor="email">이메일</Label>
@@ -663,13 +687,13 @@ const Profile = () => {
             {/* 레벨 탭 */}
             <TabsContent value="level">
               <div className="grid gap-6 md:grid-cols-2">
-                <LevelProgress 
+                <LevelProgress
                   currentLevel={profile.level || 1}
                   currentExp={profile.experience_points || 0}
                   levelTitle={levelConfigQuery.data?.find(lc => lc.level === (profile.level || 1))?.title}
                   nextLevelExp={levelConfigQuery.data?.find(lc => lc.level === (profile.level || 1) + 1)?.min_experience}
                 />
-                
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -688,7 +712,7 @@ const Profile = () => {
                         <div className="text-sm text-gray-600">댓글</div>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">총 포인트</span>
@@ -770,6 +794,58 @@ const Profile = () => {
               </Card>
             </TabsContent>
 
+            {/* 가이드북 초안 탭 */}
+            <TabsContent value="drafts">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-emerald-600" />
+                    내 가이드북 (초안)
+                  </CardTitle>
+                  <CardDescription>
+                    작성 중인 가이드북을 확인하고 이어서 작성하세요.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isDraftsLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                    </div>
+                  ) : !userDrafts?.length ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      작성 중인 가이드북이 없습니다.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {userDrafts.map((draft: any) => (
+                        <div key={draft.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                초안
+                              </Badge>
+                              <span className="font-semibold text-lg">{draft.title || "제목 없음"}</span>
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-3">
+                              <span>{draft.category || "Uncategorized"}</span>
+                              <span>•</span>
+                              <span>{new Date(draft.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => navigate(`/guide/new?draftId=${draft.id}`)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            이어쓰기
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             {/* 게시글 탭 */}
             <TabsContent value="posts">
               <Card>
@@ -796,7 +872,7 @@ const Profile = () => {
                                 </Badge>
                               )}
                               {post.community_sections && (
-                                <Badge 
+                                <Badge
                                   variant="secondary"
                                   style={{ backgroundColor: post.community_sections.color + '20', color: post.community_sections.color }}
                                   className="text-xs"
@@ -805,7 +881,7 @@ const Profile = () => {
                                 </Badge>
                               )}
                               {post.post_categories && (
-                                <Badge 
+                                <Badge
                                   variant="outline"
                                   style={{ borderColor: post.post_categories.color, color: post.post_categories.color }}
                                   className="text-xs"
@@ -926,7 +1002,7 @@ const Profile = () => {
                                 </Badge>
                               )}
                               {vote.posts.community_sections && (
-                                <Badge 
+                                <Badge
                                   variant="secondary"
                                   style={{ backgroundColor: vote.posts.community_sections.color + '20', color: vote.posts.community_sections.color }}
                                   className="text-xs"
@@ -995,7 +1071,7 @@ const Profile = () => {
                                 </Badge>
                               )}
                               {post.community_sections && (
-                                <Badge 
+                                <Badge
                                   variant="secondary"
                                   style={{ backgroundColor: post.community_sections.color + '20', color: post.community_sections.color }}
                                   className="text-xs"
@@ -1004,7 +1080,7 @@ const Profile = () => {
                                 </Badge>
                               )}
                               {post.post_categories && (
-                                <Badge 
+                                <Badge
                                   variant="outline"
                                   style={{ borderColor: post.post_categories.color, color: post.post_categories.color }}
                                   className="text-xs"
@@ -1053,7 +1129,7 @@ const Profile = () => {
 
       {/* --- ▼▼▼ 이미지 크롭 모달 추가 ▼▼▼ --- */}
       <Dialog open={!!imgSrc} onOpenChange={(isOpen) => !isOpen && setImgSrc('')}>
-        <DialogContent 
+        <DialogContent
           className="overflow-hidden p-4"
           style={{
             width: imageDimensions ? `${Math.min(imageDimensions.width + 120, 900)}px` : '600px',
@@ -1086,7 +1162,7 @@ const Profile = () => {
                     ref={imgRef}
                     alt="Crop me"
                     src={imgSrc}
-                    style={{ 
+                    style={{
                       maxHeight: imageDimensions ? `${Math.min(imageDimensions.height, 400)}px` : '400px',
                       width: '100%',
                       height: 'auto',
@@ -1102,7 +1178,7 @@ const Profile = () => {
                   alt="Click to crop"
                   src={imgSrc}
                   onClick={handleImageClick}
-                  style={{ 
+                  style={{
                     maxHeight: imageDimensions ? `${Math.min(imageDimensions.height, 400)}px` : '400px',
                     width: '100%',
                     height: 'auto',
@@ -1116,8 +1192,8 @@ const Profile = () => {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setImgSrc('')}>취소</Button>
-            <Button 
-              onClick={handleCropAndUpload} 
+            <Button
+              onClick={handleCropAndUpload}
               disabled={uploading || !showCrop || !completedCrop}
             >
               {uploading ? '업로드 중...' : '저장하기'}
